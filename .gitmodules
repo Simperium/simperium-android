@@ -1,0 +1,3 @@
+[submodule "ext/android-websockets"]
+	path = ext/android-websockets
+	url = https://github.com/koush/android-websockets.git
