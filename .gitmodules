@@ -1,3 +1,6 @@
 [submodule "ext/android-websockets"]
 	path = ext/android-websockets
 	url = https://github.com/koush/android-websockets.git
+[submodule "ext/android-async-http"]
+	path = ext/android-async-http
+	url = https://github.com/loopj/android-async-http.git
