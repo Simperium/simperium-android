@@ -1,6 +1,6 @@
 package com.simperium;
 
-import com.simperium.user.User;
+import com.simperium.User;
 
 public class Bucket {
     
@@ -18,7 +18,9 @@ public class Bucket {
     
     // starts tracking the object
     public void add(Diffable object){
-        
+        if (!object.bucket.equals(this)) {
+            object.setBucket(object);
+        }
     }
     
     // updates the object

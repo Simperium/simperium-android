@@ -1,6 +1,6 @@
-package com.simperium.user;
+package com.simperium;
 
-import com.simperium.user.User;
+import com.simperium.User;
 import org.json.JSONObject;
 
 public class UserResponseHandler {

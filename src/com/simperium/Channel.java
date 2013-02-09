@@ -1,6 +1,6 @@
 package com.simperium;
 
-import com.simperium.user.User;
+import com.simperium.User;
 import com.simperium.Bucket;
 import com.simperium.Simperium;
 
@@ -24,11 +24,12 @@ public class Channel {
     // commands sent over the socket
     static final String COMMAND_INIT      = "init";
     static final String COMMAND_AUTH      = "auth";
-    static final String COMMAND_EXPIRED   = "expired";
     static final String COMMAND_INDEX     = "i"; // i:1:MARK:?:LIMIT
     static final String COMMAND_CHANGE    = "c";
     static final String COMMAND_VERSION   = "cv";
     static final String COMMAND_ENTITY    = "e";
+
+    static final String EXPIRED_AUTH      = "expired";
 
     // Parameters for querying bucket
     static final Integer INDEX_PAGE_SIZE  = 500;
@@ -50,8 +51,10 @@ public class Channel {
     // track channel status
     private boolean started = false;
     private CommandInvoker commands = new CommandInvoker();
+    private String appId;
     
-    public Channel(Bucket bucket, User user, Listener listener){
+    public Channel(String appId, Bucket bucket, User user, Listener listener){
+        this.appId = appId;
         this.bucket = bucket;
         this.user = user;
         this.listener = listener;
@@ -59,6 +62,10 @@ public class Channel {
         command(COMMAND_AUTH, new Command(){
             public void run(String param){
                 Simperium.log(String.format("AUTH: %s", param));
+                if (EXPIRED_AUTH.equals(param.trim())) {
+                    // notify user needs to re-auth
+                    return;
+                }
                 setStarted(true);
                 if(hasLastChangeSignature()){
                     // start processing changes
@@ -85,14 +92,6 @@ public class Channel {
             public void run(String param){
                 Simperium.log(String.format("ENTITY: %s", param));
                 handleVersionResponse(param);
-            }
-        });
-        command(COMMAND_EXPIRED, new Command(){
-            // expired means the auth token needs to be refreshed
-            // we need the user to log in again so the user object
-            // needs to be notified
-            public void run(String param){
-                Simperium.log(String.format("EXPIRED: what now? %s", param));
             }
         });
     }
@@ -124,11 +123,13 @@ public class Channel {
     }
     
     private void handleRemoteChanges(String changesJson){
-        
+        // TODO: sync remote changes c:
+        Simperium.log(String.format("handleRemoteChanges %s", changesJson));
     }
     
     private void handleVersionResponse(String versionJson){
-        
+        // TODO: handle e:
+        Simperium.log(String.format("handleVersionResponse %s", versionJson));
     }
     
     public Bucket getBucket(){
@@ -139,7 +140,7 @@ public class Channel {
         return user;
     }
     
-    protected void start(String appId){
+    protected void start(){
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(5);
         init.put(FIELD_API_VERSION, 1);

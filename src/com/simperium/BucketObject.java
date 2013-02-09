@@ -13,6 +13,7 @@ public abstract class BucketObject implements Bucket.Diffable {
     
     public void setBucket(Bucket bucket){
         this.bucket = bucket;
+        bucket.add(this);
     }
     
     public String getSimperiumId(){

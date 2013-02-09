@@ -1,9 +1,9 @@
-package com.simperium.user;
+package com.simperium;
 
 import android.util.Log;
 import com.simperium.Simperium;
 
-import com.simperium.user.UserResponseHandler;
+import com.simperium.UserResponseHandler;
 
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.JsonHttpResponseHandler;
@@ -21,6 +21,14 @@ import java.io.UnsupportedEncodingException;
 
 public class User {
     
+    public interface AuthenticationListener {
+        void onAuthenticationStatusChange(AuthenticationStatus authorized);
+    }
+    
+    public enum AuthenticationStatus {
+        AUTHENTICATED, NOT_AUTHENTICATED, UNKNOWN
+    }
+    
     public static final String USERNAME_FIELD = "username";
     public static final String ACCESS_TOKEN_FIELD = "access_token";
     public static final String PASSWORD_FIELD = "password";
@@ -30,14 +38,98 @@ public class User {
     private String password;
     private String userId;
     private String accessToken;
+    private AuthenticationStatus authenticationStatus = AuthenticationStatus.UNKNOWN;
+    private AuthenticationListener listener;
     
-    public User(String email){
+    // a user that hasn't been logged in
+    protected User(AuthenticationListener listener){
+        this(null, null, listener);
+    }
+    
+    protected User(String email, AuthenticationListener listener){
+        this(email, null, listener);
+    }
+    
+    protected User(String email, String password, AuthenticationListener listener){
+        this.email = email;
+        this.password = password;
+        this.listener = listener;
+    }
+    
+    public AuthenticationStatus getAuthenticationStatus(){
+        return authenticationStatus;
+    }
+    
+    protected void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
+        if (this.authenticationStatus != authenticationStatus) {
+            this.authenticationStatus = authenticationStatus;
+            listener.onAuthenticationStatusChange(this.authenticationStatus);
+        }
+    }
+    
+    // check if we have an access token
+    public boolean needsAuthentication(){
+        return accessToken == null;
+    }
+    
+    public boolean hasAccessToken(){
+        return accessToken != null;
+    }
+    
+    public String getEmail(){
+        return email;
+    }
+    
+    protected void setEmail(String email){
         this.email = email;
     }
     
-    public User(String email, String password){
-        this.email = email;
+    protected void setPassword(String password){
         this.password = password;
+    }
+    
+    protected void setCredentials(String email, String password){
+        setEmail(email);
+        setPassword(password);
+    }
+    
+    public String getUserId(){
+        return userId;
+    }
+    
+    public String getAccessToken(){
+        return accessToken;
+    }
+    
+    protected void setAccessToken(String token){
+        this.accessToken = token;
+    }
+    
+    public String toString(){
+        return toJSONString();
+    }
+    
+    public String toJSONString(){
+        return new JSONObject(toMap()).toString();
+    }
+    
+    private Map<String,String> toMap(){
+        HashMap<String,String> fields = new HashMap<String,String>();
+        fields.put(USERNAME_FIELD, email);
+        fields.put(PASSWORD_FIELD, password);
+        return fields;
+    }
+    
+    public HttpEntity toHttpEntity(){
+        StringEntity entity;
+        JSONObject json = new JSONObject(toMap());
+        try{
+            entity = new StringEntity(json.toString());
+        } catch(UnsupportedEncodingException e){
+            entity = null;
+        }
+        return entity;
+        
     }
     
     protected AsyncHttpResponseHandler getCreateResponseHandler(final UserResponseHandler handler){
@@ -56,6 +148,7 @@ public class User {
                     handler.onFailure(user, error, response.toString());
                     return;
                 }
+                setAuthenticationStatus(AuthenticationStatus.AUTHENTICATED);
                 handler.onSuccess(user);
             }
             @Override
@@ -88,6 +181,7 @@ public class User {
                     handler.onFailure(user, error, response.toString());
                     return;
                 }
+                setAuthenticationStatus(AuthenticationStatus.AUTHENTICATED);
                 handler.onSuccess(user);
             }
             @Override
@@ -118,45 +212,5 @@ public class User {
             public void onFailure(Throwable error, String response){
             }
         };
-    }
-    
-    public String getEmail(){
-        return email;
-    }
-    
-    public String getUserId(){
-        return userId;
-    }
-    
-    public String getAccessToken(){
-        return accessToken;
-    }
-    
-    public String toString(){
-        return toJSONString();
-    }
-    
-    public String toJSONString(){
-        return new JSONObject(toMap()).toString();
-    }
-    
-    public HttpEntity toHttpEntity(){
-        StringEntity entity;
-        JSONObject json = new JSONObject(toMap());
-        try{
-            entity = new StringEntity(json.toString());
-        } catch(UnsupportedEncodingException e){
-            entity = null;
-        }
-        return entity;
-        
-    }
-    
-    private Map<String,String> toMap(){
-        HashMap<String,String> fields = new HashMap<String,String>();
-        fields.put(USERNAME_FIELD, email);
-        fields.put(PASSWORD_FIELD, password);
-        return fields;
-    }
-            
+    }            
 }

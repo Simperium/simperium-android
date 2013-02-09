@@ -1,6 +1,6 @@
-package com.simperium.user;
+package com.simperium;
 
-import com.simperium.user.UserResponseHandler;
+import com.simperium.UserResponseHandler;
 
 import com.simperium.Simperium;
 
@@ -45,22 +45,11 @@ public class AuthHttpClient {
         return user;
     }
     
-    public User createUser(String username, String password, UserResponseHandler handler){
-        User user = new User(username, password);
-        return createUser(user, handler);
-    }
-    
     public User authorizeUser(User user, UserResponseHandler handler){
         String url = absoluteUrl("authorize/");
         Simperium.log(String.format("Requesting: %s", url));
         httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
         return user;
-    }
-    
-    public User authorizeUser(String username, String password, UserResponseHandler handler){
-        // make an HTTP request to authorize the user
-        User user = new User(username, password);
-        return authorizeUser(user, handler);
     }
     
     private Header[] authHeaders(){
