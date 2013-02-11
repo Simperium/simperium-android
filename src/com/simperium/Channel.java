@@ -65,7 +65,6 @@ public class Channel {
         // Receive auth: command
         command(COMMAND_AUTH, new Command(){
             public void run(String param){
-                Simperium.log(String.format("AUTH: %s", param));
                 if (EXPIRED_AUTH.equals(param.trim())) {
                     // TODO: notify user needs to re-auth
                     return;
@@ -80,21 +79,18 @@ public class Channel {
         // Receive i: command
         command(COMMAND_INDEX, new Command(){
             public void run(String param){
-                Simperium.log(String.format("INDEX: %s", param));
                 updateIndex(param);
             }
         });
         // Receive c: command
         command(COMMAND_CHANGE, new Command(){
             public void run(String param){
-                Simperium.log(String.format("CHANGE: %s", param));
                 handleRemoteChanges(param);
             }
         });
         // Receive e: command
         command(COMMAND_ENTITY, new Command(){
             public void run(String param){
-                Simperium.log(String.format("ENTITY: %s", param));
                 handleVersionResponse(param);
             }
         });
@@ -120,18 +116,15 @@ public class Channel {
     
     private void updateIndex(String indexJson){
         // query i:
-        Simperium.log(String.format("Bucket index version: %s", indexJson));
         // TODO: Determine check bucket entity versions
     }
     
     private void handleRemoteChanges(String changesJson){
         // TODO: Apply remote changes to current objects
-        Simperium.log(String.format("handleRemoteChanges %s", changesJson));
     }
     
     private void handleVersionResponse(String versionJson){
         // TODO: Update entity in bucket?
-        Simperium.log(String.format("handleVersionResponse %s", versionJson));
     }
     
     public Bucket getBucket(){

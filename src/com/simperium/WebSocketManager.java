@@ -133,7 +133,9 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     
     private void sendHearbeat(){
         heartbeatCount ++;
-        socketClient.send(String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount));
+        String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
+        Simperium.log(String.format(" => %s", command));
+        socketClient.send(command);
     }
     
     /**
@@ -146,7 +148,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
-        Simperium.log(String.format("Sending: %s", message));
+        Simperium.log(String.format(" => %s", message));
         socketClient.send(message);
     }
     /** 
@@ -161,7 +163,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     }
     public void onMessage(String message){
         scheduleHeartbeat();
-        Simperium.log(String.format("Inbound: %s", message));
+        Simperium.log(String.format(" <= %s", message));
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);
