@@ -25,6 +25,7 @@ import org.apache.http.message.BasicNameValuePair;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.net.ConnectException;
 
 public class WebSocketManager implements WebSocketClient.Listener, Channel.Listener {
     
@@ -35,15 +36,16 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     private String appId;
     private String clientId;
     private WebSocketClient socketClient;
-    private boolean connected = false;
+    private boolean connected = false, reconnect = true;
     private HashMap<Channel,Integer> channelIndex = new HashMap<Channel,Integer>();;
     private HashMap<Integer,Channel> channels = new HashMap<Integer,Channel>();;
     
     static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
+    static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
     
-    private Timer heartbeatTimer;
+    private Timer heartbeatTimer, reconnectTimer;
     private int heartbeatCount = 0;
-    
+    private long reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
     
     public WebSocketManager(String appId){
         this.appId = appId;
@@ -76,6 +78,8 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     protected void connect(){
         // if we have channels, then connect, otherwise wait for a channel
         if (!isConnected() && !channels.isEmpty()) {
+            Simperium.log(String.format("Connecting to %s", WEBSOCKET_URL));
+            reconnect = true;
             socketClient.connect();
         }
     }
@@ -83,6 +87,9 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     protected void disconnect(){
         // disconnect the channel
         if (isConnected()) {
+            Simperium.log("Disconnecting");
+            // being told to disconnect so don't automatically reconnect
+            reconnect = false;
             socketClient.disconnect();
         }
     }
@@ -138,6 +145,34 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         socketClient.send(command);
     }
     
+    private void cancelReconnect(){
+        if (reconnectTimer != null) reconnectTimer.cancel();
+    }
+
+    private void scheduleReconnect(){
+        reconnectTimer = new Timer();
+        // exponential backoff
+        long retryIn = nextReconnectInterval();
+        reconnectTimer.schedule(new TimerTask(){
+            public void run(){
+                connect();
+            }
+        }, retryIn);
+        Simperium.log(String.format("Retrying in %d", retryIn));
+    }
+    
+    // duplicating javascript reconnect interval calculation
+    // doesn't do exponential backoff
+    private long nextReconnectInterval(){
+        long current = reconnectInterval;
+        if (reconnectInterval < 4000) {
+            reconnectInterval ++;
+        } else {
+            reconnectInterval = 15000;
+        }
+        return current;
+    }
+
     /**
      *
      * Channel.Listener event listener
@@ -160,6 +195,9 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         Simperium.log(String.format("Connect %s", this));
         setConnected(true);
         notifyChannelsConnected();
+        scheduleHeartbeat();
+        cancelReconnect();
+        reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
     }
     public void onMessage(String message){
         scheduleHeartbeat();
@@ -181,9 +219,13 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         setConnected(false);
         notifyChannelsDisconnected();
         cancelHeartbeat();
+        if(reconnect) scheduleReconnect();
     }
     public void onError(Exception error){
         Simperium.log(String.format("Error: %s", error));
+        if (error.getClass().isAssignableFrom(ConnectException.class) && reconnect) {
+            scheduleReconnect();
+        }
         setConnected(false);
     }
     
