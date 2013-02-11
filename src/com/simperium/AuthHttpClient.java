@@ -1,8 +1,21 @@
+/**
+ * The HTTP client used to access the auth.simperium.com API. This provides apps a
+ * simple way to create and authenticate users.
+ *
+ * An app most likely will never need to access it directly. They will use the Simperium
+ * API's to authenticate/create users.
+ *   
+ *    simperium.createUser("user@example.com", "super-secret", new UserResponseHandler(){
+ *      public void onSuccess(){
+ *          // hooray
+ *      }
+ *    })
+ *
+ * Apps can also provide a User.AuthenticationListener to the Simperium constructor so they
+ * can provide feedback to the user in a global way. See User for more info.
+ *
+ */
 package com.simperium;
-
-import com.simperium.UserResponseHandler;
-
-import com.simperium.Simperium;
 
 import com.loopj.android.http.*;
 
@@ -38,14 +51,14 @@ public class AuthHttpClient {
     }
     
     
-    public User createUser(User user, UserResponseHandler handler){
+    public User createUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("create/");
         Simperium.log(String.format("Requesting: %s", url));
         httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getCreateResponseHandler(handler));
         return user;
     }
     
-    public User authorizeUser(User user, UserResponseHandler handler){
+    public User authorizeUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("authorize/");
         Simperium.log(String.format("Requesting: %s", url));
         httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));

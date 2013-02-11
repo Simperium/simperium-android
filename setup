@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# 
+# Usage ./setup android_target
+# 
+# Example ./setup android-10
+# 
+# To see available android targets run:
+#    android targets list
+# 
+# android-async-http has a custom build.xml that will be replaced by a default one
+mv ext/android-async-http/build.xml ext/android-async-http/build.old.xml
+# prepare the android-async-http library project
+android update lib-project --path ext/android-async-http --target $1
+# prepare the android-websockets library project
+android update lib-project --path ext/android-websockets --target $1

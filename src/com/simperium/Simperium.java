@@ -48,7 +48,7 @@ public class Simperium implements User.AuthenticationListener {
     private void loadUser(){
         // TODO: store the auth token in SharedPreferences
         user = new User(this);
-        // if the user has an auth token, set the token 
+        // FIXME: if we have an auth token we can connect to simperium
         user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
     }
     
@@ -65,21 +65,37 @@ public class Simperium implements User.AuthenticationListener {
         return user.needsAuthentication();
     }
     
-    public Bucket bucket(String bucketName){
+    /**
+     * Creates a bucket and starts syncing data and uses the provided
+     * Class for to instantiate data
+     *
+     * @param bucketName the namespace to store the data in simperium
+     * @param bucketType the Bucket.Diffable Class to use when deserializing data
+     */
+    public Bucket bucket(String bucketName, Class<? extends Bucket.Diffable>bucketType){
         // TODO: cache the bucket by user and bucketName and return the
         // same bucket if asked for again
-        Bucket bucket = new Bucket(bucketName, user);
-        // start the channel here?
+        Bucket bucket = new Bucket(bucketName, bucketType, user);
         Channel channel = socketManager.createChannel(bucket, user);
+        bucket.setChannel(channel);
         return bucket;
     }
+    /**
+     * Creates a bucket and starts syncing data. Users the generic BucketObject for
+     * serializing and deserializing data
+     *
+     * @param bucketName namespace to store the data in simperium
+     */
+    public Bucket bucket(String bucketName){
+        return bucket(bucketName, BucketObject.class);
+    }
         
-    public User createUser(String email, String password, UserResponseHandler handler){
+    public User createUser(String email, String password, User.AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.createUser(user, handler);
     }
     
-    public User authorizeUser(String email, String password, UserResponseHandler handler){
+    public User authorizeUser(String email, String password, User.AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.authorizeUser(user, handler);
     }
@@ -92,13 +108,15 @@ public class Simperium implements User.AuthenticationListener {
         Simperium.log("User auth has changed");
         switch (status) {
             case AUTHENTICATED:
+            // Start up the websocket
             socketManager.connect();
             break;
             case NOT_AUTHENTICATED:
+            // Disconnect the websocket
             socketManager.disconnect();
             break;
             case UNKNOWN:
-            // we haven't tried to auth yet
+            // we haven't tried to auth yet or the socket is disconnected
             break;
         }
         if (authenticationListener != null) {

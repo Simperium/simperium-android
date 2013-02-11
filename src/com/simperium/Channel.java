@@ -1,3 +1,7 @@
+/**
+ * When a Bucket is created Simperium creates a Channel to sync changes between
+ * a Bucket and simperium.com.
+ */
 package com.simperium;
 
 import com.simperium.User;
@@ -22,14 +26,14 @@ public class Channel {
     static final String FIELD_COMMAND     = "cmd";
 
     // commands sent over the socket
-    static final String COMMAND_INIT      = "init";
-    static final String COMMAND_AUTH      = "auth";
+    static final String COMMAND_INIT      = "init"; // init:{INIT_PROPERTIES}
+    static final String COMMAND_AUTH      = "auth"; // received after an init: auth:expired or auth:email@example.com
     static final String COMMAND_INDEX     = "i"; // i:1:MARK:?:LIMIT
     static final String COMMAND_CHANGE    = "c";
     static final String COMMAND_VERSION   = "cv";
     static final String COMMAND_ENTITY    = "e";
 
-    static final String EXPIRED_AUTH      = "expired";
+    static final String EXPIRED_AUTH      = "expired"; // after unsuccessful init:
 
     // Parameters for querying bucket
     static final Integer INDEX_PAGE_SIZE  = 500;
@@ -49,7 +53,7 @@ public class Channel {
     // the object the receives the messages the channel emits
     private Listener listener;
     // track channel status
-    private boolean started = false;
+    private boolean started = false, connected = false, startOnConnect = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId;
     
@@ -58,36 +62,36 @@ public class Channel {
         this.bucket = bucket;
         this.user = user;
         this.listener = listener;
-        
+        // Receive auth: command
         command(COMMAND_AUTH, new Command(){
             public void run(String param){
                 Simperium.log(String.format("AUTH: %s", param));
                 if (EXPIRED_AUTH.equals(param.trim())) {
-                    // notify user needs to re-auth
+                    // TODO: notify user needs to re-auth
                     return;
                 }
-                setStarted(true);
                 if(hasLastChangeSignature()){
-                    // start processing changes
                     startProcessingChanges();
                 } else {
                     getLatestVersions();
-                    // get latest versions
                 }
             }
         });
+        // Receive i: command
         command(COMMAND_INDEX, new Command(){
             public void run(String param){
                 Simperium.log(String.format("INDEX: %s", param));
                 updateIndex(param);
             }
         });
+        // Receive c: command
         command(COMMAND_CHANGE, new Command(){
             public void run(String param){
                 Simperium.log(String.format("CHANGE: %s", param));
                 handleRemoteChanges(param);
             }
         });
+        // Receive e: command
         command(COMMAND_ENTITY, new Command(){
             public void run(String param){
                 Simperium.log(String.format("ENTITY: %s", param));
@@ -95,40 +99,38 @@ public class Channel {
             }
         });
     }
-    
-    private void setStarted(boolean started){
-        this.started = started;
-    }
-    
-    
-    // is the bucket initialized?
+        
+    // TODO: ask bucket if it's initialized yet (if it has a version change?)
     private boolean isInitialized(){
         return false;
     }
-        
+    
+    // TODO: Ask the bucket for it's last change version
     private boolean hasLastChangeSignature(){
         return false;
     }
     
     private void startProcessingChanges(){
+        // TODO: send local changes?
     }
     
     private void getLatestVersions(){
-        
+        // TODO: Update bucket's entities with latest data from simperium
     }
     
     private void updateIndex(String indexJson){
         // query i:
-        Simperium.log(String.format("Update your index kids: %s", indexJson));
+        Simperium.log(String.format("Bucket index version: %s", indexJson));
+        // TODO: Determine check bucket entity versions
     }
     
     private void handleRemoteChanges(String changesJson){
-        // TODO: sync remote changes c:
+        // TODO: Apply remote changes to current objects
         Simperium.log(String.format("handleRemoteChanges %s", changesJson));
     }
     
     private void handleVersionResponse(String versionJson){
-        // TODO: handle e:
+        // TODO: Update entity in bucket?
         Simperium.log(String.format("handleVersionResponse %s", versionJson));
     }
     
@@ -139,8 +141,24 @@ public class Channel {
     public User getUser(){
         return user;
     }
-    
+    /**
+     * Send Bucket's init message to start syncing changes.
+     */
     protected void start(){
+        if (started) {
+            // we've already started
+            return;
+        }
+        // If socket isn't connected yet we have to wait until connection
+        // is up and try starting then
+        if (!connected) {
+            startOnConnect = true;
+            return;
+        }
+        started = true;
+        // If the websocket isn't connected yet we'll automatically start
+        // when we're notified that we've connected
+        startOnConnect = true;
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(5);
         init.put(FIELD_API_VERSION, 1);
@@ -155,12 +173,20 @@ public class Channel {
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
         sendMessage(message);
     }
-    
-    protected void stop(){
-        started = false;
+    // websocket 
+    protected void onConnect(){
+        connected = true;
+        if(startOnConnect) start();
     }
     
-    // the channel id is stripped
+    protected void onDisconnect(){
+        connected = false;
+        started = false;
+    }
+    /**
+     * Receive a message from the WebSocketManager which already strips the channel
+     * prefix from the message.
+     */
     protected void receiveMessage(String message){
         // parse the message and react to it
         String[] parts = message.split(":", MESSAGE_PARTS);
@@ -216,6 +242,18 @@ public class Channel {
         void onMessage(MessageEvent event);
     }
     
+    /**
+     * Command and CommandInvoker provide a declaritive syntax for handling commands that come in
+     * from Channel.onMessage. Takes a message like "auth:user@example.com" and finds the correct
+     * command to run and stips the command from the message so the command can take care of
+     * processing the params.
+     *
+     *      channel.command("auth", new Command(){
+     *         public void onRun(String params){
+     *           // params is now either an email address or "expired"
+     *         }
+     *      });
+     */
     private interface Command {
         void run(String params);
     }
@@ -241,7 +279,10 @@ public class Channel {
     static final String QUERY_DELIMITER = ":";
     // static final Integer INDEX_MARK = 2;
     // static final Integer INDEX_LIMIT = 5;
-    
+    /**
+     * IndexQuery provides an interface for managing a query cursor and limit fields.
+     * TODO: add a way to build an IndexQuery from an index response
+     */
     private class IndexQuery {
         
         private Integer mark = -1;

@@ -1,9 +1,16 @@
+/**
+ * User is used to determine authentication status for the client. Applications should
+ * interact with the User object using the Simperium object's methods:
+ *
+ *     simperium.createUser( ... ); // register new user
+ *     simperium.authorizeUser( ... ); // authorizes an existing user
+ *
+ * Applications can provide a User.AuthenticationListener to the Simperium object to 
+ * detect a change in the user's status.
+ */
 package com.simperium;
 
 import android.util.Log;
-import com.simperium.Simperium;
-
-import com.simperium.UserResponseHandler;
 
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.JsonHttpResponseHandler;
@@ -20,19 +27,42 @@ import java.io.UnsupportedEncodingException;
 
 
 public class User {
-    
+    /**
+     * Applications can register a global authentication listener to get notified when a user's
+     * authenticated status has changed.
+     *
+     *     Simperium simperium = new Simperium(appId, appSecret, appContext, new User.AuthenticationListener(){
+     *       public void onAuthenticationStatusChange(User.AuthenticationStatus status){
+     *          // Prompt user to log in or show they're offline
+     *       }
+     *     });
+     */
     public interface AuthenticationListener {
         void onAuthenticationStatusChange(AuthenticationStatus authorized);
     }
-    
+    /**
+     * Determines a user's network status with Simperium:
+     *   - AUTHENTICATED: user has an access token and is connected to Simperium
+     *   - NOT_AUTHENTICATED: user does not have a valid access token. Create or auth the user
+     *   - UKNOWN: User objects start in this state and then transitions to AUTHENTICATED or
+     *             NOT_AUTHENTICATED. Also the state given when the Simperium is not reachable.
+     */
     public enum AuthenticationStatus {
         AUTHENTICATED, NOT_AUTHENTICATED, UNKNOWN
     }
-    
-    public static final String USERNAME_FIELD = "username";
-    public static final String ACCESS_TOKEN_FIELD = "access_token";
-    public static final String PASSWORD_FIELD = "password";
-    public static final String USERID_FIELD = "userid";
+    /**
+     * For use with Simperium.createUser and Simperium.authorizeUser
+     */
+    public interface AuthResponseHandler {
+        public void onSuccess(User user);
+        public void onInvalid(User user, Throwable error, JSONObject validationErrors);
+        public void onFailure(User user, Throwable error, String message);
+    }
+
+    public static final String USERNAME_KEY = "username";
+    public static final String ACCESS_TOKEN_KEY = "access_token";
+    public static final String PASSWORD_KEY = "password";
+    public static final String USERID_KEY = "userid";
     
     private String email;
     private String password;
@@ -76,6 +106,11 @@ public class User {
         return accessToken != null;
     }
     
+    protected void setCredentials(String email, String password){
+        setEmail(email);
+        setPassword(password);
+    }
+    
     public String getEmail(){
         return email;
     }
@@ -88,10 +123,6 @@ public class User {
         this.password = password;
     }
     
-    protected void setCredentials(String email, String password){
-        setEmail(email);
-        setPassword(password);
-    }
     
     public String getUserId(){
         return userId;
@@ -115,8 +146,8 @@ public class User {
     
     private Map<String,String> toMap(){
         HashMap<String,String> fields = new HashMap<String,String>();
-        fields.put(USERNAME_FIELD, email);
-        fields.put(PASSWORD_FIELD, password);
+        fields.put(USERNAME_KEY, email);
+        fields.put(PASSWORD_KEY, password);
         return fields;
     }
     
@@ -132,7 +163,7 @@ public class User {
         
     }
     
-    protected AsyncHttpResponseHandler getCreateResponseHandler(final UserResponseHandler handler){
+    protected AsyncHttpResponseHandler getCreateResponseHandler(final User.AuthResponseHandler handler){
         // returns an AsyncHttpResponseHandlert
         final User user = this;
         return new JsonHttpResponseHandler(){
@@ -142,8 +173,8 @@ public class User {
                 Simperium.log(String.format("Success: %s", response));
                 // user was created, notify of a new user
                 try {
-                    userId = response.getString(USERID_FIELD);
-                    accessToken = response.getString(ACCESS_TOKEN_FIELD);
+                    userId = response.getString(USERID_KEY);
+                    accessToken = response.getString(ACCESS_TOKEN_KEY);
                 } catch(JSONException error){
                     handler.onFailure(user, error, response.toString());
                     return;
@@ -166,7 +197,7 @@ public class User {
         };
     }
     
-    protected AsyncHttpResponseHandler getAuthorizeResponseHandler(final UserResponseHandler handler){
+    protected AsyncHttpResponseHandler getAuthorizeResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){
             @Override
@@ -175,8 +206,8 @@ public class User {
                 Simperium.log(String.format("Success: %s", response));
                 // user was created, notify of a new user
                 try {
-                    userId = response.getString(USERID_FIELD);
-                    accessToken = response.getString(ACCESS_TOKEN_FIELD);
+                    userId = response.getString(USERID_KEY);
+                    accessToken = response.getString(ACCESS_TOKEN_KEY);
                 } catch(JSONException error){
                     handler.onFailure(user, error, response.toString());
                     return;
@@ -199,7 +230,7 @@ public class User {
         };
     }
     
-    protected AsyncHttpResponseHandler getUpdateResponseHandler(final UserResponseHandler handler){
+    protected AsyncHttpResponseHandler getUpdateResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){
             @Override

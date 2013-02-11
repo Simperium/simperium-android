@@ -1,3 +1,11 @@
+/**
+ * Used by Simperium to create a WebSocket connection to Simperium. Manages Channels
+ * and listens for channel write events. Notifies channels when the connection is connected
+ * or disconnected.
+ *
+ * WebSocketManager is configured by Simperium and shouldn't need to be access directly
+ * by applications.
+ */
 package com.simperium;
 
 import com.simperium.Simperium;
@@ -55,14 +63,12 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         int channelId = channels.size();
         channelIndex.put(channel, channelId);
         channels.put(channelId, channel);
-        // if we're connected tell the channel to fire off it's init message
-        // otherwise we need to wait until we're connected
-        if (isConnected()) {
-            channel.start();
-        } else {
-            if(user.hasAccessToken()){
-                connect();
-            }
+        // If we're not connected then connect, if we don't have a user
+        // access token we'll have to hold off until the user does have one
+        if (!isConnected() && user.hasAccessToken()) {
+            connect();
+        } else if (isConnected()){
+            channel.onConnect();
         }
         return channel;
     }
@@ -93,21 +99,21 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         this.connected = connected;
     }
     
-    private void initializeChannels(){
+    private void notifyChannelsConnected(){
         Set<Channel> channelSet = channelIndex.keySet();
         Iterator<Channel> iterator = channelSet.iterator();
         while(iterator.hasNext()){
             Channel channel = iterator.next();
-            channel.start();
+            channel.onConnect();
         }
     }
     
-    private void stopChannels(){
+    private void notifyChannelsDisconnected(){
         Set<Channel> channelSet = channelIndex.keySet();
         Iterator<Channel> iterator = channelSet.iterator();
         while(iterator.hasNext()){
             Channel channel = iterator.next();
-            channel.stop();
+            channel.onDisconnect();
         }
     }
     
@@ -138,6 +144,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     public void onMessage(Channel.MessageEvent event){
         Channel channel = (Channel)event.getSource();
         Integer channelId = channelIndex.get(channel);
+        // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
         Simperium.log(String.format("Sending: %s", message));
         socketClient.send(message);
@@ -150,7 +157,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     public void onConnect(){
         Simperium.log(String.format("Connect %s", this));
         setConnected(true);
-        initializeChannels();
+        notifyChannelsConnected();
     }
     public void onMessage(String message){
         scheduleHeartbeat();
@@ -170,7 +177,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     public void onDisconnect(int code, String reason){
         Simperium.log(String.format("Disconnect %d %s", code, reason));
         setConnected(false);
-        stopChannels();
+        notifyChannelsDisconnected();
         cancelHeartbeat();
     }
     public void onError(Exception error){
