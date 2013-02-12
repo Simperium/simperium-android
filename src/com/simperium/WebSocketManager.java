@@ -195,6 +195,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         Simperium.log(String.format("Connect %s", this));
         setConnected(true);
         notifyChannelsConnected();
+        heartbeatCount = 0; // reset heartbeat count
         scheduleHeartbeat();
         cancelReconnect();
         reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
