@@ -6,6 +6,7 @@ public abstract class BucketObject implements Bucket.Diffable {
     
     private Bucket bucket;
     private String simperiumId;
+    private Integer version = 0;
     
     public Bucket getBucket(){
         return bucket;
@@ -23,4 +24,13 @@ public abstract class BucketObject implements Bucket.Diffable {
     public void setSimperiumId(String simperiumId){
         this.simperiumId = simperiumId;
     }
+    
+    public Integer getVersion(){
+        return version;
+    }
+    
+    public void setVersion(Integer version){
+        this.version = version;
+    }
+        
 }

@@ -15,6 +15,9 @@ import java.util.Enumeration;
 import java.util.HashMap;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+import android.os.Looper;
 
 public class Channel {
     // key names for init command json object
@@ -36,7 +39,7 @@ public class Channel {
     static final String EXPIRED_AUTH      = "expired"; // after unsuccessful init:
 
     // Parameters for querying bucket
-    static final Integer INDEX_PAGE_SIZE  = 500;
+    static final Integer INDEX_PAGE_SIZE  = 3;
     static final Integer INDEX_BATCH_SIZE = 10;
     static final Integer INDEX_QUEUE_SIZE = 5;
 
@@ -69,11 +72,12 @@ public class Channel {
                     getUser().setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
                     return;
                 }
-                if(hasLastChangeSignature()){
-                    startProcessingChanges();
-                } else {
-                    getLatestVersions();
-                }
+                // This is handled by cmd in init: message 
+                // if(hasLastChangeSignature()){
+                //     startProcessingChanges();
+                // } else {
+                //     getLatestVersions();
+                // }
             }
         });
         // Receive i: command
@@ -95,15 +99,13 @@ public class Channel {
             }
         });
     }
-        
-    // TODO: ask bucket if it's initialized yet (if it has a version change?)
-    private boolean isInitialized(){
-        return false;
+            
+    private boolean hasChangeVersion(){
+        return bucket.hasChangeVersion();
     }
     
-    // TODO: Ask the bucket for it's last change version
-    private boolean hasLastChangeSignature(){
-        return false;
+    private String getChangeVersion(){
+        return bucket.getChangeVersion();
     }
     
     private void startProcessingChanges(){
@@ -114,17 +116,136 @@ public class Channel {
         // TODO: Update bucket's entities with latest data from simperium
     }
     
+    private static final String INDEX_CURRENT_VERSION_KEY = "current";
+    private static final String INDEX_VERSIONS_KEY = "index";
+    private static final String INDEX_MARK_KEY = "mark";
+    
     private void updateIndex(String indexJson){
         // query i:
+        // FIXME: Threading! http://developer.android.com/reference/java/util/concurrent/package-summary.html
         // TODO: Determine check bucket entity versions
+        JSONObject index;
+        try {
+            index = new JSONObject(indexJson);
+        } catch (Exception e) {
+            Simperium.log(String.format("Index had invalid json: %s", indexJson));
+            return;
+        }
+
+        String currentIndex;
+        try {
+            currentIndex = index.getString(INDEX_CURRENT_VERSION_KEY);
+        } catch(JSONException e){
+            Simperium.log(String.format("Index did not have current version: %s", indexJson));
+            return;
+        }
+        // TODO: Set the version of this index to remember for future queries
+        JSONArray indexVersions;
+        try {
+            indexVersions = index.getJSONArray(INDEX_VERSIONS_KEY);
+        } catch(JSONException e){
+            Simperium.log(String.format("Index did not have entities: %s", indexJson));
+            return;
+        }
+        Simperium.log(String.format("Index version: %s", currentIndex));
+        
+        if (indexVersions.length() > 0) {
+            // compare entites with local versions
+            // FIXME: collect a full index before comparing versions: IndexProcessor
+            getVersionsForKeys(indexVersions);
+        }
+        // 
+        String nextMark = null;
+        if (index.has(INDEX_MARK_KEY)) {
+            try {
+                nextMark = index.getString(INDEX_MARK_KEY);
+            } catch (JSONException e) {
+                nextMark = null;
+            }
+        }
+        
+        if (nextMark != null && nextMark.length() > 0) {
+            IndexQuery nextQuery = new IndexQuery(nextMark);
+            sendMessage(nextQuery.toString());
+        } else {
+            // done updating index update the bucket's version key
+            bucket.setChangeVersion(currentIndex);
+        }
+    }
+    /**
+     * This receives an array of {v:VERSION_INT id:KEY_STRING }. It gets the matching
+     * object from the bucket and compares versions. If local version matches, don't need
+     * to do anything. Otherwise resolve the difference.
+     */
+    public static final String INDEX_OBJECT_ID_KEY = "id";
+    public static final String INDEX_OBJECT_VERSION_KEY = "v";
+    private void getVersionsForKeys(JSONArray keys){
+        // FIXME: Threading! http://developer.android.com/reference/java/util/concurrent/package-summary.html
+        for (int i=0; i<keys.length(); i++) {
+            try {
+                JSONObject version = keys.getJSONObject(i);
+                String key  = version.getString(INDEX_OBJECT_ID_KEY);
+                Integer versionNumber = version.getInt(INDEX_OBJECT_VERSION_KEY);
+                if (!bucket.containsKey(key)) {
+                    // we need to get the remote entity
+                    Simperium.log(String.format("Adding new local entity: %s", version));
+                    sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
+                } else if(!bucket.hasKeyVersion(key, versionNumber)) {
+                    // we need to get remote changes
+                    Integer localVersion = bucket.getKeyVersion(key);
+                    Simperium.log(String.format("Get entity changes since: %d", localVersion));
+                } else {
+                    Simperium.log(String.format("Entity is up to date: %s", version));
+                }
+                
+            } catch (JSONException e) {
+                Simperium.log(String.format("Error processing index: %d", i));
+                Simperium.log(e.getMessage());
+            }
+            
+        }
     }
     
     private void handleRemoteChanges(String changesJson){
         // TODO: Apply remote changes to current objects
+        
     }
     
-    private void handleVersionResponse(String versionJson){
-        // TODO: Update entity in bucket?
+    private static final String ENTITY_DATA_KEY = "data";
+    private void handleVersionResponse(String versionData){
+        // versionData will be: key.version\n{"data":ENTITY}
+        // we need to parse out the key and version, parse the json payload and
+        // retrieve the data
+        String[] entityParts = versionData.split("\n");
+        String prefix = entityParts[0];
+        int lastDot = prefix.lastIndexOf(".");
+        if (lastDot == -1) {
+            Simperium.log(String.format("Missing version string: %s", prefix));
+            return;
+        }
+        String key = prefix.substring(0, lastDot);
+        String version = prefix.substring(lastDot + 1);
+        String payload = entityParts[1];
+        JSONObject data = null;
+        try {
+            JSONObject payloadJSON = new JSONObject(payload);
+            data = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
+        } catch (JSONException e) {
+            Simperium.log(e.getMessage());
+            return;
+        }
+        
+        Integer remoteVersion = Integer.parseInt(version);
+        
+        if(bucket.containsKey(key)){
+            // check which version we have locally and diff stuff
+        } else {
+            // construct the bucket object with version data
+            // add the bucket object to the bucket
+            Entity entity = Entity.fromJSON(key, remoteVersion, data);
+            bucket.addEntity(entity);
+        }
+        
     }
     
     public Bucket getBucket(){
@@ -159,8 +280,12 @@ public class Channel {
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, user.getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getName());
-        if (!isInitialized()) {
+        if (!hasChangeVersion()) {
+            // the bucket has never gotten an index
             init.put(FIELD_COMMAND, new IndexQuery());
+        } else {
+            // retive changes since last cv
+            init.put(FIELD_COMMAND, String.format("%s:%s", COMMAND_VERSION, getChangeVersion()));
         }
         String initParams = new JSONObject(init).toString();
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
@@ -268,7 +393,7 @@ public class Channel {
         }
     }
     
-    static final String CURSOR_FORMAT = "i::%s::%s";
+    static final String CURSOR_FORMAT = "%s::%s::%s";
     static final String QUERY_DELIMITER = ":";
     // static final Integer INDEX_MARK = 2;
     // static final Integer INDEX_LIMIT = 5;
@@ -278,30 +403,30 @@ public class Channel {
      */
     private class IndexQuery {
         
-        private Integer mark = -1;
+        private String mark = "";
         private Integer limit = INDEX_PAGE_SIZE;
         
         public IndexQuery(){};
+        
+        public IndexQuery(String mark){
+            this(mark, INDEX_PAGE_SIZE);
+        }
         
         public IndexQuery(Integer limit){
             this.limit = limit;
         }
         
-        public IndexQuery(Integer mark, Integer limit){
+        public IndexQuery(String mark, Integer limit){
             this.mark = mark;
             this.limit = limit;
         }
-        
+
         public String toString(){
-            String markString = "";
             String limitString = "";
-            if (mark > -1) {
-                markString = mark.toString();
-            }
             if (limit > -1) {
                 limitString = limit.toString();
             }
-            return String.format(CURSOR_FORMAT, markString, limitString);
+            return String.format(CURSOR_FORMAT, COMMAND_INDEX, mark, limitString);
         }
         
     }

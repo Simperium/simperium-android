@@ -30,12 +30,13 @@ public class Simperium implements User.AuthenticationListener {
     private User user;
     private Context context;
     private User.AuthenticationListener authenticationListener;
+    private StorageProvider storageProvider;
     
-    public Simperium(String appId, String appSecret, Context context){
-        this(appId, appSecret, context, null);
+    public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
+        this(appId, appSecret, context, storageProvider, null);
     }
     
-    public Simperium(String appId, String appSecret, Context context, User.AuthenticationListener authenticationListener){
+    public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider, User.AuthenticationListener authenticationListener){
         this.appId = appId;
         this.appSecret = appSecret;
         this.context = context;
@@ -44,6 +45,8 @@ public class Simperium implements User.AuthenticationListener {
         authClient = new AuthHttpClient(appId, appSecret, httpClient);
         socketManager = new WebSocketManager(appId);
         this.authenticationListener = authenticationListener;
+        this.storageProvider = storageProvider;
+        Simperium.log(String.format("Where's my mf storageProvider: %s", storageProvider));
         loadUser();
     }
     
@@ -81,7 +84,7 @@ public class Simperium implements User.AuthenticationListener {
     public Bucket bucket(String bucketName, Class<? extends Bucket.Diffable>bucketType){
         // TODO: cache the bucket by user and bucketName and return the
         // same bucket if asked for again
-        Bucket bucket = new Bucket(bucketName, bucketType, user);
+        Bucket bucket = new Bucket(bucketName, bucketType, user, storageProvider);
         Channel channel = socketManager.createChannel(bucket, user);
         bucket.setChannel(channel);
         return bucket;

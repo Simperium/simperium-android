@@ -26,6 +26,7 @@ package com.simperium;
 
 import com.simperium.User;
 import java.util.Vector;
+import java.util.List;
 
 public class Bucket {
     /**
@@ -50,6 +51,8 @@ public class Bucket {
         Bucket getBucket();
         void setSimperiumId(String id);
         String getSimperiumId();
+        void setVersion(Integer version);
+        Integer getVersion();
     }
     // The name used for the Simperium namespace
     private String name;
@@ -66,17 +69,18 @@ public class Bucket {
     private Channel channel;
     // For storing the bucket listeners
     private Vector<Listener> listeners = new Vector<Listener>();
-        
+    private StorageProvider storageProvider;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param bucketType the class that is used to construct java objects from data
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(String name, Class<? extends Diffable>bucketType, User user){
+    public Bucket(String name, Class<? extends Diffable>bucketType, User user, StorageProvider storageProvider){
         this.name = name;
         this.user = user;
         this.bucketType = bucketType;
+        this.storageProvider = storageProvider;
     }
     /**
      * Get the bucket's namespace
@@ -84,6 +88,22 @@ public class Bucket {
      */
     public String getName(){
         return name;
+    }
+    
+    public Boolean hasChangeVersion(){
+        return storageProvider.hasChangeVersion(this);
+    }
+    
+    public Boolean hasChangeVersion(String version){
+        return storageProvider.hasChangeVersion(this, version);
+    }
+    
+    public String getChangeVersion(){
+        return storageProvider.getChangeVersion(this);
+    }
+    
+    public void setChangeVersion(String version){
+        storageProvider.setChangeVersion(this, version);
     }
     
     // starts tracking the object
@@ -98,6 +118,12 @@ public class Bucket {
             object.setBucket(this);
         }
         // TODO: sync the object over the socket
+    }
+    /**
+     * Adds a new entity to the bucket
+     */
+    protected void addEntity(Entity entity){
+        storageProvider.addEntity(this, entity.getSimperiumId(), entity);
     }
     // TODO: remove the channel getter/setter, Channel will use a listening
     // interface
@@ -121,6 +147,43 @@ public class Bucket {
      */
     public void start(){
         channel.start();
+    }
+    /**
+     * Get a single object entity that matches key
+     */
+    public Diffable get(String key){
+        // TODO: ask the datastore to find the object
+        return storageProvider.getEntity(this, key);
+    }
+    /**
+     * 
+     */
+    public void put(String key, Diffable object){
+        // storageProvider.putEntity(this, key, object);
+    }
+    /**
+     * Get a list of objects based on the provided keys
+     */
+    public List<Diffable> getAll(String[] ... keys){
+        return null;
+    }
+    /**
+     * Does bucket have at least the requested version?
+     */
+    public Boolean containsKey(String key){
+        return storageProvider.containsKey(this, key);
+    }
+    /**
+     * Ask storage if it has at least the requested version or newer
+     */
+    public Boolean hasKeyVersion(String key, Integer version){
+        return storageProvider.hasKeyVersion(this, key, version);
+    }
+    /**
+     * Which version of the key do we have
+     */
+    public Integer getKeyVersion(String key){
+        return storageProvider.getKeyVersion(this, key);
     }
 
 }
