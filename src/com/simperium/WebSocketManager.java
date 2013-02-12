@@ -222,12 +222,13 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         cancelHeartbeat();
         if(reconnect) scheduleReconnect();
     }
-    public void onError(Exception error){
+    public void onError(Exception error) {
         Simperium.log(String.format("Error: %s", error));
-        if (error.getClass().isAssignableFrom(java.io.IOException.class) && reconnect) {
-            scheduleReconnect();
-        }
         setConnected(false);
+        if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
+            scheduleReconnect();
+            return;
+        }
     }
     
 }
