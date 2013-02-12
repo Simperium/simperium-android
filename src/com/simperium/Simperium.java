@@ -5,7 +5,7 @@ import com.loopj.android.http.JsonHttpResponseHandler;
 
 import android.util.Log;
 import android.content.Context;
-
+import android.content.SharedPreferences;
 
 import java.net.URI;
 
@@ -17,6 +17,8 @@ import com.simperium.BucketObject;
 public class Simperium implements User.AuthenticationListener {
 
     public static final String HTTP_USER_AGENT = "android-1.0";
+    public static final String SHARED_PREFERENCES_NAME = "simperium";
+    public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     private String appId;
     private String appSecret;
 
@@ -46,10 +48,14 @@ public class Simperium implements User.AuthenticationListener {
     }
     
     private void loadUser(){
-        // TODO: store the auth token in SharedPreferences
         user = new User(this);
-        // FIXME: if we have an auth token we can connect to simperium
-        user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+        String token = getUserAccessToken();
+        if (token != null) {
+            user.setAccessToken(token);
+            user.setAuthenticationStatus(User.AuthenticationStatus.AUTHENTICATED);
+        } else {
+            user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+        }
     }
     
     public String getAppId(){
@@ -105,13 +111,16 @@ public class Simperium implements User.AuthenticationListener {
     }
     
     public void onAuthenticationStatusChange(User.AuthenticationStatus status){
-        Simperium.log("User auth has changed");
+
         switch (status) {
             case AUTHENTICATED:
             // Start up the websocket
+            // save the key
+            saveUserAccessToken();
             socketManager.connect();
             break;
             case NOT_AUTHENTICATED:
+            clearUserAccessToken();
             // Disconnect the websocket
             socketManager.disconnect();
             break;
@@ -123,5 +132,30 @@ public class Simperium implements User.AuthenticationListener {
             authenticationListener.onAuthenticationStatusChange(status);
         }
     }
+    
+    private SharedPreferences.Editor getPreferenceEditor(){
+        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+        return preferences.edit();
+    }
+    
+    private boolean clearUserAccessToken(){
+        SharedPreferences.Editor editor = getPreferenceEditor();
+        editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
+        return editor.commit();
+    }
+    
+    private boolean saveUserAccessToken(){
+        String token = user.getAccessToken();
+        SharedPreferences.Editor editor = getPreferenceEditor();
+        editor.putString(USER_ACCESS_TOKEN_PREFERENCE, token);
+        return editor.commit();
+    }
+    
+    private String getUserAccessToken(){
+        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+        String token = preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
+        return token;
+    }
+    
                 
 }
