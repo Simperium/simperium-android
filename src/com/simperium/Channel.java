@@ -66,7 +66,7 @@ public class Channel {
         command(COMMAND_AUTH, new Command(){
             public void run(String param){
                 if (EXPIRED_AUTH.equals(param.trim())) {
-                    user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+                    getUser().setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
                     return;
                 }
                 if(hasLastChangeSignature()){
