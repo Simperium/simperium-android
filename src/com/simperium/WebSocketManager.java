@@ -223,7 +223,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     }
     public void onError(Exception error){
         Simperium.log(String.format("Error: %s", error));
-        if (error.getClass().isAssignableFrom(ConnectException.class) && reconnect) {
+        if (error.getClass().isAssignableFrom(java.io.IOException.class) && reconnect) {
             scheduleReconnect();
         }
         setConnected(false);
