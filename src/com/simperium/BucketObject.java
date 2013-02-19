@@ -1,6 +1,5 @@
-package com.simperium;
+package com.simperium.client;
 
-import com.simperium.Bucket;
 
 public abstract class BucketObject implements Bucket.Diffable {
     

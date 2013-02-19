@@ -1,4 +1,4 @@
-package com.simperium;
+package com.simperium.client;
 
 import com.loopj.android.http.*;
 import com.loopj.android.http.JsonHttpResponseHandler;
@@ -11,8 +11,12 @@ import java.net.URI;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONException;
 
-import com.simperium.BucketObject;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 
 public class Simperium implements User.AuthenticationListener {
 
@@ -110,7 +114,11 @@ public class Simperium implements User.AuthenticationListener {
     }
     
     public static final void log(String msg){
-        Log.i(TAG, msg);
+        Log.d(TAG, msg);
+    }
+    
+    public static final void log(String msg, Throwable error){
+        Log.e(TAG, msg, error);
     }
     
     public void onAuthenticationStatusChange(User.AuthenticationStatus status){
@@ -159,6 +167,6 @@ public class Simperium implements User.AuthenticationListener {
         String token = preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
         return token;
     }
-    
+
                 
 }

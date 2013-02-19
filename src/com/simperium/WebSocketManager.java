@@ -6,13 +6,10 @@
  * WebSocketManager is configured by Simperium and shouldn't need to be access directly
  * by applications.
  */
-package com.simperium;
+package com.simperium.client;
 
-import com.simperium.Simperium;
 import com.codebutler.android_websockets.*;
 
-import com.simperium.Bucket;
-import com.simperium.Channel;
 import java.net.URI;
 
 import java.util.Arrays;
@@ -223,7 +220,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         if(reconnect) scheduleReconnect();
     }
     public void onError(Exception error) {
-        Simperium.log(String.format("Error: %s", error));
+        Simperium.log(String.format("Error: %s", error), error);
         setConnected(false);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
             scheduleReconnect();

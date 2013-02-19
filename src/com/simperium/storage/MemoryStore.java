@@ -1,13 +1,15 @@
-package com.simperium.storage;
+package com.simperium.client.storage;
 
-import com.simperium.StorageProvider;
-import com.simperium.Bucket;
-import com.simperium.Entity;
+import com.simperium.client.StorageProvider;
+import com.simperium.client.Bucket;
+import com.simperium.client.Entity;
 import java.util.Map;
 import java.util.HashMap;
 
 import android.util.Pair;
-
+/**
+ * Very naive storage system for testing. Not thread safe. Maps need to be threadsafe
+ */
 public class MemoryStore implements StorageProvider {
     private Map<Pair<String,String>, Entity> entities = new HashMap<Pair<String,String>, Entity>();
     private Map<Pair<String,String>, Integer> versions = new HashMap<Pair<String,String>, Integer>();
@@ -25,6 +27,9 @@ public class MemoryStore implements StorageProvider {
         Pair bucketKey = bucketKey(bucket, key);
         entities.put(bucketKey, entity);
         versions.put(bucketKey, entity.getVersion());
+    }
+    public void updateEntity(Bucket bucket, String key, Entity entity){
+        addEntity(bucket, key, entity);
     }
     public void removeEntity(Bucket bucket, String key){
     }

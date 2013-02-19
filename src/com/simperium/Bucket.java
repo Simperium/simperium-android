@@ -22,11 +22,14 @@
  *
  */
 
-package com.simperium;
+package com.simperium.client;
 
-import com.simperium.User;
 import java.util.Vector;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Collections;
+import java.util.Map;
 
 public class Bucket {
     /**
@@ -37,9 +40,9 @@ public class Bucket {
      *    can perform their necessary save operations
      */
     public interface Listener {
-        void onEntityUpdated();
-        void onEntityRemoved();
-        void onEntityAdded();
+        void onEntityUpdated(String key, Integer version);
+        void onEntityRemoved(String key);
+        void onEntityAdded(String key);
     }
 
     /**
@@ -53,6 +56,7 @@ public class Bucket {
         String getSimperiumId();
         void setVersion(Integer version);
         Integer getVersion();
+        Map<String,Object> getDiffableValue();
     }
     // The name used for the Simperium namespace
     private String name;
@@ -81,6 +85,16 @@ public class Bucket {
         this.user = user;
         this.bucketType = bucketType;
         this.storageProvider = storageProvider;
+        this.listeners = new Vector<Listener>();
+    }
+    /**
+     * 
+     */
+    public void addListener(Listener listener){
+        this.listeners.add(listener);
+    }
+    public void removeListener(Listener listener){
+        this.listeners.remove(listener);
     }
     /**
      * Get the bucket's namespace
@@ -123,7 +137,47 @@ public class Bucket {
      * Adds a new entity to the bucket
      */
     protected void addEntity(Entity entity){
+        // Allows the storage provider to persist the entity
         storageProvider.addEntity(this, entity.getSimperiumId(), entity);
+        // notify listeners that an entity has been added
+        Vector<Listener> notify;
+        synchronized(listeners){
+            notify = new Vector<Listener>(listeners.size());
+            notify.addAll(listeners);
+        }
+        Simperium.log(String.format("Notifying %d listeners", notify.size()));
+        
+        Iterator<Listener> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            Listener listener = iterator.next();
+            try {
+                listener.onEntityAdded(entity.getSimperiumId());                
+            } catch(Exception e) {
+                Simperium.log(String.format("Listener failed onEntityAdded %s", listener));
+            }
+        }
+    }
+    /**
+     * Updates an existing entity
+     */
+    protected void updateEntity(Entity entity){
+        storageProvider.updateEntity(this, entity.getSimperiumId(), entity);
+        Vector<Listener> notify;
+        synchronized(listeners){
+            notify = new Vector<Listener>(listeners.size());
+            notify.addAll(listeners);
+        }
+        Simperium.log(String.format("Notifying %d listeners", notify.size()));
+        
+        Iterator<Listener> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            Listener listener = iterator.next();
+            try {
+                listener.onEntityUpdated(entity.getSimperiumId(), entity.getVersion());                
+            } catch(Exception e) {
+                Simperium.log(String.format("Listener failed onEntityUpdated %s", listener));
+            }
+        }
     }
     // TODO: remove the channel getter/setter, Channel will use a listening
     // interface
@@ -151,7 +205,7 @@ public class Bucket {
     /**
      * Get a single object entity that matches key
      */
-    public Diffable get(String key){
+    public Entity get(String key){
         // TODO: ask the datastore to find the object
         return storageProvider.getEntity(this, key);
     }

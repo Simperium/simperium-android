@@ -8,7 +8,7 @@
  * Applications can provide a User.AuthenticationListener to the Simperium object to 
  * detect a change in the user's status.
  */
-package com.simperium;
+package com.simperium.client;
 
 import android.util.Log;
 

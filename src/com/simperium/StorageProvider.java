@@ -1,4 +1,4 @@
-package com.simperium;
+package com.simperium.client;
 
 public interface StorageProvider {
     String getChangeVersion(Bucket bucket);
@@ -6,6 +6,7 @@ public interface StorageProvider {
     Boolean hasChangeVersion(Bucket bucket);
     Boolean hasChangeVersion(Bucket bucket, String version);
     void addEntity(Bucket bucket, String key, Entity entity);
+    void updateEntity(Bucket bucket, String key, Entity entity);
     Entity getEntity(Bucket bucket, String key);
     Boolean containsKey(Bucket bucket, String key);
     Boolean hasKeyVersion(Bucket bucket, String key, Integer version);

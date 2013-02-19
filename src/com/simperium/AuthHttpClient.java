@@ -15,7 +15,7 @@
  * can provide feedback to the user in a global way. See User for more info.
  *
  */
-package com.simperium;
+package com.simperium.client;
 
 import com.loopj.android.http.*;
 
