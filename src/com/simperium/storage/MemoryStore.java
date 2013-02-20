@@ -1,5 +1,6 @@
 package com.simperium.client.storage;
 
+import com.simperium.client.Simperium;
 import com.simperium.client.StorageProvider;
 import com.simperium.client.Bucket;
 import com.simperium.client.Entity;
@@ -24,6 +25,7 @@ public class MemoryStore implements StorageProvider {
         return Pair.create(bucket.getName(), key);
     }
     public void addEntity(Bucket bucket, String key, Entity entity){
+        Simperium.log(String.format("Saving entity %s in thread %s", key, Thread.currentThread().getName()));
         Pair bucketKey = bucketKey(bucket, key);
         entities.put(bucketKey, entity);
         versions.put(bucketKey, entity.getVersion());
@@ -34,6 +36,7 @@ public class MemoryStore implements StorageProvider {
     public void removeEntity(Bucket bucket, String key){
     }
     public Entity getEntity(Bucket bucket, String key){
+        Simperium.log(String.format("Requesting entity %s in thread %s", key, Thread.currentThread().getName()));
         return entities.get(bucketKey(bucket, key));
     }
     public Boolean containsKey(Bucket bucket, String key){

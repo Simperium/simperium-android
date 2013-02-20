@@ -117,6 +117,7 @@ public class Bucket {
     }
     
     public void setChangeVersion(String version){
+        Simperium.log(String.format("Saving change version %s", version));
         storageProvider.setChangeVersion(this, version);
     }
     
@@ -178,6 +179,13 @@ public class Bucket {
                 Simperium.log(String.format("Listener failed onEntityUpdated %s", listener));
             }
         }
+    }
+    /**
+     * 
+     */
+    protected void updateEntity(String changeVersion, Entity entity){
+        updateEntity(entity);
+        setChangeVersion(changeVersion);
     }
     // TODO: remove the channel getter/setter, Channel will use a listening
     // interface

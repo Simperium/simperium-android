@@ -25,7 +25,7 @@ import java.util.TimerTask;
 import java.net.ConnectException;
 
 public class WebSocketManager implements WebSocketClient.Listener, Channel.Listener {
-    
+    public static final String TAG = "SimpWS";
     private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/websocket";
     private static final String SOCKETIO_URL = "https://api.simperium.com/";
     private static final String USER_AGENT_HEADER = "User-Agent";
@@ -138,7 +138,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     private void sendHearbeat(){
         heartbeatCount ++;
         String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
-        Simperium.log(String.format(" => %s", command));
+        Simperium.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), command));
         socketClient.send(command);
     }
     
@@ -180,7 +180,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
-        Simperium.log(String.format(" => %s", message));
+        Simperium.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), message));
         socketClient.send(message);
     }
     /** 
@@ -199,7 +199,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     }
     public void onMessage(String message){
         scheduleHeartbeat();
-        Simperium.log(String.format(" <= %s", message));
+        Simperium.log(TAG, String.format("%s <= %s", Thread.currentThread().getName(), message));
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);

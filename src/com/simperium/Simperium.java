@@ -50,7 +50,6 @@ public class Simperium implements User.AuthenticationListener {
         socketManager = new WebSocketManager(appId);
         this.authenticationListener = authenticationListener;
         this.storageProvider = storageProvider;
-        Simperium.log(String.format("Where's my mf storageProvider: %s", storageProvider));
         loadUser();
     }
     
@@ -115,6 +114,10 @@ public class Simperium implements User.AuthenticationListener {
     
     public static final void log(String msg){
         Log.d(TAG, msg);
+    }
+    
+    public static final void log(String tag, String msg){
+        Log.d(tag, msg);
     }
     
     public static final void log(String msg, Throwable error){
