@@ -25,7 +25,7 @@ import android.os.Looper;
 import android.os.Handler;
 
 
-public class Channel {
+public class Channel<T extends Bucket.Diffable> {
     // key names for init command json object
     static final String FIELD_CLIENT_ID   = "clientid";
     static final String FIELD_API_VERSION = "api";
@@ -58,7 +58,7 @@ public class Channel {
     static final String  COMMAND_FORMAT = "%s:%s";
 
     // bucket determines which bucket we are using on this channel
-    private Bucket bucket;
+    private Bucket<T> bucket;
     // user's auth token is used to authenticate the channel
     private User user;
     // the object the receives the messages the channel emits
@@ -72,7 +72,7 @@ public class Channel {
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
     
-    public Channel(String appId, Bucket bucket, User user, Listener listener){
+    public Channel(String appId, Bucket<T> bucket, User user, Listener listener){
         this.appId = appId;
         this.bucket = bucket;
         this.user = user;
@@ -111,12 +111,15 @@ public class Channel {
             }
         });
         
-        changeProcessor = new ChangeProcessor(getBucket(), new ChangeProcessorListener(){
+        changeProcessor = new ChangeProcessor<T>(getBucket(), new ChangeProcessorListener<T>(){
             public void onComplete(){
             }
-            public void onUpdateEntity(String cv, Entity entity){
-                Simperium.log(String.format("Updated. Thread: %s", Thread.currentThread().getName()));
-                Bucket bucket = getBucket();
+            public void onAddEntity(String cv, T entity){
+                Bucket<T> bucket = getBucket();
+                bucket.addEntity(cv, entity);
+            }
+            public void onUpdateEntity(String cv, T entity){
+                Bucket<T> bucket = getBucket();
                 bucket.updateEntity(cv, entity);
             }
         });
@@ -171,14 +174,17 @@ public class Channel {
         }
         // if we don't have a processor or we are getting a different cv
         if (indexProcessor == null || !indexProcessor.addIndexPage(index)) {
-            // make sure we're not processing changes
-            changeProcessor.stop();
+            // make sure we're not processing changes and clear pending changes
+            changeProcessor.clear();
             // start a new index
             String currentIndex;
             try {
                 currentIndex = index.getString(INDEX_CURRENT_VERSION_KEY);
             } catch(JSONException e){
                 Simperium.log("Index did not have current version");
+                // This should mean that the index is empty and new e.g. no data has
+                // never been added, so start the change processor
+                changeProcessor.start();
                 return;
             }
             
@@ -193,38 +199,6 @@ public class Channel {
             Simperium.log("Processing index?");
         }
 
-    }
-    /**
-     * This receives an array of {v:VERSION_INT id:KEY_STRING }. It gets the matching
-     * object from the bucket and compares versions. If local version matches, don't need
-     * to do anything. Otherwise resolve the difference.
-     */
-    public static final String INDEX_OBJECT_ID_KEY = "id";
-    public static final String INDEX_OBJECT_VERSION_KEY = "v";
-    private void getVersionsForKeys(JSONArray keys){
-        // FIXME: Threading! http://developer.android.com/reference/java/util/concurrent/package-summary.html
-        for (int i=0; i<keys.length(); i++) {
-            try {
-                JSONObject version = keys.getJSONObject(i);
-                String key  = version.getString(INDEX_OBJECT_ID_KEY);
-                Integer versionNumber = version.getInt(INDEX_OBJECT_VERSION_KEY);
-                if (!bucket.containsKey(key)) {
-                    // we need to get the remote entity
-                    Simperium.log(String.format("Requesting entity: %s", version));
-                    sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
-                } else if(!bucket.hasKeyVersion(key, versionNumber)) {
-                    // we need to get remote changes
-                    Integer localVersion = bucket.getKeyVersion(key);
-                    Simperium.log(String.format("Get entity changes since: %d", localVersion));
-                } else {
-                    Simperium.log(String.format("Entity is up to date: %s", version));
-                }
-                
-            } catch (JSONException e) {
-                Simperium.log(String.format("Error processing index: %d", i), e);
-            }
-            
-        }
     }
     
     private void handleRemoteChanges(String changesJson){
@@ -241,8 +215,7 @@ public class Channel {
             Simperium.log("Failed to parse remote changes JSON", e);
             return;
         }
-        // TODO: if we're updating an index we need to queue changes for later
-        // Loop through each change? Covert changes to array list
+        // Loop through each change? Convert changes to array list
         List<Object> changeList = Entity.convertJSON(changes);
         changeProcessor.addChanges(changeList);
         Simperium.log(String.format("Received %d change(s) queued: %d", changes.length(), changeProcessor.size()));
@@ -340,7 +313,7 @@ public class Channel {
         }
     }
     
-    public class MessageEvent extends EventObject {
+    public static class MessageEvent extends EventObject {
         
         public String message;
         
@@ -469,6 +442,9 @@ public class Channel {
      */
     private class IndexProcessor implements Runnable {
         
+        public static final String INDEX_OBJECT_ID_KEY = "id";
+        public static final String INDEX_OBJECT_VERSION_KEY = "v";
+        
         final private String cv;
         final private Bucket bucket;
         private List<String> index = Collections.synchronizedList(new ArrayList<String>());
@@ -518,7 +494,8 @@ public class Channel {
             }
         
             Integer remoteVersion = Integer.parseInt(version);
-            Entity entity = Entity.fromJSON(key, remoteVersion, data);
+            Map<String,Object> properties = Entity.convertJSON(data);
+            T entity = (T)bucket.buildEntity(key, remoteVersion, properties);
         
             if (bucket.containsKey(key)) {
                 // check if we have local changes pending?
@@ -630,11 +607,12 @@ public class Channel {
         
     }
     
-    private interface ChangeProcessorListener {
+    private interface ChangeProcessorListener<T extends Bucket.Diffable> {
         /**
          * Change has been applied.
          */
-        void onUpdateEntity(String changeVersion, Entity entity);
+        void onUpdateEntity(String changeVersion, T entity);
+        void onAddEntity(String changeVersion, T entity);
         /**
          * All changes have been processed
          */
@@ -645,7 +623,7 @@ public class Channel {
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
-    private class ChangeProcessor implements Runnable {
+    private class ChangeProcessor<T extends Bucket.Diffable> implements Runnable {
         
         // public static final Integer CAPACITY = 200;
         
@@ -660,14 +638,14 @@ public class Channel {
         
         public static final String THREAD_NAME        = "change-processor";
         
-        private Bucket bucket;
+        private Bucket<T> bucket;
         private JSONDiff diff = new JSONDiff();
         private ChangeProcessorListener listener;
         private Thread thread;
         private ArrayBlockingQueue<Map<String,Object>> queue;
         private Handler handler;
         
-        public ChangeProcessor(Bucket bucket, ChangeProcessorListener listener) {
+        public ChangeProcessor(Bucket<T> bucket, ChangeProcessorListener<T> listener) {
             this.bucket = bucket;
             this.listener = listener;
             this.queue = new ArrayBlockingQueue<Map<String,Object>>(200);
@@ -696,11 +674,8 @@ public class Channel {
             try {
                 while(true){
                     // this blocks until there's something on the queue
-                    Simperium.log("Waiting for next change");
                     Map<String,Object> change = queue.take();
-                    Simperium.log("Process next item");
                     performChange(change);
-                    Simperium.log("Done processing");
                 }
             } catch(InterruptedException e) {
                 Simperium.log("Change processor interrupted");
@@ -733,10 +708,10 @@ public class Channel {
             String entityKey = (String)change.get(ID_KEY);
             Integer sourceVersion = (Integer)change.get(SOURCE_VERSION_KEY);
             Integer entityVersion = (Integer)change.get(ENTITY_VERSION_KEY);
-            Entity entity;
+            T entity;
             if (null == sourceVersion) {
                 // this is a new entity
-                entity = new Entity(entityKey);
+                entity = bucket.buildEntity(entityKey);
             } else {
                 entity = bucket.get(entityKey);
                 if (null == entity) {
@@ -755,15 +730,19 @@ public class Channel {
             Object operation = change.get(OPERATION_KEY);
             final String changeVersion = (String)change.get(CHANGE_VERSION_KEY);
             
-            Simperium.log(String.format("Apply patch: %s to %s", patch, entity.getDiffableValue()));
             // construct the new entity
-            final Entity updated = new Entity(entityKey, entityVersion, jsondiff.apply(entity.getDiffableValue(), patch));
-            Simperium.log(String.format("Patch applied: %s", updated.getDiffableValue()));
+            Simperium.log(String.format("Try to apply %s to %s", patch, entity.getDiffableValue()));
+            final T updated = bucket.buildEntity(entityKey, entityVersion, jsondiff.apply(entity.getDiffableValue(), patch));
             // notify the listener
             final ChangeProcessorListener changeListener = listener;
+            final boolean isNew = entity.isNew();
             this.handler.post(new Runnable(){
                 public void run(){
-                    changeListener.onUpdateEntity(changeVersion, updated);
+                    if(isNew){
+                        changeListener.onAddEntity(changeVersion, updated);
+                    } else {
+                        changeListener.onUpdateEntity(changeVersion, updated);
+                    }
                 }
             });
             

@@ -30,8 +30,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 
-public class Bucket {
+public class Bucket<T extends Bucket.Diffable> {
     /**
      * Bucket.Listener can be leveraged multiple ways if designed correctly
      *  - Channel's can listen for local changes to know when to send changes
@@ -39,10 +40,11 @@ public class Bucket {
      *  - Storage mechanisms can listen to all changes (local and remote) so they
      *    can perform their necessary save operations
      */
-    public interface Listener {
-        void onEntityUpdated(String key, Integer version);
-        void onEntityRemoved(String key);
-        void onEntityAdded(String key);
+    public static interface Listener<T extends Bucket.Diffable> {
+        void onEntityCreated(String key, T entity);
+        void onEntityRemoved(String key, T entity);
+        void onEntityUpdated(String key, Integer version, T entity);
+        void onEntityAdded(String key, T entity);
     }
 
     /**
@@ -57,14 +59,19 @@ public class Bucket {
         void setVersion(Integer version);
         Integer getVersion();
         Map<String,Object> getDiffableValue();
+        Boolean isNew();
+        String bucketName();
     }
+    
+    public interface EntityFactory<T extends Bucket.Diffable> {
+        T buildEntity(String key, Integer version, Map<String,Object>properties);
+        T createEntity(String key);
+    }
+
     // The name used for the Simperium namespace
     private String name;
     // User provides the access token for authentication
     private User user;
-    // The bucketType class will provide the mechanism for turning JSON data into proper
-    // java instances.
-    private Class<? extends Diffable>bucketType;
     // The channel that provides networking and change processing. This may be removed
     // and functionality will be provided via a listener interface of some kind
     // TODO: provide an interface for a class to observe when local changes are made
@@ -72,28 +79,28 @@ public class Bucket {
     // local changes pending
     private Channel channel;
     // For storing the bucket listeners
-    private Vector<Listener> listeners = new Vector<Listener>();
+    private Vector<Listener<T>> listeners;
     private StorageProvider storageProvider;
+    private EntityFactory<T> factory;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
-     * @param bucketType the class that is used to construct java objects from data
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(String name, Class<? extends Diffable>bucketType, User user, StorageProvider storageProvider){
+    public Bucket(String name, EntityFactory<T>factory, User user, StorageProvider storageProvider){
         this.name = name;
         this.user = user;
-        this.bucketType = bucketType;
         this.storageProvider = storageProvider;
-        this.listeners = new Vector<Listener>();
+        this.listeners = new Vector<Listener<T>>();
+        this.factory = factory;
     }
     /**
      * 
      */
-    public void addListener(Listener listener){
+    public void addListener(Listener<T> listener){
         this.listeners.add(listener);
     }
-    public void removeListener(Listener listener){
+    public void removeListener(Listener<T> listener){
         this.listeners.remove(listener);
     }
     /**
@@ -128,53 +135,95 @@ public class Bucket {
      *
      * @param (Diffable) object the entity to sync
      */
-    public void add(Diffable object){
+    public void add(T object){
         if (!object.getBucket().equals(this)) {
             object.setBucket(this);
         }
         // TODO: sync the object over the socket
     }
+    
+    protected T buildEntity(String key, Integer version, Map<String,Object> properties){
+        return factory.buildEntity(key, version, properties);
+    }
+    
+    protected T buildEntity(String key, Map<String,Object> properties){
+        return factory.buildEntity(key, 0, properties);
+    }
+    
+    protected T buildEntity(String key){
+        return factory.createEntity(key);
+    }
+    
     /**
-     * Adds a new entity to the bucket
+     * Returns a new entity tracked by this bucket
      */
-    protected void addEntity(Entity entity){
-        // Allows the storage provider to persist the entity
-        storageProvider.addEntity(this, entity.getSimperiumId(), entity);
-        // notify listeners that an entity has been added
+    public T newEntity(){
+        T entity = (T)factory.createEntity(uuid());
+        entity.setBucket(this);
         Vector<Listener> notify;
         synchronized(listeners){
             notify = new Vector<Listener>(listeners.size());
             notify.addAll(listeners);
         }
-        Simperium.log(String.format("Notifying %d listeners", notify.size()));
-        
         Iterator<Listener> iterator = notify.iterator();
         while(iterator.hasNext()) {
             Listener listener = iterator.next();
             try {
-                listener.onEntityAdded(entity.getSimperiumId());                
+                listener.onEntityCreated(entity.getSimperiumId(), entity);                
             } catch(Exception e) {
-                Simperium.log(String.format("Listener failed onEntityAdded %s", listener));
+                Simperium.log(String.format("Listener failed onEntityCreated %s", listener));
+            }
+        }
+        return entity;
+    }
+    /**
+     * Add a new entity with corresponding change version
+     */
+    protected void addEntity(String changeVersion, T entity){
+        addEntity(entity);
+        setChangeVersion(changeVersion);
+    }
+    /**
+     * Adds a new entity to the bucket
+     */
+    protected void addEntity(T entity){
+        // Allows the storage provider to persist the entity
+        entity.setBucket(this);
+        storageProvider.addEntity(this, entity.getSimperiumId(), entity);
+        // notify listeners that an entity has been added
+        Vector<Listener<T>> notify;
+        synchronized(listeners){
+            notify = new Vector<Listener<T>>(listeners.size());
+            notify.addAll(listeners);
+        }
+        
+        Iterator<Listener<T>> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            Listener listener = iterator.next();
+            try {
+                listener.onEntityAdded(entity.getSimperiumId(), entity);
+            } catch(Exception e) {
+                Simperium.log(String.format("Listener failed onEntityAdded %s", listener), e);
             }
         }
     }
     /**
      * Updates an existing entity
      */
-    protected void updateEntity(Entity entity){
+    protected void updateEntity(T entity){
+        entity.setBucket(this);
         storageProvider.updateEntity(this, entity.getSimperiumId(), entity);
         Vector<Listener> notify;
         synchronized(listeners){
             notify = new Vector<Listener>(listeners.size());
             notify.addAll(listeners);
         }
-        Simperium.log(String.format("Notifying %d listeners", notify.size()));
         
         Iterator<Listener> iterator = notify.iterator();
         while(iterator.hasNext()) {
             Listener listener = iterator.next();
             try {
-                listener.onEntityUpdated(entity.getSimperiumId(), entity.getVersion());                
+                listener.onEntityUpdated(entity.getSimperiumId(), entity.getVersion(), entity);
             } catch(Exception e) {
                 Simperium.log(String.format("Listener failed onEntityUpdated %s", listener));
             }
@@ -183,7 +232,7 @@ public class Bucket {
     /**
      * 
      */
-    protected void updateEntity(String changeVersion, Entity entity){
+    protected void updateEntity(String changeVersion, T entity){
         updateEntity(entity);
         setChangeVersion(changeVersion);
     }
@@ -213,9 +262,9 @@ public class Bucket {
     /**
      * Get a single object entity that matches key
      */
-    public Entity get(String key){
+    public T get(String key){
         // TODO: ask the datastore to find the object
-        return storageProvider.getEntity(this, key);
+        return (T)storageProvider.getEntity(this, key);
     }
     /**
      * 
@@ -226,8 +275,14 @@ public class Bucket {
     /**
      * Get a list of objects based on the provided keys
      */
-    public List<Diffable> getAll(String[] ... keys){
+    public List<T> getAll(String[] ... keys){
         return null;
+    }
+    /**
+     * Ask the storage adapter for all of the entities in this bucket
+     */
+    public List<T> allEntities(){
+        return (List<T>)storageProvider.allEntities(this);
     }
     /**
      * Does bucket have at least the requested version?
@@ -246,6 +301,14 @@ public class Bucket {
      */
     public Integer getKeyVersion(String key){
         return storageProvider.getKeyVersion(this, key);
+    }
+    
+    public String uuid(){
+        String key;
+        do {
+            key = UUID.randomUUID().toString();
+        } while(containsKey(key));
+        return key;
     }
 
 }

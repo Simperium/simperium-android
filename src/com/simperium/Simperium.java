@@ -82,13 +82,12 @@ public class Simperium implements User.AuthenticationListener {
      * Class for to instantiate data
      *
      * @param bucketName the namespace to store the data in simperium
-     * @param bucketType the Bucket.Diffable Class to use when deserializing data
      */
-    public Bucket bucket(String bucketName, Class<? extends Bucket.Diffable>bucketType){
+    public <T extends Bucket.Diffable> Bucket<T> bucket(String bucketName, Bucket.EntityFactory<T> factory){
         // TODO: cache the bucket by user and bucketName and return the
         // same bucket if asked for again
-        Bucket bucket = new Bucket(bucketName, bucketType, user, storageProvider);
-        Channel channel = socketManager.createChannel(bucket, user);
+        Bucket<T> bucket = new Bucket<T>(bucketName, factory, user, storageProvider);
+        Channel<T> channel = socketManager.createChannel(bucket, user);
         bucket.setChannel(channel);
         return bucket;
     }
@@ -98,8 +97,8 @@ public class Simperium implements User.AuthenticationListener {
      *
      * @param bucketName namespace to store the data in simperium
      */
-    public Bucket bucket(String bucketName){
-        return bucket(bucketName, BucketObject.class);
+    public Bucket<Entity> bucket(String bucketName){
+        return bucket(bucketName, new Entity.Factory());
     }
         
     public User createUser(String email, String password, User.AuthResponseHandler handler){

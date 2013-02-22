@@ -14,12 +14,20 @@ import java.util.Iterator;
  */
 public class Entity extends BucketObject {
     
-    private Map<String,Object> properties;
+    protected Map<String,Object> properties = new HashMap<String,Object>();
     
+    public static class Factory implements Bucket.EntityFactory<Entity> {
+        public Entity buildEntity(String key, Integer version, Map<String,Object> properties){
+            return new Entity(key, version, properties);
+        }
+        public Entity createEntity(String key){
+            return new Entity(key);
+        }
+    }
+        
     public Entity(String key){
         setSimperiumId(key);
         setVersion(0);
-        this.properties = new HashMap<String,Object>();
     }
     
     public Entity(String key, Integer version, JSONObject entityData){
@@ -29,12 +37,18 @@ public class Entity extends BucketObject {
     }
     
     public Entity(String key, Integer version, Map<String,Object> properties){
+        Simperium.log(String.format("Initializing with properties: %s", properties));
         setSimperiumId(key);
         setVersion(version);
         this.properties = properties;
     }
     
+    public String toString(){
+        return String.format("%s - %s", getBucket().getName(), getSimperiumId());
+    }
+    
     public Map<String,Object> getDiffableValue(){
+        Simperium.log(String.format("Requesting diffable values %s", properties));
         return properties;
     }
     
@@ -43,6 +57,18 @@ public class Entity extends BucketObject {
         return entity;
     }
     
+    public boolean equals(Object o){
+        if (o == null) {
+            return false;
+        } else if( o == this){
+            return true;    
+        } else if(o.getClass() != getClass()){
+            return false;
+        }
+        Entity other = (Entity) o;
+        return other.getBucket().equals(getBucket()) && other.getSimperiumId().equals(getSimperiumId());
+    }
+        
     /**
      * Convert a JSONObject to a HashMap
      */
