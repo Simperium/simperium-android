@@ -13,14 +13,14 @@ public interface StorageProvider {
     /**
      * Store bucket object data
      */
-    void addObject(Bucket bucket, String key, Bucket.Diffable object);
-    void updateObject(Bucket bucket, String key, Bucket.Diffable object);
+    void addObject(Bucket bucket, String key, Bucket.Syncable object);
+    void updateObject(Bucket bucket, String key, Bucket.Syncable object);
     /**
      * Retrieve entities and details
      */
-    <T extends Bucket.Diffable> T getObject(Bucket<T> bucket, String key);
+    <T extends Bucket.Syncable> T getObject(Bucket<T> bucket, String key);
     Boolean containsKey(Bucket bucket, String key);
     Boolean hasKeyVersion(Bucket bucket, String key, Integer version);
     Integer getKeyVersion(Bucket bucket, String key);
-    <T extends Bucket.Diffable> List<T> allEntities(Bucket<T> bucket);
+    <T extends Bucket.Syncable> List<T> allEntities(Bucket<T> bucket);
 }

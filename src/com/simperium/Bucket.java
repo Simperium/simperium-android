@@ -37,7 +37,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-public class Bucket<T extends Bucket.Diffable> {
+public class Bucket<T extends Bucket.Syncable> {
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
@@ -57,7 +57,7 @@ public class Bucket<T extends Bucket.Diffable> {
      *  - Storage mechanisms can listen to all changes (local and remote) so they
      *    can perform their necessary save operations
      */
-    public static interface Listener<T extends Bucket.Diffable> {
+    public static interface Listener<T extends Bucket.Syncable> {
         void onObjectCreated(String key, T object);
         void onObjectRemoved(String key, T object);
         void onObjectUpdated(String key, Integer version, T object);
@@ -68,21 +68,68 @@ public class Bucket<T extends Bucket.Diffable> {
      * tracked by Simperium. For a default implementation see BucketObject
      */
     public interface Diffable {
-        void setBucket(Bucket bucket);
-        Bucket getBucket();
-        void setSimperiumId(String id);
+        // void setSimperiumId(String id);
         String getSimperiumId();
-        void setVersion(Integer version);
+        // void setVersion(Integer version);
         Integer getVersion();
         Map<String,java.lang.Object> getDiffableValue();
-        Boolean isNew();
-        String bucketName();
+    }
+    /**
+     * 
+     */
+    private static class Ghost implements Diffable {
+        private String key;
+        private Integer version;
+        private Map<String, java.lang.Object> properties;
+        private Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
+            this.key = key;
+            this.version = version;
+            this.properties = properties;
+        }
+        public String getSimperiumId(){
+            return key;
+        }
+        public Integer getVersion(){
+            return version;
+        }
+        public Map<String, java.lang.Object> getDiffableValue(){
+            return properties;
+        }
+    }
+    /**
+     * An object that can be diffed and changes sent
+     */
+    public static abstract class Syncable implements Diffable {
+        private Diffable ghost;
+        
+        public abstract void setBucket(Bucket bucket);
+        public abstract Bucket getBucket();
+        public abstract String bucketName();
+        public abstract Boolean isNew();
+        public Diffable getGhost(){
+            return ghost;
+        }
+        private void setGhost(Diffable ghost){
+            this.ghost = ghost;
+        }
+        /**
+         * Does the local object have modifications?
+         */
+        public Boolean isModified(){
+            return !getDiffableValue().equals(ghost.getDiffableValue());
+        }
+        /**
+         * Send modifications over the socket to simperium
+         */
+        public void save(){
+            getBucket().sync(this);
+        }
     }
     /**
      * An interface to allow applications to provide a schema for a bucket and a way
      * instatiate custom Bucket.Object instances
      */
-    public static abstract class Schema<T extends Bucket.Diffable> {
+    public static abstract class Schema<T extends Bucket.Syncable> {
         public String getRemoteName(Bucket bucket) {
             return bucket.getName();
         }
@@ -102,29 +149,28 @@ public class Bucket<T extends Bucket.Diffable> {
     /**
      * A generic object used to represent a single object from a bucket
      */
-    public static class Object implements Diffable {
+    public static class Object extends Syncable {
         
         private Bucket bucket;
         private String simperiumId;
         private Integer version = 0;
+        private Diffable ghost;
+        
         protected Map<String,java.lang.Object> properties;
         
+        public Object(String key, Integer version, Map<String,java.lang.Object> properties){
+            Simperium.log(String.format("Initializing with properties: %s", properties));
+            this.simperiumId = key;
+            this.version = version;
+            this.properties = properties;
+        }
+     
         public Object(String key){
-            setSimperiumId(key);
-            setVersion(0);
+            this(key, new Integer(0), new HashMap<String, java.lang.Object>());
         }
     
         public Object(String key, Integer version, JSONObject objectData){
-            setSimperiumId(key);
-            setVersion(version);
-            properties = Bucket.convertJSON(objectData);
-        }
-    
-        public Object(String key, Integer version, Map<String,java.lang.Object> properties){
-            Simperium.log(String.format("Initializing with properties: %s", properties));
-            setSimperiumId(key);
-            setVersion(version);
-            this.properties = properties;
+            this(key, version, Bucket.convertJSON(objectData));
         }
     
         
@@ -140,18 +186,10 @@ public class Bucket<T extends Bucket.Diffable> {
             return simperiumId;
         }
     
-        public void setSimperiumId(String simperiumId){
-            this.simperiumId = simperiumId;
-        }
-    
         public Integer getVersion(){
             return version;
         }
-    
-        public void setVersion(Integer version){
-            this.version = version;
-        }
-    
+        
         public Boolean isNew(){
             return version == null || version == 0;
         }
@@ -202,12 +240,26 @@ public class Bucket<T extends Bucket.Diffable> {
     private Vector<Listener<T>> listeners;
     private StorageProvider storageProvider;
     private Schema<T> schema;
+    
     /**
-     * 
+     * Tell the bucket to sync changes. 
+     */
+    public void sync(Syncable object){
+        // TODO should we persists local modifications somewhere?
+        // create the change id here so we can identify it in the future?
+        // pass it off to the channel
+    }
+    
+    /**
+     * Add a listener to the bucket
      */
     public void addListener(Listener<T> listener){
+        // TODO: Change listenrs to a set so a listener doesn't get added multiple times?
         this.listeners.add(listener);
     }
+    /**
+     * Remove the listener from the bucket
+     */
     public void removeListener(Listener<T> listener){
         this.listeners.remove(listener);
     }
@@ -255,15 +307,21 @@ public class Bucket<T extends Bucket.Diffable> {
     }
     
     protected T buildObject(String key, Integer version, Map<String,java.lang.Object> properties){
-        return schema.build(key, version, properties);
+        T object = schema.build(key, version, properties);
+        // set the bucket that is managing this object
+        object.setBucket(this);
+        // set the diffable ghost object to determine local modifications
+        object.setGhost(new Ghost(key, version, properties));
+        // TODO: setup the ghost
+        return object;
     }
     
     protected T buildObject(String key, Map<String,java.lang.Object> properties){
-        return schema.build(key, 0, properties);
+        return buildObject(key, 0, properties);
     }
     
     protected T buildObject(String key){
-        return schema.build(key, 0, new HashMap<String,java.lang.Object>());
+        return buildObject(key, 0, new HashMap<String,java.lang.Object>());
     }
     /**
      * Returns a new objecty tracked by this bucket
@@ -368,7 +426,7 @@ public class Bucket<T extends Bucket.Diffable> {
      * Tell the bucket that an object has local changes ready to sync.
      * @param (Diffable) object
      */
-    public void update(Diffable object){
+    public void update(T object){
     }
     /**
      * Initialize the bucket to start tracking changes. We can provide a way
@@ -387,7 +445,7 @@ public class Bucket<T extends Bucket.Diffable> {
     /**
      * 
      */
-    public void put(String key, Diffable object){
+    public void put(String key, T object){
         // storageProvider.putObject(this, key, object);
     }
     /**

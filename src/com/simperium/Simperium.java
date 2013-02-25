@@ -83,7 +83,7 @@ public class Simperium implements User.AuthenticationListener {
      *
      * @param bucketName the namespace to store the data in simperium
      */
-    public <T extends Bucket.Diffable> Bucket<T> bucket(String bucketName, Bucket.Schema<T> schema){
+    public <T extends Bucket.Syncable> Bucket<T> bucket(String bucketName, Bucket.Schema<T> schema){
         // TODO: cache the bucket by user and bucketName and return the
         // same bucket if asked for again
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider);

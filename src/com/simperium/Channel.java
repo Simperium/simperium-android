@@ -1,6 +1,11 @@
 /**
  * When a Bucket is created Simperium creates a Channel to sync changes between
  * a Bucket and simperium.com.
+ *
+ * TODO: instead of notifying the bucket about each individual item, there should be 
+ * a single event for when there's a "re-index" or after performing all changes in a 
+ * change operation.
+ *
  */
 package com.simperium.client;
 
@@ -25,7 +30,7 @@ import android.os.Looper;
 import android.os.Handler;
 
 
-public class Channel<T extends Bucket.Diffable> {
+public class Channel<T extends Bucket.Syncable> {
     // key names for init command json object
     static final String FIELD_CLIENT_ID   = "clientid";
     static final String FIELD_API_VERSION = "api";
@@ -69,6 +74,7 @@ public class Channel<T extends Bucket.Diffable> {
     private String appId;
 	private JSONDiff jsondiff = new JSONDiff();
     
+    // for sending and receiving changes
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
     
@@ -607,7 +613,7 @@ public class Channel<T extends Bucket.Diffable> {
         
     }
     
-    private interface ChangeProcessorListener<T extends Bucket.Diffable> {
+    private interface ChangeProcessorListener<T extends Bucket.Syncable> {
         /**
          * Change has been applied.
          */
@@ -623,7 +629,7 @@ public class Channel<T extends Bucket.Diffable> {
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
-    private class ChangeProcessor<T extends Bucket.Diffable> implements Runnable {
+    private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable {
         
         // public static final Integer CAPACITY = 200;
         

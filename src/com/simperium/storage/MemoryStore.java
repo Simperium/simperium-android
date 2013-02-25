@@ -14,7 +14,7 @@ import android.util.Pair;
  * Very naive storage system for testing. Not thread safe. Maps need to be threadsafe
  */
 public class MemoryStore implements StorageProvider {
-    private Map<Pair<String,String>, Bucket.Diffable> entities = new HashMap<Pair<String,String>, Bucket.Diffable>();
+    private Map<Pair<String,String>, Bucket.Syncable> entities = new HashMap<Pair<String,String>, Bucket.Syncable>();
     private Map<Pair<String,String>, Integer> versions = new HashMap<Pair<String,String>, Integer>();
     private Map<String, String> bucketVersions = new HashMap<String,String>();
     
@@ -29,8 +29,8 @@ public class MemoryStore implements StorageProvider {
     /**
      * not optimal, go through each key and add any object where pair[0] matches bucket
      */
-    public List<Bucket.Diffable> allEntities(Bucket bucket){
-        ArrayList<Bucket.Diffable> bucketEntities = new ArrayList<Bucket.Diffable>();
+    public List<Bucket.Syncable> allEntities(Bucket bucket){
+        ArrayList<Bucket.Syncable> bucketEntities = new ArrayList<Bucket.Syncable>();
         Iterator<Pair<String,String>> keySet = entities.keySet().iterator();
         while(keySet.hasNext()){
             Pair<String,String> keyPair = keySet.next();
@@ -40,20 +40,20 @@ public class MemoryStore implements StorageProvider {
         }
         return bucketEntities;
     }
-    public void addObject(Bucket bucket, String key, Bucket.Diffable object){
+    public void addObject(Bucket bucket, String key, Bucket.Syncable object){
         Simperium.log(String.format("Saving object %s in thread %s %s", key, Thread.currentThread().getName(), object.getDiffableValue()));
         Pair bucketKey = bucketKey(bucket, key);
         entities.put(bucketKey, object);
         versions.put(bucketKey, object.getVersion());
     }
-    public void updateObject(Bucket bucket, String key, Bucket.Diffable object){
+    public void updateObject(Bucket bucket, String key, Bucket.Syncable object){
         addObject(bucket, key, object);
     }
     public void removeObject(Bucket bucket, String key){
     }
-    public Bucket.Diffable getObject(Bucket bucket, String key){
+    public Bucket.Syncable getObject(Bucket bucket, String key){
         Simperium.log(String.format("Requesting object %s in thread %s", key, Thread.currentThread().getName()));
-        Bucket.Diffable object = entities.get(bucketKey(bucket, key));
+        Bucket.Syncable object = entities.get(bucketKey(bucket, key));
         Simperium.log(String.format("Found object: %s %s", object, object.getDiffableValue()));
         return object;
     }

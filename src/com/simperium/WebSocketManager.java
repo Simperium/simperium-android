@@ -56,7 +56,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public <T extends Bucket.Diffable> Channel<T> createChannel(Bucket<T> bucket, User user){
+    public <T extends Bucket.Syncable> Channel<T> createChannel(Bucket<T> bucket, User user){
         // create a channel
         Channel<T> channel = new Channel<T>(appId, bucket, user, this);
         int channelId = channels.size();
