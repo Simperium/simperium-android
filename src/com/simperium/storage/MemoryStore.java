@@ -3,7 +3,6 @@ package com.simperium.client.storage;
 import com.simperium.client.Simperium;
 import com.simperium.client.StorageProvider;
 import com.simperium.client.Bucket;
-import com.simperium.client.Entity;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +27,7 @@ public class MemoryStore implements StorageProvider {
         return Pair.create(bucket.getName(), key);
     }
     /**
-     * not optimal, go through each key and add any entity where pair[0] matches bucket
+     * not optimal, go through each key and add any object where pair[0] matches bucket
      */
     public List<Bucket.Diffable> allEntities(Bucket bucket){
         ArrayList<Bucket.Diffable> bucketEntities = new ArrayList<Bucket.Diffable>();
@@ -41,22 +40,22 @@ public class MemoryStore implements StorageProvider {
         }
         return bucketEntities;
     }
-    public void addEntity(Bucket bucket, String key, Bucket.Diffable entity){
-        Simperium.log(String.format("Saving entity %s in thread %s %s", key, Thread.currentThread().getName(), entity.getDiffableValue()));
+    public void addObject(Bucket bucket, String key, Bucket.Diffable object){
+        Simperium.log(String.format("Saving object %s in thread %s %s", key, Thread.currentThread().getName(), object.getDiffableValue()));
         Pair bucketKey = bucketKey(bucket, key);
-        entities.put(bucketKey, entity);
-        versions.put(bucketKey, entity.getVersion());
+        entities.put(bucketKey, object);
+        versions.put(bucketKey, object.getVersion());
     }
-    public void updateEntity(Bucket bucket, String key, Bucket.Diffable entity){
-        addEntity(bucket, key, entity);
+    public void updateObject(Bucket bucket, String key, Bucket.Diffable object){
+        addObject(bucket, key, object);
     }
-    public void removeEntity(Bucket bucket, String key){
+    public void removeObject(Bucket bucket, String key){
     }
-    public Bucket.Diffable getEntity(Bucket bucket, String key){
-        Simperium.log(String.format("Requesting entity %s in thread %s", key, Thread.currentThread().getName()));
-        Bucket.Diffable entity = entities.get(bucketKey(bucket, key));
-        Simperium.log(String.format("Found entity: %s %s", entity, entity.getDiffableValue()));
-        return entity;
+    public Bucket.Diffable getObject(Bucket bucket, String key){
+        Simperium.log(String.format("Requesting object %s in thread %s", key, Thread.currentThread().getName()));
+        Bucket.Diffable object = entities.get(bucketKey(bucket, key));
+        Simperium.log(String.format("Found object: %s %s", object, object.getDiffableValue()));
+        return object;
     }
     public Boolean containsKey(Bucket bucket, String key){
         return entities.containsKey(bucketKey(bucket, key));

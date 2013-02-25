@@ -114,13 +114,13 @@ public class Channel<T extends Bucket.Diffable> {
         changeProcessor = new ChangeProcessor<T>(getBucket(), new ChangeProcessorListener<T>(){
             public void onComplete(){
             }
-            public void onAddEntity(String cv, T entity){
+            public void onAddObject(String cv, T object){
                 Bucket<T> bucket = getBucket();
-                bucket.addEntity(cv, entity);
+                bucket.addObject(cv, object);
             }
-            public void onUpdateEntity(String cv, T entity){
+            public void onUpdateObject(String cv, T object){
                 Bucket<T> bucket = getBucket();
-                bucket.updateEntity(cv, entity);
+                bucket.updateObject(cv, object);
             }
         });
     }
@@ -155,11 +155,11 @@ public class Channel<T extends Bucket.Diffable> {
         // listen for when the index processor is done so we can start the changeprocessor again
         // if we do have an index processor and the cv's match, add the page of items
         // to the queue.
-        // We need to track when we've received a copy of each entity so we can start the change
+        // We need to track when we've received a copy of each object so we can start the change
         // again
         // query i:
         // FIXME: Threading! http://developer.android.com/reference/java/util/concurrent/package-summary.html
-        // TODO: Determine check bucket entity versions
+        // TODO: Determine check bucket object versions
         if (indexJson.equals(RESPONSE_UNKNOWN)) {
             // refresh the index
             getLatestVersions();
@@ -216,7 +216,7 @@ public class Channel<T extends Bucket.Diffable> {
             return;
         }
         // Loop through each change? Convert changes to array list
-        List<Object> changeList = Entity.convertJSON(changes);
+        List<Object> changeList = Bucket.convertJSON(changes);
         changeProcessor.addChanges(changeList);
         Simperium.log(String.format("Received %d change(s) queued: %d", changes.length(), changeProcessor.size()));
     }
@@ -226,8 +226,8 @@ public class Channel<T extends Bucket.Diffable> {
         // versionData will be: key.version\n{"data":ENTITY}
         // we need to parse out the key and version, parse the json payload and
         // retrieve the data
-        if (indexProcessor == null || !indexProcessor.addEntityData(versionData)) {
-          Simperium.log(String.format("Don't know what to do with entity: %s", versionData));
+        if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
+          Simperium.log(String.format("Don't know what to do with object: %s", versionData));
         } 
 
     }
@@ -258,12 +258,12 @@ public class Channel<T extends Bucket.Diffable> {
         // when we're notified that we've connected
         startOnConnect = true;
         // Build the required json object for initializing
-        HashMap<String,Object> init = new HashMap<String,Object>(5);
+        HashMap<String,Object> init = new HashMap<String,Object>(6);
         init.put(FIELD_API_VERSION, 1);
         init.put(FIELD_CLIENT_ID, Simperium.HTTP_USER_AGENT);
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, user.getAccessToken());
-        init.put(FIELD_BUCKET_NAME, bucket.getName());
+        init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
         if (!hasChangeVersion()) {
             // the bucket has never gotten an index
             init.put(FIELD_COMMAND, new IndexQuery());
@@ -415,11 +415,11 @@ public class Channel<T extends Bucket.Diffable> {
         
     }
     
-    private class EntityVersion {
+    private class ObjectVersion {
         private String key;
         private Integer version;
         
-        public EntityVersion(String key, Integer version){
+        public ObjectVersion(String key, Integer version){
             this.key = key;
             this.version = version;
         }
@@ -433,8 +433,8 @@ public class Channel<T extends Bucket.Diffable> {
     }
     /**
      * When index data is received it should queue up entities in the IndexProcessor.
-     * The IndexProcessor then receives the entity data and on a seperate thread asks
-     * the StorageProvider to persist the entity data. The storageProvider's operation
+     * The IndexProcessor then receives the object data and on a seperate thread asks
+     * the StorageProvider to persist the object data. The storageProvider's operation
      * should not block the websocket thread in any way.
      * 
      * Build up a list of entities and versions we need for the index. Allow the
@@ -457,10 +457,10 @@ public class Channel<T extends Bucket.Diffable> {
             this.cv = cv;
             this.listener = listener;
         }
-        public Boolean addEntityData(String versionData){
+        public Boolean addObjectData(String versionData){
             
-            String[] entityParts = versionData.split("\n");
-            String prefix = entityParts[0];
+            String[] objectParts = versionData.split("\n");
+            String prefix = objectParts[0];
             int lastDot = prefix.lastIndexOf(".");
             if (lastDot == -1) {
                 Simperium.log(String.format("Missing version string: %s", prefix));
@@ -468,17 +468,17 @@ public class Channel<T extends Bucket.Diffable> {
             }
             String key = prefix.substring(0, lastDot);
             String version = prefix.substring(lastDot + 1);
-            String payload = entityParts[1];
+            String payload = objectParts[1];
             
             if (payload.equals(RESPONSE_UNKNOWN)) {
-                Simperium.log(String.format("Entity unkown to simperium: %s.%s", key, version));
+                Simperium.log(String.format("Object unkown to simperium: %s.%s", key, version));
                 return false;
             }
             
-            EntityVersion entityVersion = new EntityVersion(key, Integer.parseInt(version));
+            ObjectVersion objectVersion = new ObjectVersion(key, Integer.parseInt(version));
             synchronized(index){
-                if(!index.remove(entityVersion.toString())){
-                    Simperium.log(String.format("Index didn't have %s", entityVersion));
+                if(!index.remove(objectVersion.toString())){
+                    Simperium.log(String.format("Index didn't have %s", objectVersion));
                     return false;
                 }
             }
@@ -489,21 +489,21 @@ public class Channel<T extends Bucket.Diffable> {
                 JSONObject payloadJSON = new JSONObject(payload);
                 data = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
             } catch (JSONException e) {
-                Simperium.log("Failed to parse entity JSON", e);
+                Simperium.log("Failed to parse object JSON", e);
                 return false;
             }
         
             Integer remoteVersion = Integer.parseInt(version);
-            Map<String,Object> properties = Entity.convertJSON(data);
-            T entity = (T)bucket.buildEntity(key, remoteVersion, properties);
+            Map<String,Object> properties = Bucket.convertJSON(data);
+            T object = (T)bucket.buildObject(key, remoteVersion, properties);
         
             if (bucket.containsKey(key)) {
                 // check if we have local changes pending?
-                bucket.updateEntity(entity);
+                bucket.updateObject(object);
             } else {
                 // construct the bucket object with version data
                 // add the bucket object to the bucket
-                bucket.addEntity(entity);
+                bucket.addObject(object);
             }
             
             if (complete && index.size() == 0) {
@@ -545,16 +545,16 @@ public class Channel<T extends Bucket.Diffable> {
                         JSONObject version = indexVersions.getJSONObject(i);
                         String key  = version.getString(INDEX_OBJECT_ID_KEY);
                         Integer versionNumber = version.getInt(INDEX_OBJECT_VERSION_KEY);
-                        EntityVersion entityVersion = new EntityVersion(key, versionNumber);
+                        ObjectVersion objectVersion = new ObjectVersion(key, versionNumber);
                         if (!bucket.hasKeyVersion(key, versionNumber)) {
-                            // we need to get the remote entity
+                            // we need to get the remote object
                             synchronized(index){
-                                index.add(entityVersion.toString());
+                                index.add(objectVersion.toString());
                             }
-                            Simperium.log(String.format("Requesting entity: %s", version));
+                            Simperium.log(String.format("Requesting object: %s", version));
                             sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
                         } else {
-                            Simperium.log(String.format("Entity is up to date: %s", version));
+                            Simperium.log(String.format("Object is up to date: %s", version));
                         }
                 
                     } catch (JSONException e) {
@@ -589,7 +589,7 @@ public class Channel<T extends Bucket.Diffable> {
          */
         private void setComplete(){
             complete = true;
-            // if we have no pending entity data
+            // if we have no pending object data
             if (index.isEmpty()) {
                 // fire off the done listener
                 notifyDone();
@@ -611,8 +611,8 @@ public class Channel<T extends Bucket.Diffable> {
         /**
          * Change has been applied.
          */
-        void onUpdateEntity(String changeVersion, T entity);
-        void onAddEntity(String changeVersion, T entity);
+        void onUpdateObject(String changeVersion, T object);
+        void onAddObject(String changeVersion, T object);
         /**
          * All changes have been processed
          */
@@ -705,43 +705,43 @@ public class Channel<T extends Bucket.Diffable> {
         
         private void performChange(Map<String,Object> change){
             
-            String entityKey = (String)change.get(ID_KEY);
+            String objectKey = (String)change.get(ID_KEY);
             Integer sourceVersion = (Integer)change.get(SOURCE_VERSION_KEY);
-            Integer entityVersion = (Integer)change.get(ENTITY_VERSION_KEY);
-            T entity;
+            Integer objectVersion = (Integer)change.get(ENTITY_VERSION_KEY);
+            T object;
             if (null == sourceVersion) {
-                // this is a new entity
-                entity = bucket.buildEntity(entityKey);
+                // this is a new object
+                object = bucket.buildObject(objectKey);
             } else {
-                entity = bucket.get(entityKey);
-                if (null == entity) {
-                   Simperium.log(String.format("Local entity missing: %s", entityKey));
+                object = bucket.get(objectKey);
+                if (null == object) {
+                   Simperium.log(String.format("Local object missing: %s", objectKey));
                    return;
                 }
                 // we need to check if we have the correct version
-                // TODO: handle how to sync if source version doesn't match local entity
-                if (!sourceVersion.equals(entity.getVersion())) {
-                    Simperium.log(String.format("Local version %d of entity does not match sv: %s %d", entity.getVersion(), entityKey, sourceVersion));
+                // TODO: handle how to sync if source version doesn't match local object
+                if (!sourceVersion.equals(object.getVersion())) {
+                    Simperium.log(String.format("Local version %d of object does not match sv: %s %d", object.getVersion(), objectKey, sourceVersion));
                     return;
                 }
             }
-            // now we need to apply changes and create a new entity?
+            // now we need to apply changes and create a new object?
             Map<String,Object> patch = (Map<String,Object>)change.get(VALUE_KEY);
             Object operation = change.get(OPERATION_KEY);
             final String changeVersion = (String)change.get(CHANGE_VERSION_KEY);
             
-            // construct the new entity
-            Simperium.log(String.format("Try to apply %s to %s", patch, entity.getDiffableValue()));
-            final T updated = bucket.buildEntity(entityKey, entityVersion, jsondiff.apply(entity.getDiffableValue(), patch));
+            // construct the new object
+            Simperium.log(String.format("Try to apply %s to %s", patch, object.getDiffableValue()));
+            final T updated = bucket.buildObject(objectKey, objectVersion, jsondiff.apply(object.getDiffableValue(), patch));
             // notify the listener
             final ChangeProcessorListener changeListener = listener;
-            final boolean isNew = entity.isNew();
+            final boolean isNew = object.isNew();
             this.handler.post(new Runnable(){
                 public void run(){
                     if(isNew){
-                        changeListener.onAddEntity(changeVersion, updated);
+                        changeListener.onAddObject(changeVersion, updated);
                     } else {
-                        changeListener.onUpdateEntity(changeVersion, updated);
+                        changeListener.onUpdateObject(changeVersion, updated);
                     }
                 }
             });

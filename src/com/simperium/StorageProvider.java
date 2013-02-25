@@ -3,13 +3,22 @@ package com.simperium.client;
 import java.util.List;
 
 public interface StorageProvider {
+    /**
+     * Store the change version for a bucket
+     */
     String getChangeVersion(Bucket bucket);
     void setChangeVersion(Bucket bucket, String version);
     Boolean hasChangeVersion(Bucket bucket);
     Boolean hasChangeVersion(Bucket bucket, String version);
-    void addEntity(Bucket bucket, String key, Bucket.Diffable entity);
-    void updateEntity(Bucket bucket, String key, Bucket.Diffable entity);
-    <T extends Bucket.Diffable> T getEntity(Bucket<T> bucket, String key);
+    /**
+     * Store bucket object data
+     */
+    void addObject(Bucket bucket, String key, Bucket.Diffable object);
+    void updateObject(Bucket bucket, String key, Bucket.Diffable object);
+    /**
+     * Retrieve entities and details
+     */
+    <T extends Bucket.Diffable> T getObject(Bucket<T> bucket, String key);
     Boolean containsKey(Bucket bucket, String key);
     Boolean hasKeyVersion(Bucket bucket, String key, Integer version);
     Integer getKeyVersion(Bucket bucket, String key);
