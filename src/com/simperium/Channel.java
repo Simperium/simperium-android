@@ -169,7 +169,9 @@ public class Channel<T extends Bucket.Syncable> {
     }
     
     protected void queueLocalDeletion(T object){
-        
+        Change change = new Change(Change.OPERATION_REMOVE, object.getSimperiumId());
+        // Simperium.log(String.format("Send change: %s", change.toString()));
+        changeProcessor.addChange(change);
     }
     
     protected void queueLocalChange(List<T> objects){
@@ -651,10 +653,15 @@ public class Channel<T extends Bucket.Syncable> {
         private Map<String,Object> diff;
         private String ccid;
         
-        public static final String OPERATION_MODIFY = "M";
-        public static final String OPERATION_REMOVE = JSONDiff.OPERATION_REMOVE;
-        public static final String ID_KEY           = "id";
-        public static final String CHANGE_ID_KEY    = "ccid";
+        public static final String OPERATION_MODIFY   = "M";
+        public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
+        public static final String ID_KEY             = "id";
+        public static final String CHANGE_ID_KEY      = "ccid";
+        public static final String SOURCE_VERSION_KEY = "sv";
+        
+        public Change(String operation, String key){
+            this(operation, key, null, null);
+        }
         
         public Change(String operation, String key, Integer sourceVersion, Map<String,Object> diff){
             this.operation = operation;
@@ -673,7 +680,12 @@ public class Channel<T extends Bucket.Syncable> {
             map.put(ID_KEY, key);
             map.put(CHANGE_ID_KEY, ccid);
             map.put(JSONDiff.DIFF_OPERATION_KEY, operation);
-            map.put(JSONDiff.DIFF_VALUE_KEY, diff);
+            if (version != null && version > 0) {
+                map.put(SOURCE_VERSION_KEY, version);
+            }
+            if (operation.equals(OPERATION_MODIFY)) {
+                map.put(JSONDiff.DIFF_VALUE_KEY, diff);
+            }
             JSONObject changeJSON = Channel.serializeJSON(map);
             return changeJSON.toString();
         }
@@ -798,6 +810,15 @@ public class Channel<T extends Bucket.Syncable> {
         private void performChange(Map<String,Object> change){
             
             String objectKey = (String)change.get(ID_KEY);
+            String operation = (String)change.get(OPERATION_KEY);
+            
+            if (operation.equals(JSONDiff.OPERATION_REMOVE)) {
+                // TODO: remove any local pending changes for this object
+                // TODO: if this isn't an ack then tell bucket to remove the item
+                Simperium.log(String.format("Remove local version: %s", operation));
+                return;
+            }
+            
             Integer sourceVersion = (Integer)change.get(SOURCE_VERSION_KEY);
             Integer objectVersion = (Integer)change.get(ENTITY_VERSION_KEY);
             T object;
@@ -819,7 +840,6 @@ public class Channel<T extends Bucket.Syncable> {
             }
             // now we need to apply changes and create a new object?
             Map<String,Object> patch = (Map<String,Object>)change.get(VALUE_KEY);
-            Object operation = change.get(OPERATION_KEY);
             final String changeVersion = (String)change.get(CHANGE_VERSION_KEY);
             
             // construct the new object

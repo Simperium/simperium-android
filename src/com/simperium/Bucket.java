@@ -124,6 +124,12 @@ public class Bucket<T extends Bucket.Syncable> {
         public void save(){
             getBucket().sync(this);
         }
+        /**
+         * Sends a delete operation over the socket
+         */
+        public void delete(){
+            getBucket().remove(this);
+        }
     }
     /**
      * An interface to allow applications to provide a schema for a bucket and a way
@@ -238,11 +244,20 @@ public class Bucket<T extends Bucket.Syncable> {
     /**
      * Tell the bucket to sync changes. 
      */
-    public void sync(Syncable object){
+    public void sync(T object){
         // TODO should we persists local modifications somewhere?
-        // create the change id here so we can identify it in the future?
+        // TODO tell listener that items are updated?
         // pass it off to the channel
         channel.queueLocalChange(object);
+    }
+    
+    /**
+     * Tell the bucket to remove the object
+     */
+    public void remove(T object){
+        // TODO: remove item from storage
+        // TODO: tell listener that item is removed?
+        channel.queueLocalDeletion(object);
     }
     
     /**
