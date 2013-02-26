@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Iterator;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.Collections;
 import java.util.ArrayList;
 
@@ -144,12 +144,36 @@ public class Channel<T extends Bucket.Syncable> {
     }
     
     private void getLatestVersions(){
-        // abort any remote changes since we're getting new data
+        // abort any remote and local changes since we're getting new data
         changeProcessor.clear();
         // initialize the new query for new index data
         IndexQuery query = new IndexQuery();
         // send the i:::: messages
         sendMessage(query.toString());
+    }
+    /**
+     * Diffs and object's local modifications and queues up the changes
+     */
+    protected void queueLocalChange(T object){
+        // diff the object with it's ghost
+        Bucket.Diffable ghost = object.getGhost();
+        Map<String,Object> diff = jsondiff.diff(ghost.getDiffableValue(), object.getDiffableValue());
+        Simperium.log(String.format("; %s", diff));
+        // before we send the change we need a unique id for the ccid
+        // public Change(String operation, String key, Integer sourceVersion, Map<String,Object> diff){
+
+        Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumId(), ghost.getVersion(), (Map<String,Object>)diff.get(JSONDiff.DIFF_VALUE_KEY));
+        changeProcessor.addChange(change);
+        
+        
+    }
+    
+    protected void queueLocalDeletion(T object){
+        
+    }
+    
+    protected void queueLocalChange(List<T> objects){
+        // queue up a bunch of changes
     }
     
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -222,9 +246,9 @@ public class Channel<T extends Bucket.Syncable> {
             return;
         }
         // Loop through each change? Convert changes to array list
-        List<Object> changeList = Bucket.convertJSON(changes);
+        List<Object> changeList = Channel.convertJSON(changes);
         changeProcessor.addChanges(changeList);
-        Simperium.log(String.format("Received %d change(s) queued: %d", changes.length(), changeProcessor.size()));
+        Simperium.log(String.format("Received %d change(s)", changes.length()));
     }
     
     private static final String ENTITY_DATA_KEY = "data";
@@ -446,7 +470,7 @@ public class Channel<T extends Bucket.Syncable> {
      * Build up a list of entities and versions we need for the index. Allow the
      * channel to pass in the version data
      */
-    private class IndexProcessor implements Runnable {
+    private class IndexProcessor {
         
         public static final String INDEX_OBJECT_ID_KEY = "id";
         public static final String INDEX_OBJECT_VERSION_KEY = "v";
@@ -500,7 +524,7 @@ public class Channel<T extends Bucket.Syncable> {
             }
         
             Integer remoteVersion = Integer.parseInt(version);
-            Map<String,Object> properties = Bucket.convertJSON(data);
+            Map<String,Object> properties = Channel.convertJSON(data);
             T object = (T)bucket.buildObject(key, remoteVersion, properties);
         
             if (bucket.containsKey(key)) {
@@ -606,11 +630,7 @@ public class Channel<T extends Bucket.Syncable> {
             bucket.setChangeVersion(cv);
             listener.onComplete(cv);
         }
-        
-        
-        public void run(){
-        }
-        
+                
     }
     
     private interface ChangeProcessorListener<T extends Bucket.Syncable> {
@@ -623,6 +643,40 @@ public class Channel<T extends Bucket.Syncable> {
          * All changes have been processed
          */
         void onComplete();
+    }
+    private class Change {
+        private String operation;
+        private String key;
+        private Integer version;
+        private Map<String,Object> diff;
+        private String ccid;
+        
+        public static final String OPERATION_MODIFY = "M";
+        public static final String OPERATION_REMOVE = JSONDiff.OPERATION_REMOVE;
+        public static final String ID_KEY           = "id";
+        public static final String CHANGE_ID_KEY    = "ccid";
+        
+        public Change(String operation, String key, Integer sourceVersion, Map<String,Object> diff){
+            this.operation = operation;
+            this.key = key;
+            this.version = sourceVersion;
+            this.diff = diff;
+            this.ccid = Simperium.uuid();
+        }
+        /**
+         * A JSON representation of this change object
+         *
+         * {id:key JSONDiff.VALUE_KEY:diff JSONDiff.OPERATION_KEY:operation}
+         */
+        public String toString(){
+            Map<String,Object> map = new HashMap<String,Object>(3);
+            map.put(ID_KEY, key);
+            map.put(CHANGE_ID_KEY, ccid);
+            map.put(JSONDiff.DIFF_OPERATION_KEY, operation);
+            map.put(JSONDiff.DIFF_VALUE_KEY, diff);
+            JSONObject changeJSON = Channel.serializeJSON(map);
+            return changeJSON.toString();
+        }
     }
     /**
      * ChangeProcessor should perform operations on a seperate thread as to not block the websocket
@@ -641,52 +695,85 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String CHANGE_IDS_KEY     = "ccids";
         public static final String OPERATION_KEY      = JSONDiff.DIFF_OPERATION_KEY;
         public static final String VALUE_KEY          = JSONDiff.DIFF_VALUE_KEY;
-        
-        public static final String THREAD_NAME        = "change-processor";
-        
+                
         private Bucket<T> bucket;
         private JSONDiff diff = new JSONDiff();
         private ChangeProcessorListener listener;
         private Thread thread;
-        private ArrayBlockingQueue<Map<String,Object>> queue;
+        // private ArrayBlockingQueue<Map<String,Object>> queue;
+        private List<Map<String,Object>> remoteQueue;
+        private List<Change> localQueue;
         private Handler handler;
         
         public ChangeProcessor(Bucket<T> bucket, ChangeProcessorListener<T> listener) {
             this.bucket = bucket;
             this.listener = listener;
-            this.queue = new ArrayBlockingQueue<Map<String,Object>>(200);
+            this.remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>());
+            this.localQueue = Collections.synchronizedList(new ArrayList<Change>());
             this.handler = new Handler();
         }
         
         public void addChanges(List<Object> changes){
-            Iterator iterator = changes.iterator();
-            while(iterator.hasNext()){
-                addChange((Map<String,Object>)iterator.next());
+            synchronized(remoteQueue) {
+                Iterator iterator = changes.iterator();
+                while(iterator.hasNext()){
+                    remoteQueue.add((Map<String,Object>)iterator.next());
+                }
             }
+            start();
         }
         
         public void addChange(Map<String,Object> change){
-            // this blocks until there's capacity in the queue
-            queue.offer(change);
+            synchronized(remoteQueue){
+                remoteQueue.add(change);
+            }
+            start();
+        }
+        /**
+         * Local change to be queued
+         */
+        public void addChange(Change change){
+            synchronized(localQueue){
+                localQueue.add(change);
+            }
+            start();
         }
         
         public void start(){
-            this.thread = new Thread(this, THREAD_NAME);
-            this.thread.start();
+            if (thread == null || thread.getState() == Thread.State.TERMINATED) {
+                Simperium.log("Starting up the change processor");
+                thread = new Thread(this);
+                thread.start();
+            }
         }
         
         public void run(){
             // take an item off the queue
-            try {
-                while(true){
-                    // this blocks until there's something on the queue
-                    Map<String,Object> change = queue.take();
-                    performChange(change);
+            Map<String,Object> remoteChange;
+            do {
+                remoteChange = null;
+                synchronized(remoteQueue){
+                    if (remoteQueue.size() > 0) {
+                        remoteChange = remoteQueue.remove(0);
+                    }
                 }
-            } catch(InterruptedException e) {
-                Simperium.log("Change processor interrupted");
-                return;
-            }
+                if (remoteChange != null){
+                    performChange(remoteChange);
+                }
+            } while (remoteChange != null && !Thread.interrupted());
+            Change localChange;
+            do {
+                localChange = null;
+                synchronized(localQueue){
+                    if (localQueue.size() > 0) {
+                        localChange = localQueue.remove(0);
+                    }
+                }
+                if(localChange != null){
+                    sendChange(localChange);
+                }
+            } while (localChange != null && !Thread.interrupted());
+            Simperium.log(String.format("Done processing thread with %d remote and %d local changes", remoteQueue.size(), localQueue.size()));
         }
         
         public void stop(){
@@ -698,15 +785,14 @@ public class Channel<T extends Bucket.Syncable> {
         
         public void clear(){
             stop();
-            this.queue.clear();
+            this.remoteQueue.clear();
+            this.localQueue.clear();
         }
-        
-        public int size(){
-            return this.queue.size();
-        }
-        
-        public int remainingCapacity(){
-            return this.queue.remainingCapacity();
+
+        private void sendChange(Change change){
+            // send the change down the socket!
+            Simperium.log(String.format("Send local change: %s", change));
+            sendMessage(String.format("c:%s", change.toString()));
         }
         
         private void performChange(Map<String,Object> change){
@@ -754,6 +840,85 @@ public class Channel<T extends Bucket.Syncable> {
             
         }
         
+    }
+    
+    public static Map<String,java.lang.Object> convertJSON(JSONObject json){
+        Map<String,java.lang.Object> map = new HashMap<String,java.lang.Object>(json.length());
+        Iterator keys = json.keys();
+        while(keys.hasNext()){
+            String key = (String)keys.next();
+            try {
+                java.lang.Object val = json.get(key);
+                // log(String.format("Hello! %s", json.get(key).getClass().getName()));
+                if (val.getClass().equals(JSONObject.class)) {
+                    map.put(key, convertJSON((JSONObject) val));
+                } else if (val.getClass().equals(JSONArray.class)) {
+                    map.put(key, convertJSON((JSONArray) val));
+                } else {
+                    map.put(key, val);
+                }
+            } catch (JSONException e) {
+                Simperium.log(String.format("Error: %s", e.getMessage()), e);
+            }
+        }
+        return map;
+    }
+    
+    public static List<java.lang.Object> convertJSON(JSONArray json){
+        List<java.lang.Object> list = new ArrayList<java.lang.Object>(json.length());
+        for (int i=0; i<json.length(); i++) {
+            try {
+                java.lang.Object val = json.get(i);
+                if (val.getClass().equals(JSONObject.class)) {
+                    list.add(convertJSON((JSONObject) val));
+                } else if (val.getClass().equals(JSONArray.class)) {
+                    list.add(convertJSON((JSONArray) val));
+                } else {
+                    list.add(val);
+                }
+            } catch (JSONException e) {
+                Simperium.log(String.format("Error: %s", e.getMessage()), e);
+            }
+
+        }
+        return list;
+    }
+        
+    public static JSONObject serializeJSON(Map<String,Object>map){
+        JSONObject json = new JSONObject();
+        Iterator<String> keys = map.keySet().iterator();
+        while(keys.hasNext()){
+            String key = keys.next();
+            Object val = map.get(key);
+            try {
+                if (val instanceof Map) {
+                    json.put(key, serializeJSON((Map<String,Object>) val));
+                } else if(val instanceof List){
+                    json.put(key, serializeJSON((List<Object>) val));
+                } else {
+                    json.put(key, val);
+                }
+            } catch(JSONException e){
+               Simperium.log(String.format("Failed to serialize %s", val));
+            }
+        }
+        return json;
+    }
+    
+    public static JSONArray serializeJSON(List<Object>list){
+        JSONArray json = new JSONArray();
+        Iterator<Object> vals = list.iterator();
+        while(vals.hasNext()){
+            Object val = vals.next();
+            if (val instanceof Map) {
+                json.put(serializeJSON((Map<String,Object>) val));
+            } else if(val instanceof List) {
+                json.put(serializeJSON((List<Object>) val));
+            } else {
+                json.put(val);
+            }
+        }
+        return json;
     }
     
 }

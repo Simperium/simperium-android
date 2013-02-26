@@ -31,7 +31,6 @@ import java.util.Iterator;
 import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -77,14 +76,15 @@ public class Bucket<T extends Bucket.Syncable> {
     /**
      * 
      */
-    private static class Ghost implements Diffable {
+    protected static class Ghost implements Diffable {
         private String key;
         private Integer version;
         private Map<String, java.lang.Object> properties;
         private Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
             this.key = key;
             this.version = version;
-            this.properties = properties;
+            // copy the properties
+            this.properties = Bucket.deepCopy(properties);
         }
         public String getSimperiumId(){
             return key;
@@ -162,17 +162,12 @@ public class Bucket<T extends Bucket.Syncable> {
             Simperium.log(String.format("Initializing with properties: %s", properties));
             this.simperiumId = key;
             this.version = version;
-            this.properties = properties;
+            this.properties = Bucket.deepCopy(properties);
         }
      
         public Object(String key){
             this(key, new Integer(0), new HashMap<String, java.lang.Object>());
         }
-    
-        public Object(String key, Integer version, JSONObject objectData){
-            this(key, version, Bucket.convertJSON(objectData));
-        }
-    
         
         public Bucket getBucket(){
             return bucket;
@@ -207,7 +202,6 @@ public class Bucket<T extends Bucket.Syncable> {
         }
     
         public Map<String,java.lang.Object> getDiffableValue(){
-            Simperium.log(String.format("Requesting diffable values %s", properties));
             return properties;
         }
         
@@ -248,6 +242,7 @@ public class Bucket<T extends Bucket.Syncable> {
         // TODO should we persists local modifications somewhere?
         // create the change id here so we can identify it in the future?
         // pass it off to the channel
+        channel.queueLocalChange(object);
     }
     
     /**
@@ -482,52 +477,47 @@ public class Bucket<T extends Bucket.Syncable> {
     public String uuid(){
         String key;
         do {
-            key = UUID.randomUUID().toString();
+            key = Simperium.uuid();
         } while(containsKey(key));
         return key;
     }
-    
-    public static Map<String,java.lang.Object> convertJSON(JSONObject json){
-        Map<String,java.lang.Object> map = new HashMap<String,java.lang.Object>(json.length());
-        Iterator keys = json.keys();
+        
+    /**
+     * Copy a hash
+     */
+    public static Map<String, java.lang.Object> deepCopy(Map<String, java.lang.Object> map){
+        Map<String,java.lang.Object> copy = new HashMap<String,java.lang.Object>(map.size());
+        Iterator keys = map.keySet().iterator();
         while(keys.hasNext()){
             String key = (String)keys.next();
-            try {
-                java.lang.Object val = json.get(key);
-                // log(String.format("Hello! %s", json.get(key).getClass().getName()));
-                if (val.getClass().equals(JSONObject.class)) {
-                    map.put(key, convertJSON((JSONObject) val));
-                } else if (val.getClass().equals(JSONArray.class)) {
-                    map.put(key, convertJSON((JSONArray) val));
-                } else {
-                    map.put(key, val);
-                }
-            } catch (JSONException e) {
-                Simperium.log(String.format("Error: %s", e.getMessage()), e);
+            java.lang.Object val = map.get(key);
+            // log(String.format("Hello! %s", json.get(key).getClass().getName()));
+            if (val instanceof Map) {
+                copy.put(key, deepCopy((Map<String,java.lang.Object>) val));
+            } else if (val instanceof List) {
+                copy.put(key, deepCopy((List<java.lang.Object>) val));
+            } else {
+                copy.put(key, val);
             }
         }
-        return map;
-        
+        return copy;
     }
-    
-    public static List<java.lang.Object> convertJSON(JSONArray json){
-        List<java.lang.Object> list = new ArrayList<java.lang.Object>(json.length());
-        for (int i=0; i<json.length(); i++) {
-            try {
-                java.lang.Object val = json.get(i);
-                if (val.getClass().equals(JSONObject.class)) {
-                    list.add(convertJSON((JSONObject) val));
-                } else if (val.getClass().equals(JSONArray.class)) {
-                    list.add(convertJSON((JSONArray) val));
-                } else {
-                    list.add(val);
-                }
-            } catch (JSONException e) {
-                Simperium.log(String.format("Error: %s", e.getMessage()), e);
+    /**
+     * Copy a list
+     */
+    public static List<java.lang.Object>deepCopy(List<java.lang.Object> list){
+        List<java.lang.Object> copy = new ArrayList<java.lang.Object>(list.size());
+        for (int i=0; i<list.size(); i++) {
+            java.lang.Object val = list.get(i);
+            if (val instanceof Map) {
+                copy.add(deepCopy((Map<String,java.lang.Object>) val));
+            } else if (val instanceof List) {
+                copy.add(deepCopy((List<java.lang.Object>) val));
+            } else {
+                copy.add(val);
             }
-
         }
-        return list;
+        return copy;
     }
 
 }

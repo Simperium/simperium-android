@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 
+import java.util.UUID;
+
 public class Simperium implements User.AuthenticationListener {
 
     public static final String HTTP_USER_AGENT = "android-1.0";
@@ -168,6 +170,10 @@ public class Simperium implements User.AuthenticationListener {
         SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
         String token = preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
         return token;
+    }
+    
+    public static String uuid(){
+        return UUID.randomUUID().toString().replace("-","");
     }
 
                 
