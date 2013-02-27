@@ -270,6 +270,20 @@ public class Bucket<T extends Bucket.Syncable> {
         // TODO: tell listener that item is removed?
         storageProvider.removeObject(this, object.getSimperiumId());
         channel.queueLocalDeletion(object);
+        Vector<Listener<T>> notify;
+        synchronized(listeners){
+            notify = new Vector<Listener<T>>(listeners.size());
+            notify.addAll(listeners);
+        }
+        Iterator<Listener<T>> iterator = notify.iterator();
+        while(iterator.hasNext()){
+            Listener<T> listener = iterator.next();
+            try {
+                listener.onObjectRemoved(object.getSimperiumId(),object);
+            } catch (Exception e) {
+                 Simperium.log(String.format("Listener failed onObjectRemoved %s", listener));
+            }
+        }
     }
     
     /**
