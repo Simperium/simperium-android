@@ -372,14 +372,14 @@ public class Bucket<T extends Bucket.Syncable> {
     protected T newObject(String uuid){
         T object = buildObject(uuid, 0, new HashMap<String,java.lang.Object>());
         object.setBucket(this);
-        Vector<Listener> notify;
+        Vector<Listener<T>> notify;
         synchronized(listeners){
-            notify = new Vector<Listener>(listeners.size());
+            notify = new Vector<Listener<T>>(listeners.size());
             notify.addAll(listeners);
         }
-        Iterator<Listener> iterator = notify.iterator();
+        Iterator<Listener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
-            Listener listener = iterator.next();
+            Listener<T> listener = iterator.next();
             try {
                 listener.onObjectCreated(object.getSimperiumId(), object);                
             } catch(Exception e) {
@@ -411,7 +411,7 @@ public class Bucket<T extends Bucket.Syncable> {
         
         Iterator<Listener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
-            Listener listener = iterator.next();
+            Listener<T> listener = iterator.next();
             try {
                 listener.onObjectAdded(object.getSimperiumId(), object);
             } catch(Exception e) {
@@ -425,15 +425,14 @@ public class Bucket<T extends Bucket.Syncable> {
     protected void updateObject(T object){
         object.setBucket(this);
         storageProvider.updateObject(this, object.getSimperiumId(), object);
-        Vector<Listener> notify;
+        Vector<Listener<T>> notify;
         synchronized(listeners){
-            notify = new Vector<Listener>(listeners.size());
+            notify = new Vector<Listener<T>>(listeners.size());
             notify.addAll(listeners);
         }
-        
-        Iterator<Listener> iterator = notify.iterator();
+        Iterator<Listener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
-            Listener listener = iterator.next();
+            Listener<T> listener = iterator.next();
             try {
                 listener.onObjectUpdated(object.getSimperiumId(), object.getVersion(), object);
             } catch(Exception e) {
