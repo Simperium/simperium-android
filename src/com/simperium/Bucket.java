@@ -106,8 +106,11 @@ public class Bucket<T extends Bucket.Syncable> {
         public abstract Bucket getBucket();
         public abstract String bucketName();
         public abstract Boolean isNew();
-        public Diffable getGhost(){
+        private Diffable getGhost(){
             return ghost;
+        }
+        public Integer getVersion(){
+            return this.ghost.getVersion();
         }
         private void setGhost(Diffable ghost){
             this.ghost = ghost;
@@ -117,6 +120,12 @@ public class Bucket<T extends Bucket.Syncable> {
          */
         public Boolean isModified(){
             return !getDiffableValue().equals(ghost.getDiffableValue());
+        }
+        /**
+         * Returns the object as it should appear on the server
+         */
+        public Map<String, java.lang.Object>getUnmodifiedValue(){
+            return getGhost().getDiffableValue();
         }
         /**
          * Send modifications over the socket to simperium
