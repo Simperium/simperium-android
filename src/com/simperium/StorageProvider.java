@@ -15,6 +15,7 @@ public interface StorageProvider {
      */
     void addObject(Bucket bucket, String key, Bucket.Syncable object);
     void updateObject(Bucket bucket, String key, Bucket.Syncable object);
+    void removeObject(Bucket bucket, String key);
     /**
      * Retrieve entities and details
      */

@@ -247,7 +247,9 @@ public class Bucket<T extends Bucket.Syncable> {
     public void sync(T object){
         // TODO should we persists local modifications somewhere?
         // TODO tell listener that items are updated?
+        // create the change id here so we can identify it in the future?
         // pass it off to the channel
+        storageProvider.updateObject(this, object.getSimperiumId(), object);
         channel.queueLocalChange(object);
     }
     
@@ -257,6 +259,7 @@ public class Bucket<T extends Bucket.Syncable> {
     public void remove(T object){
         // TODO: remove item from storage
         // TODO: tell listener that item is removed?
+        storageProvider.removeObject(this, object.getSimperiumId());
         channel.queueLocalDeletion(object);
     }
     
