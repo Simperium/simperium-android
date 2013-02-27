@@ -50,6 +50,9 @@ public class MemoryStore implements StorageProvider {
         addObject(bucket, key, object);
     }
     public void removeObject(Bucket bucket, String key){
+        Pair bucketKey = bucketKey(bucket, key);
+        entities.remove(bucketKey);
+        versions.remove(bucketKey);
     }
     public Bucket.Syncable getObject(Bucket bucket, String key){
         Simperium.log(String.format("Requesting object %s in thread %s", key, Thread.currentThread().getName()));
