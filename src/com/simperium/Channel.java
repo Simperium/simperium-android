@@ -156,15 +156,13 @@ public class Channel<T extends Bucket.Syncable> {
      */
     protected void queueLocalChange(T object){
         // diff the object with it's ghost
-        Bucket.Diffable ghost = object.getGhost();
-        Map<String,Object> diff = jsondiff.diff(ghost.getDiffableValue(), object.getDiffableValue());
+        Map<String,Object> diff = jsondiff.diff(object.getUnmodifiedValue(), object.getDiffableValue());
         Simperium.log(String.format("; %s", diff));
         // before we send the change we need a unique id for the ccid
         // public Change(String operation, String key, Integer sourceVersion, Map<String,Object> diff){
 
-        Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumId(), ghost.getVersion(), (Map<String,Object>)diff.get(JSONDiff.DIFF_VALUE_KEY));
+        Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumId(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());
         changeProcessor.addChange(change);
-        
         
     }
     
@@ -650,7 +648,8 @@ public class Channel<T extends Bucket.Syncable> {
         private String operation;
         private String key;
         private Integer version;
-        private Map<String,Object> diff;
+        private Map<String,Object> origin;
+        private Map<String,Object> target;
         private String ccid;
         
         public static final String OPERATION_MODIFY   = "M";
@@ -660,15 +659,22 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String SOURCE_VERSION_KEY = "sv";
         
         public Change(String operation, String key){
-            this(operation, key, null, null);
+            this(operation, key, null, null, null);
         }
         
-        public Change(String operation, String key, Integer sourceVersion, Map<String,Object> diff){
+        public Change(String operation, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
             this.operation = operation;
             this.key = key;
             this.version = sourceVersion;
-            this.diff = diff;
+            this.origin = Bucket.deepCopy(origin);
+            this.target = Bucket.deepCopy(target);
             this.ccid = Simperium.uuid();
+        }
+        public boolean keyMatches(Change otherChange){
+            return otherChange.getKey().equals(getKey());
+        }
+        public String getKey(){
+            return key;
         }
         /**
          * A JSON representation of this change object
@@ -683,11 +689,30 @@ public class Channel<T extends Bucket.Syncable> {
             if (version != null && version > 0) {
                 map.put(SOURCE_VERSION_KEY, version);
             }
-            if (operation.equals(OPERATION_MODIFY)) {
-                map.put(JSONDiff.DIFF_VALUE_KEY, diff);
+            if (requiresDiff()) {
+                map.put(JSONDiff.DIFF_VALUE_KEY, getDiff());
             }
             JSONObject changeJSON = Channel.serializeJSON(map);
             return changeJSON.toString();
+        }
+        /**
+         * The diff of the origin and target
+         */
+        private Map<String,Object> getDiff(){
+            Map<String,Object> diff = jsondiff.diff(origin, target);
+            return (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
+        }
+        /**
+         * The change message requires a diff value in the JSON payload
+         */
+        public Boolean requiresDiff(){
+            return operation.equals(OPERATION_MODIFY);
+        }
+        /**
+         * Creates a new change with the given sourceVersion and origin
+         */
+        public Change reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
+            return new Change(operation, key, sourceVersion, origin, target);
         }
     }
     /**
@@ -844,7 +869,7 @@ public class Channel<T extends Bucket.Syncable> {
             
             // construct the new object
             Simperium.log(String.format("Try to apply %s to %s", patch, object.getDiffableValue()));
-            final T updated = bucket.buildObject(objectKey, objectVersion, jsondiff.apply(object.getDiffableValue(), patch));
+            final T updated = bucket.buildObject(objectKey, objectVersion, jsondiff.apply(object.getUnmodifiedValue(), patch));
             // notify the listener
             final ChangeProcessorListener changeListener = listener;
             final boolean isNew = object.isNew();
