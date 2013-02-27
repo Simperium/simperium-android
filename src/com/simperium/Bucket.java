@@ -526,6 +526,9 @@ public class Bucket<T extends Bucket.Syncable> {
      * Copy a hash
      */
     public static Map<String, java.lang.Object> deepCopy(Map<String, java.lang.Object> map){
+        if (map == null) {
+            return null;
+        };
         Map<String,java.lang.Object> copy = new HashMap<String,java.lang.Object>(map.size());
         Iterator keys = map.keySet().iterator();
         while(keys.hasNext()){
@@ -546,6 +549,9 @@ public class Bucket<T extends Bucket.Syncable> {
      * Copy a list
      */
     public static List<java.lang.Object>deepCopy(List<java.lang.Object> list){
+        if (list == null) {
+             return null;
+        };
         List<java.lang.Object> copy = new ArrayList<java.lang.Object>(list.size());
         for (int i=0; i<list.size(); i++) {
             java.lang.Object val = list.get(i);
