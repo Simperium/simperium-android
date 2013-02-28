@@ -68,7 +68,6 @@ public class Bucket<T extends Bucket.Syncable> {
      *    can perform their necessary save operations
      */
     public static interface Listener<T extends Bucket.Syncable> {
-        void onObjectCreated(String key, T object);
         void onObjectRemoved(String key, T object);
         void onObjectUpdated(String key, Integer version, T object);
         void onObjectAdded(String key, T object);
@@ -372,21 +371,7 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     protected T newObject(String uuid){
         T object = buildObject(uuid, 0, new HashMap<String,java.lang.Object>());
-        object.setBucket(this);
-        Set<Listener<T>> notify;
-        synchronized(listeners){
-            notify = new HashSet<Listener<T>>(listeners.size());
-            notify.addAll(listeners);
-        }
-        Iterator<Listener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            Listener<T> listener = iterator.next();
-            try {
-                listener.onObjectCreated(object.getSimperiumId(), object);                
-            } catch(Exception e) {
-                Simperium.log(String.format("Listener failed onObjectCreated %s", listener));
-            }
-        }
+        addObject(object);
         return object;
     }
     /**
@@ -401,22 +386,28 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     protected void addObject(T object){
         // Allows the storage provider to persist the object
+        Boolean notifyListeners = true;
+        if (!object.getBucket().equals(this)) {
+            notifyListeners = true;
+        }
         object.setBucket(this);
         storageProvider.addObject(this, object.getSimperiumId(), object);
         // notify listeners that an object has been added
-        Set<Listener<T>> notify;
-        synchronized(listeners){
-            notify = new HashSet<Listener<T>>(listeners.size());
-            notify.addAll(listeners);
-        }
+        if (notifyListeners) {
+            Set<Listener<T>> notify;
+            synchronized(listeners){
+                notify = new HashSet<Listener<T>>(listeners.size());
+                notify.addAll(listeners);
+            }
         
-        Iterator<Listener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            Listener<T> listener = iterator.next();
-            try {
-                listener.onObjectAdded(object.getSimperiumId(), object);
-            } catch(Exception e) {
-                Simperium.log(String.format("Listener failed onObjectAdded %s", listener), e);
+            Iterator<Listener<T>> iterator = notify.iterator();
+            while(iterator.hasNext()) {
+                Listener<T> listener = iterator.next();
+                try {
+                    listener.onObjectAdded(object.getSimperiumId(), object);
+                } catch(Exception e) {
+                    Simperium.log(String.format("Listener failed onObjectAdded %s", listener), e);
+                }
             }
         }
     }
