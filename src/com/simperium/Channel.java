@@ -630,10 +630,11 @@ public class Channel<T extends Bucket.Syncable> {
         /**
          * Change has been applied.
          */
-        void onUpdateObject(String changeVersion, T object);
-        void onAddObject(String changeVersion, T object);
+        void onUpdateObject(String changeVersion, String key, T object);
+        void onAddObject(String changeVersion, String key, T object);
+        void onRemoveObject(String key);
         /**
-         * All changes have been processed
+         * All changes have been processed and entering idle state
          */
         void onComplete();
     }
