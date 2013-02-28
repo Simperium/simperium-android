@@ -147,8 +147,10 @@ public class Channel<T extends Bucket.Syncable> {
     }
     
     private void getLatestVersions(){
+        // TODO: should local changes still be stored?
         // abort any remote and local changes since we're getting new data
-        changeProcessor.clear();
+        // and top the processor
+        changeProcessor.abort();
         // initialize the new query for new index data
         IndexQuery query = new IndexQuery();
         // send the i:::: messages
@@ -306,6 +308,7 @@ public class Channel<T extends Bucket.Syncable> {
     }
     
     protected void onDisconnect(){
+        changeProcessor.stop();
         connected = false;
         started = false;
     }
@@ -811,10 +814,15 @@ public class Channel<T extends Bucket.Syncable> {
             }
         }
         
-        public void clear(){
-            stop();
+        protected void clear(){
+            this.pendingChanges.clear();
             this.remoteQueue.clear();
             this.localQueue.clear();
+        }
+        
+        protected void abort(){
+            clear();
+            stop();
         }
         
         
