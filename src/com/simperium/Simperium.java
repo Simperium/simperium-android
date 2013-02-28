@@ -20,9 +20,15 @@ import java.util.ArrayList;
 
 import java.util.UUID;
 
-public class Simperium implements User.AuthenticationListener {
+import java.io.InputStream;
+import java.util.Properties;
 
-    public static final String CLIENT_ID = "android-1.0";
+import android.content.res.Resources;
+
+public class Simperium implements User.AuthenticationListener {
+    
+    public static final String VERSION = "duo-beta";
+    public static final String CLIENT_ID = String.format("android-%s", VERSION);
     public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     private String appId;
@@ -47,12 +53,13 @@ public class Simperium implements User.AuthenticationListener {
         this.appSecret = appSecret;
         this.context = context;
         httpClient = new AsyncHttpClient();
-        httpClient.setUserAgent(Simperium.CLIENT_ID);
+        httpClient.setUserAgent(CLIENT_ID);
         authClient = new AuthHttpClient(appId, appSecret, httpClient);
         socketManager = new WebSocketManager(appId);
         this.authenticationListener = authenticationListener;
         this.storageProvider = storageProvider;
         loadUser();
+        Simperium.log(String.format("Initializing Simperium %s", CLIENT_ID));
     }
     
     private void loadUser(){

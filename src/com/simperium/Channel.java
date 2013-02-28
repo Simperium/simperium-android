@@ -645,7 +645,6 @@ public class Channel<T extends Bucket.Syncable> {
     public interface OnChangeRetryListener {
         public void onRetry(Change change);
     }
-
     private static class Change extends TimerTask {
         private String operation;
         private String key;
@@ -674,9 +673,7 @@ public class Channel<T extends Bucket.Syncable> {
             this.target = Bucket.deepCopy(target);
             this.ccid = Simperium.uuid();
         }
-        public void setAcknowledged(){
-            // stop the schedule task
-            Simperium.log(String.format("Change acknowledged %s", getChangeId()));
+        public void stopRetryTimer(){
             cancel();
         }
         public void setOnChangeRetryListener(OnChangeRetryListener listener){
@@ -695,32 +692,17 @@ public class Channel<T extends Bucket.Syncable> {
         public String getChangeId(){
             return this.ccid;
         }
-        /**
-         * A JSON representation of this change object
-         *
-         * {id:key JSONDiff.VALUE_KEY:diff JSONDiff.OPERATION_KEY:operation}
-         */
-        public String toString(){
-            Map<String,Object> map = new HashMap<String,Object>(3);
-            map.put(ID_KEY, key);
-            map.put(CHANGE_ID_KEY, ccid);
-            map.put(JSONDiff.DIFF_OPERATION_KEY, operation);
-            if (version != null && version > 0) {
-                map.put(SOURCE_VERSION_KEY, version);
-            }
-            if (requiresDiff()) {
-                map.put(JSONDiff.DIFF_VALUE_KEY, getDiff());
-            }
-            JSONObject changeJSON = Channel.serializeJSON(map);
-            return changeJSON.toString();
+        public Map<String,Object> getOrigin(){
+            return origin;
         }
-        /**
-         * The diff of the origin and target
-         */
-        private Map<String,Object> getDiff(){
-            JSONDiff jsondiff = new JSONDiff();
-            Map<String,Object> diff = jsondiff.diff(origin, target);
-            return (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
+        public Map<String,Object> getTarget(){
+            return target;
+        }
+        public String getOperation(){
+            return operation;
+        }
+        public Integer getVersion(){
+            return version;
         }
         /**
          * The change message requires a diff value in the JSON payload
@@ -737,14 +719,9 @@ public class Channel<T extends Bucket.Syncable> {
 
     }
     /**
-     * ChangeProcessor should perform operations on a seperate thread as to not block the websocket
-     * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
-     * We also need a way to pause and clear the queue when we download a new index.
+     * Encapsulates parsing and logic for remote changes
      */
-    private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable {
-        
-        // public static final Integer CAPACITY = 200;
-        
+    private static class RemoteChange {
         public static final String ID_KEY             = "id";
         public static final String CLIENT_KEY         = "clientid";
         public static final String ERROR_KEY          = "error";
@@ -754,6 +731,133 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String CHANGE_IDS_KEY     = "ccids";
         public static final String OPERATION_KEY      = JSONDiff.DIFF_OPERATION_KEY;
         public static final String VALUE_KEY          = JSONDiff.DIFF_VALUE_KEY;
+        public static final String OPERATION_MODIFY   = "M";
+        public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
+        
+        private String key;
+        private String clientid;
+        private List<String> ccids;
+        private Integer sourceVersion;
+        private Integer entityVersion;
+        private String changeVersion;
+        private String operation;
+        private Map<String,Object> value;
+        private Integer errorCode;
+        /**
+         * All remote changes include clientid, key and ccids then these differences:
+         * - errors have error key
+         * - changes with operation "-" do not have a value
+         * - changes with operation "M" have a v (value), ev (entity version) and if not a new object an sv (source version)
+         */
+        public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion, Integer sourceVersion, Integer entityVersion, String operation, Map<String,Object> value){
+            this.clientid = clientid;
+            this.key = key;
+            this.ccids = ccids;
+            this.sourceVersion = sourceVersion;
+            this.entityVersion = entityVersion;
+            this.operation = operation;
+            this.value = value;
+        }
+        
+        public RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
+            this.clientid = clientid;
+            this.key = key;
+            this.ccids = ccids;
+            this.errorCode = errorCode;
+        }
+        
+        public boolean isAcknowledgedBy(Change change){
+            return hasChangeId(change) && getClientId().equals(Simperium.CLIENT_ID);
+        }
+        
+        public boolean isError(){
+            return errorCode != null;
+        }
+        
+        public boolean isRemoveOperation(){
+            return operation.equals(OPERATION_REMOVE);
+        }
+        
+        public boolean isModifyOperation(){
+            return operation.equals(OPERATION_MODIFY);
+        }
+
+        public boolean isAddOperation(){
+            return isModifyOperation() && sourceVersion == null;
+        }
+        
+        public Integer getErrorCode(){
+            return errorCode;
+        }
+        
+        public boolean isNew(){
+            return !isError() && sourceVersion == null;
+        }
+        
+        public String getKey(){
+            return key;
+        }
+        
+        public String getClientId(){
+            return clientid;
+        }
+        
+        public Integer getSourceVersion(){
+            return sourceVersion;
+        }
+        
+        public Integer getObjectVersion(){
+            return entityVersion;
+        }
+        
+        public String getChangeVersion(){
+            return changeVersion;
+        }
+        
+        public Map<String,Object> getPatch(){
+            return value;
+        }
+        
+        public boolean hasChangeId(String ccid){
+            return ccids.contains(ccid);
+        }
+        
+        public boolean hasChangeId(Change change){
+            return hasChangeId(change.getChangeId());
+        }
+        
+        public static RemoteChange buildFromMap(Map<String,Object> changeData){
+            // get the list of ccids that this applies to
+            List<String> ccids = (List<String>)changeData.get(CHANGE_IDS_KEY);
+            // get the client id
+            String client_id = (String)changeData.get(CLIENT_KEY);
+            // get the id of the object it applies to
+            String id = (String)changeData.get(ID_KEY);
+            if (changeData.containsKey(ERROR_KEY)) {
+                Integer errorCode = (Integer)changeData.get(ERROR_KEY);
+                Simperium.log(String.format("Received error for change: %d", errorCode, changeData));
+                return new RemoteChange(client_id, id, ccids, errorCode);
+            }
+            String operation = (String)changeData.get(OPERATION_KEY);
+            Integer sourceVersion = (Integer)changeData.get(SOURCE_VERSION_KEY);
+            Integer objectVersion = (Integer)changeData.get(ENTITY_VERSION_KEY);
+            Map<String,Object> patch = (Map<String,Object>)changeData.get(VALUE_KEY);
+            String changeVersion = (String)changeData.get(CHANGE_VERSION_KEY);
+            
+            return new RemoteChange(client_id, id, ccids, changeVersion, sourceVersion, objectVersion, operation, patch);
+            
+        }
+        
+    }
+    /**
+     * ChangeProcessor should perform operations on a seperate thread as to not block the websocket
+     * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
+     * We also need a way to pause and clear the queue when we download a new index.
+     */
+    private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable {
+        
+        // public static final Integer CAPACITY = 200;
+        
                 
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
         
@@ -829,37 +933,31 @@ public class Channel<T extends Bucket.Syncable> {
         public void run(){
             // apply any remote changes we have
             synchronized(remoteQueue){
+                // bail if thread is interrupted
                 while(remoteQueue.size() > 0 && !Thread.interrupted()){
                     // take an item off the queue
-                    Map<String,Object> remoteChange = remoteQueue.remove(0);
-                    // get the list of ccids that this applies to
-                    List<String> ccids = (List<String>)remoteChange.get(CHANGE_IDS_KEY);
-                    // get the client id
-                    String client_id = (String)remoteChange.get(CLIENT_KEY);
-                    // get the id of the object it applies to
-                    String id = (String)remoteChange.get(ID_KEY);
-                    // TODO check for error here rebuild
+                    RemoteChange remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
                     Boolean acknowledged = false;
+                    // synchronizing on pendingChanges since we're looking up and potentially
+                    // removing an entry
                     synchronized(pendingChanges){
-                        Change change = pendingChanges.get(id);
-                        if (change != null && ccids.contains(change.getChangeId()) && client_id.equals(Simperium.CLIENT_ID)) {
+                        Change change = pendingChanges.get(remoteChange.getKey());
+                        if (change != null && remoteChange.isAcknowledgedBy(change)) {
                             // this is an ACK
-                            pendingChanges.remove(id);
-                            if (remoteChange.containsKey(ERROR_KEY)) {
-                                // figure out the error code
-                                Integer errorCode = (Integer) remoteChange.get(ERROR_KEY);
-                                // if retriable rebuild the change and put back on the change queue
-                                Simperium.log(String.format("Change error response! %d %s", errorCode, remoteChange));
-                                remoteChange = null;
+                            // stop the change from sending retries
+                            change.stopRetryTimer();
+                            // change is no longer pending so remove it
+                            pendingChanges.remove(change.getKey());
+                            if (remoteChange.isError()) {
+                                Simperium.log(String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
+                                // TODO: determine if we can retry this change by reapplying
                             } else {
-                                // change is acknowledged, cancel retry timer
-                                change.setAcknowledged();
-                                acknowledged = true;
+                                acknowledged = true;    
                             }
                         }
                     }
                     // apply the remote change
-                    performChange(remoteChange, acknowledged);
+                    applyRemoteChange(remoteChange, acknowledged);
                 }
             }
             // if we have a change to an object that is waiting for an ack
@@ -874,7 +972,7 @@ public class Channel<T extends Bucket.Syncable> {
                         if (pendingChanges.containsKey(localChange.getKey())) {
                             // we have a change for this key that has not been acked
                             // so send it later
-                            Simperium.log(String.format("Changes pending for %s re-queueing", localChange.getKey()));
+                            Simperium.log(String.format("Changes pending for %s re-queueing %s", localChange.getKey(), localChange.getChangeId()));
                             sendLater.add(localChange);
                             // let's get the next change
                         } else {
@@ -905,78 +1003,86 @@ public class Channel<T extends Bucket.Syncable> {
         
         private void sendChange(Change change){
             // send the change down the socket!
-            Simperium.log(String.format("Send local change: %s", change.getChangeId()));
-            sendMessage(String.format("c:%s", change.toString()));
-        }
-        
-        private void performChange(Map<String,Object> change){
-            performChange(change, false);
-        }
-        
-        private void performChange(Map<String,Object> change, Boolean acknowledged){
-            // Null sentinel for when remote changes are errors
-            final ChangeProcessorListener changeListener = listener;
-            
-            if (change == null) return;
-            if (change.containsKey(ERROR_KEY)) {
-                Integer errorCode = (Integer)change.get(ERROR_KEY);
-                Simperium.log(String.format("Received error for non-pending change: %d %s", errorCode, change));
+            if (!started) {
+                // channel is not initialized, don't send
+                Simperium.log(String.format("Abort sending change, channel not initialized: %s", change.getChangeId()));
                 return;
             }
-            final String objectKey = (String)change.get(ID_KEY);
-            String operation = (String)change.get(OPERATION_KEY);
+            Simperium.log(String.format("Send local change: %s", change.getChangeId()));
             
-            if (operation.equals(JSONDiff.OPERATION_REMOVE)) {
-                // TODO: remove any local queued changes for this object
+            Map<String,Object> map = new HashMap<String,Object>(3);
+            map.put(Change.ID_KEY, change.getKey());
+            map.put(Change.CHANGE_ID_KEY, change.getChangeId());
+            map.put(JSONDiff.DIFF_OPERATION_KEY, change.getOperation());
+            Integer version = change.getVersion();
+            if (version != null && version > 0) {
+                map.put(Change.SOURCE_VERSION_KEY, version);
+            }
+            
+            if (change.requiresDiff()) {
+                Map<String,Object> diff = jsondiff.diff(change.getOrigin(), change.getTarget());
+                Map<String,Object> patch = (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
+                map.put(JSONDiff.DIFF_VALUE_KEY, patch);
+            }
+            JSONObject changeJSON = Channel.serializeJSON(map);
+            
+            sendMessage(String.format("c:%s", changeJSON.toString()));
+        }
+        
+        private void applyRemoteChange(final RemoteChange change, final Boolean acknowledged){
+            final ChangeProcessorListener changeListener = listener;
+            if (change == null) return;
+            //TODO: error responses that can be retried should be retired here?
+            if (change.isError()) return;
+            // Remove operation, only notify if it's not an ACK
+            if (change.isRemoveOperation()) {
+                // TODO: remove any locally queued changes for this object?
                 if (!acknowledged) {
-                    this.handler.post(new Runnable(){
+                    handler.post(new Runnable(){
                         public void run(){
-                            changeListener.onRemoveObject(objectKey);
+                            changeListener.onRemoveObject(change.getKey());
                         }
                     });
                 }
                 return;
             }
-            
-            Integer sourceVersion = (Integer)change.get(SOURCE_VERSION_KEY);
-            Integer objectVersion = (Integer)change.get(ENTITY_VERSION_KEY);
             T object;
-            if (null == sourceVersion) {
-                // this is a new object
-                object = bucket.buildObject(objectKey);
+            if (change.isAddOperation()) {
+                object = bucket.buildObject(change.getKey());
             } else {
-                object = bucket.get(objectKey);
+                object = bucket.get(change.getKey());
                 if (null == object) {
-                   Simperium.log(String.format("Local object missing: %s", objectKey));
+                   Simperium.log(String.format("Local object missing: %s", change.getKey()));
                    return;
                 }
                 // we need to check if we have the correct version
                 // TODO: handle how to sync if source version doesn't match local object
-                if (!sourceVersion.equals(object.getVersion())) {
-                    Simperium.log(String.format("Local version %d of object does not match sv: %s %d", object.getVersion(), objectKey, sourceVersion));
+                if (!change.getSourceVersion().equals(object.getVersion())) {
+                    Simperium.log(String.format("Local version %d of object does not match sv: %s %d", object.getVersion(), change.getKey(), change.getSourceVersion()));
                     return;
                 }
             }
-            // now we need to apply changes and create a new object?
-            Map<String,Object> patch = (Map<String,Object>)change.get(VALUE_KEY);
-            final String changeVersion = (String)change.get(CHANGE_VERSION_KEY);
             
             // construct the new object
-            final T updated = bucket.buildObject(objectKey, objectVersion, jsondiff.apply(object.getUnmodifiedValue(), patch));
+            final T updated = bucket.buildObject(
+                change.getKey(),
+                change.getObjectVersion(),
+                jsondiff.apply(object.getUnmodifiedValue(), change.getPatch())
+            );
             // notify the listener
             final boolean isNew = object.isNew() && !acknowledged;
             this.handler.post(new Runnable(){
                 public void run(){
                     if(isNew){
-                        changeListener.onAddObject(changeVersion, objectKey, updated);
+                        changeListener.onAddObject(change.getChangeVersion(), change.getKey(), updated);
                     } else {
-                        changeListener.onUpdateObject(changeVersion, objectKey, updated);
+                        changeListener.onUpdateObject(change.getChangeVersion(), change.getKey(), updated);
                     }
                 }
             });
             
         }
-        
+
     }
     
     public static Map<String,Object> convertJSON(JSONObject json){
