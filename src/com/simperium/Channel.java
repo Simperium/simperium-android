@@ -970,13 +970,13 @@ public class Channel<T extends Bucket.Syncable> {
         
     }
     
-    public static Map<String,java.lang.Object> convertJSON(JSONObject json){
-        Map<String,java.lang.Object> map = new HashMap<String,java.lang.Object>(json.length());
+    public static Map<String,Object> convertJSON(JSONObject json){
+        Map<String,Object> map = new HashMap<String,Object>(json.length());
         Iterator keys = json.keys();
         while(keys.hasNext()){
             String key = (String)keys.next();
             try {
-                java.lang.Object val = json.get(key);
+                Object val = json.get(key);
                 // log(String.format("Hello! %s", json.get(key).getClass().getName()));
                 if (val.getClass().equals(JSONObject.class)) {
                     map.put(key, convertJSON((JSONObject) val));
@@ -992,11 +992,11 @@ public class Channel<T extends Bucket.Syncable> {
         return map;
     }
     
-    public static List<java.lang.Object> convertJSON(JSONArray json){
-        List<java.lang.Object> list = new ArrayList<java.lang.Object>(json.length());
+    public static List<Object> convertJSON(JSONArray json){
+        List<Object> list = new ArrayList<Object>(json.length());
         for (int i=0; i<json.length(); i++) {
             try {
-                java.lang.Object val = json.get(i);
+                Object val = json.get(i);
                 if (val.getClass().equals(JSONObject.class)) {
                     list.add(convertJSON((JSONObject) val));
                 } else if (val.getClass().equals(JSONArray.class)) {
