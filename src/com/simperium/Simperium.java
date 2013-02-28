@@ -22,7 +22,7 @@ import java.util.UUID;
 
 public class Simperium implements User.AuthenticationListener {
 
-    public static final String HTTP_USER_AGENT = "android-1.0";
+    public static final String CLIENT_ID = "android-1.0";
     public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     private String appId;
@@ -47,7 +47,7 @@ public class Simperium implements User.AuthenticationListener {
         this.appSecret = appSecret;
         this.context = context;
         httpClient = new AsyncHttpClient();
-        httpClient.setUserAgent(HTTP_USER_AGENT);
+        httpClient.setUserAgent(Simperium.CLIENT_ID);
         authClient = new AuthHttpClient(appId, appSecret, httpClient);
         socketManager = new WebSocketManager(appId);
         this.authenticationListener = authenticationListener;

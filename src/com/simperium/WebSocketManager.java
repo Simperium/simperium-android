@@ -48,7 +48,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         this.appId = appId;
         
         List<BasicNameValuePair> headers = Arrays.asList(
-            new BasicNameValuePair(USER_AGENT_HEADER, Simperium.HTTP_USER_AGENT)
+            new BasicNameValuePair(USER_AGENT_HEADER, Simperium.CLIENT_ID)
         );
         socketClient = new WebSocketClient(URI.create(WEBSOCKET_URL), this, headers);
     }

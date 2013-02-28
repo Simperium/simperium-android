@@ -282,7 +282,7 @@ public class Channel<T extends Bucket.Syncable> {
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(6);
         init.put(FIELD_API_VERSION, 1);
-        init.put(FIELD_CLIENT_ID, Simperium.HTTP_USER_AGENT);
+        init.put(FIELD_CLIENT_ID, Simperium.CLIENT_ID);
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, user.getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
