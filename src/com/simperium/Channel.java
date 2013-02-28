@@ -743,6 +743,7 @@ public class Channel<T extends Bucket.Syncable> {
         
         public static final String ID_KEY             = "id";
         public static final String CLIENT_KEY         = "clientid";
+        public static final String ERROR_KEY          = "error";
         public static final String ENTITY_VERSION_KEY = "ev";
         public static final String SOURCE_VERSION_KEY = "sv";
         public static final String CHANGE_VERSION_KEY = "cv";
@@ -750,6 +751,8 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String OPERATION_KEY      = JSONDiff.DIFF_OPERATION_KEY;
         public static final String VALUE_KEY          = JSONDiff.DIFF_VALUE_KEY;
                 
+        public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
+        
         private Bucket<T> bucket;
         private JSONDiff diff = new JSONDiff();
         private ChangeProcessorListener listener;
@@ -757,14 +760,19 @@ public class Channel<T extends Bucket.Syncable> {
         // private ArrayBlockingQueue<Map<String,Object>> queue;
         private List<Map<String,Object>> remoteQueue;
         private List<Change> localQueue;
+        private Map<String,Change> pendingChanges;
         private Handler handler;
+        private Change pendingChange;
+        private Timer retryTimer;
         
         public ChangeProcessor(Bucket<T> bucket, ChangeProcessorListener<T> listener) {
             this.bucket = bucket;
             this.listener = listener;
             this.remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>());
             this.localQueue = Collections.synchronizedList(new ArrayList<Change>());
+            this.pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
             this.handler = new Handler();
+            this.retryTimer = new Timer();
         }
         
         public void addChanges(List<Object> changes){
@@ -795,35 +803,6 @@ public class Channel<T extends Bucket.Syncable> {
             }
         }
         
-        public void run(){
-            // take an item off the queue
-            Map<String,Object> remoteChange;
-            do {
-                remoteChange = null;
-                synchronized(remoteQueue){
-                    if (remoteQueue.size() > 0) {
-                        remoteChange = remoteQueue.remove(0);
-                    }
-                }
-                if (remoteChange != null){
-                    performChange(remoteChange);
-                }
-            } while (remoteChange != null && !Thread.interrupted());
-            Change localChange;
-            do {
-                localChange = null;
-                synchronized(localQueue){
-                    if (localQueue.size() > 0) {
-                        localChange = localQueue.remove(0);
-                    }
-                }
-                if(localChange != null){
-                    sendChange(localChange);
-                }
-            } while (localChange != null && !Thread.interrupted());
-            Simperium.log(String.format("Done processing thread with %d remote and %d local changes", remoteQueue.size(), localQueue.size()));
-        }
-        
         public void stop(){
             // interrupt the thread
             if (this.thread != null) {
@@ -836,22 +815,117 @@ public class Channel<T extends Bucket.Syncable> {
             this.remoteQueue.clear();
             this.localQueue.clear();
         }
-
+        
+        
+        public void run(){
+            // apply any remote changes we have
+            synchronized(remoteQueue){
+                while(remoteQueue.size() > 0 && !Thread.interrupted()){
+                    // take an item off the queue
+                    Map<String,Object> remoteChange = remoteQueue.remove(0);
+                    // get the list of ccids that this applies to
+                    List<String> ccids = (List<String>)remoteChange.get(CHANGE_IDS_KEY);
+                    // get the client id
+                    String client_id = (String)remoteChange.get(CLIENT_KEY);
+                    // get the id of the object it applies to
+                    String id = (String)remoteChange.get(ID_KEY);
+                    // TODO check for error here rebuild
+                    Boolean acknowledged = false;
+                    synchronized(pendingChanges){
+                        Change change = pendingChanges.get(id);
+                        if (change != null && ccids.contains(change.getChangeId()) && client_id.equals(Simperium.CLIENT_ID)) {
+                            // this is an ACK
+                            pendingChanges.remove(id);
+                            if (remoteChange.containsKey(ERROR_KEY)) {
+                                // figure out the error code
+                                Integer errorCode = (Integer) remoteChange.get(ERROR_KEY);
+                                // if retriable rebuild the change and put back on the change queue
+                                Simperium.log(String.format("Change error response! %d %s", errorCode, remoteChange));
+                                remoteChange = null;
+                            } else {
+                                // change is acknowledged, cancel retry timer
+                                change.setAcknowledged();
+                                acknowledged = true;
+                            }
+                        }
+                    }
+                    // apply the remote change
+                    performChange(remoteChange, acknowledged);
+                }
+            }
+            // if we have a change to an object that is waiting for an ack
+            final List<Change> sendLater = new ArrayList<Change>();
+            synchronized(localQueue){
+                // find the first local change whose key does not exist in the pendingChanges
+                while(localQueue.size() > 0 && !Thread.interrupted()){
+                    // take the first change of the queue
+                    Change localChange = localQueue.remove(0);
+                    synchronized(pendingChanges){
+                        // check if there's a pending change with the same key
+                        if (pendingChanges.containsKey(localChange.getKey())) {
+                            // we have a change for this key that has not been acked
+                            // so send it later
+                            Simperium.log(String.format("Changes pending for %s re-queueing", localChange.getKey()));
+                            sendLater.add(localChange);
+                            // let's get the next change
+                        } else {
+                            // add the change to pending changes
+                            pendingChanges.put(localChange.getKey(), localChange);
+                            // send the change to simperium
+                            sendChange(localChange);
+                            localChange.setOnChangeRetryListener( new OnChangeRetryListener(){
+                                public void onRetry(Change change){
+                                    sendChange(change);
+                                }
+                            });
+                            // starts up the timer
+                            this.retryTimer.scheduleAtFixedRate(localChange, RETRY_DELAY_MS, RETRY_DELAY_MS);
+                        }
+                    }
+                }
+            }
+            // add the sendLater changes back on top of the queue
+            localQueue.addAll(0, sendLater);
+            Simperium.log(
+                String.format(
+                    "Done processing thread with %d remote and %d local changes %d pending",
+                    remoteQueue.size(), localQueue.size(), pendingChanges.size()
+                )
+            );
+        }
+        
         private void sendChange(Change change){
             // send the change down the socket!
-            Simperium.log(String.format("Send local change: %s", change));
+            Simperium.log(String.format("Send local change: %s", change.getChangeId()));
             sendMessage(String.format("c:%s", change.toString()));
         }
         
         private void performChange(Map<String,Object> change){
+            performChange(change, false);
+        }
+        
+        private void performChange(Map<String,Object> change, Boolean acknowledged){
+            // Null sentinel for when remote changes are errors
+            final ChangeProcessorListener changeListener = listener;
             
-            String objectKey = (String)change.get(ID_KEY);
+            if (change == null) return;
+            if (change.containsKey(ERROR_KEY)) {
+                Integer errorCode = (Integer)change.get(ERROR_KEY);
+                Simperium.log(String.format("Received error for non-pending change: %d %s", errorCode, change));
+                return;
+            }
+            final String objectKey = (String)change.get(ID_KEY);
             String operation = (String)change.get(OPERATION_KEY);
             
             if (operation.equals(JSONDiff.OPERATION_REMOVE)) {
-                // TODO: remove any local pending changes for this object
-                // TODO: if this isn't an ack then tell bucket to remove the item
-                Simperium.log(String.format("Remove local version: %s", operation));
+                // TODO: remove any local queued changes for this object
+                if (!acknowledged) {
+                    this.handler.post(new Runnable(){
+                        public void run(){
+                            changeListener.onRemoveObject(objectKey);
+                        }
+                    });
+                }
                 return;
             }
             
@@ -881,14 +955,13 @@ public class Channel<T extends Bucket.Syncable> {
             // construct the new object
             final T updated = bucket.buildObject(objectKey, objectVersion, jsondiff.apply(object.getUnmodifiedValue(), patch));
             // notify the listener
-            final ChangeProcessorListener changeListener = listener;
-            final boolean isNew = object.isNew();
+            final boolean isNew = object.isNew() && !acknowledged;
             this.handler.post(new Runnable(){
                 public void run(){
                     if(isNew){
-                        changeListener.onAddObject(changeVersion, updated);
+                        changeListener.onAddObject(changeVersion, objectKey, updated);
                     } else {
-                        changeListener.onUpdateObject(changeVersion, updated);
+                        changeListener.onUpdateObject(changeVersion, objectKey, updated);
                     }
                 }
             });
