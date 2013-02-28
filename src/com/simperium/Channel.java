@@ -2,8 +2,8 @@
  * When a Bucket is created Simperium creates a Channel to sync changes between
  * a Bucket and simperium.com.
  *
- * TODO: instead of notifying the bucket about each individual item, there should be 
- * a single event for when there's a "re-index" or after performing all changes in a 
+ * TODO: instead of notifying the bucket about each individual item, there should be
+ * a single event for when there's a "re-index" or after performing all changes in a
  * change operation.
  *
  */
@@ -48,7 +48,7 @@ public class Channel<T extends Bucket.Syncable> {
     static final String COMMAND_CHANGE    = "c";
     static final String COMMAND_VERSION   = "cv";
     static final String COMMAND_ENTITY    = "e";
-    
+
     static final String RESPONSE_UNKNOWN  = "?";
 
     static final String EXPIRED_AUTH      = "expired"; // after unsuccessful init:
@@ -75,11 +75,11 @@ public class Channel<T extends Bucket.Syncable> {
     private CommandInvoker commands = new CommandInvoker();
     private String appId;
 	private JSONDiff jsondiff = new JSONDiff();
-    
+
     // for sending and receiving changes
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
-    
+
     public Channel(String appId, final Bucket<T> bucket, User user, Listener listener){
         this.appId = appId;
         this.bucket = bucket;
@@ -92,7 +92,7 @@ public class Channel<T extends Bucket.Syncable> {
                     getUser().setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
                     return;
                 }
-                // This is handled by cmd in init: message 
+                // This is handled by cmd in init: message
                 // if(hasLastChangeSignature()){
                 //     startProcessingChanges();
                 // } else {
@@ -118,7 +118,7 @@ public class Channel<T extends Bucket.Syncable> {
                 handleVersionResponse(param);
             }
         });
-        
+
         changeProcessor = new ChangeProcessor<T>(getBucket(), new ChangeProcessorListener<T>(){
             public void onComplete(){
             }
@@ -133,19 +133,19 @@ public class Channel<T extends Bucket.Syncable> {
             }
         });
     }
-            
+
     private boolean hasChangeVersion(){
         return bucket.hasChangeVersion();
     }
-    
+
     private String getChangeVersion(){
         return bucket.getChangeVersion();
     }
-    
+
     private void startProcessingChanges(){
         // TODO: send local changes?
     }
-    
+
     private void getLatestVersions(){
         // TODO: should local changes still be stored?
         // abort any remote and local changes since we're getting new data
@@ -165,22 +165,22 @@ public class Channel<T extends Bucket.Syncable> {
 
         Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumId(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());
         changeProcessor.addChange(change);
-        
+
     }
-    
+
     protected void queueLocalDeletion(T object){
         Change change = new Change(Change.OPERATION_REMOVE, object.getSimperiumId());
         changeProcessor.addChange(change);
     }
-    
+
     protected void queueLocalChange(List<T> objects){
         // queue up a bunch of changes
     }
-    
+
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
     private static final String INDEX_VERSIONS_KEY = "index";
     private static final String INDEX_MARK_KEY = "mark";
-    
+
     private void updateIndex(String indexJson){
         // if we don't have an index processor, create a new one for the associated cv
         // listen for when the index processor is done so we can start the changeprocessor again
@@ -213,7 +213,7 @@ public class Channel<T extends Bucket.Syncable> {
                 changeProcessor.start();
                 return;
             }
-            
+
             indexProcessor = new IndexProcessor(getBucket(), currentIndex, new IndexProcessorListener(){
                 public void onComplete(String cv){
                     Simperium.log(String.format("Finished downloading index %s", cv));
@@ -226,7 +226,7 @@ public class Channel<T extends Bucket.Syncable> {
         }
 
     }
-    
+
     private void handleRemoteChanges(String changesJson){
         JSONArray changes;
         if (changesJson.equals(RESPONSE_UNKNOWN)) {
@@ -246,7 +246,7 @@ public class Channel<T extends Bucket.Syncable> {
         changeProcessor.addChanges(changeList);
         Simperium.log(String.format("Received %d change(s)", changes.length()));
     }
-    
+
     private static final String ENTITY_DATA_KEY = "data";
     private void handleVersionResponse(String versionData){
         // versionData will be: key.version\n{"data":ENTITY}
@@ -254,14 +254,14 @@ public class Channel<T extends Bucket.Syncable> {
         // retrieve the data
         if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
           Simperium.log(String.format("Unkown Object for index: %s", versionData));
-        } 
+        }
 
     }
-    
+
     public Bucket getBucket(){
         return bucket;
     }
-    
+
     public User getUser(){
         return user;
     }
@@ -301,12 +301,12 @@ public class Channel<T extends Bucket.Syncable> {
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
         sendMessage(message);
     }
-    // websocket 
+    // websocket
     protected void onConnect(){
         connected = true;
         if(startOnConnect) start();
     }
-    
+
     protected void onDisconnect(){
         changeProcessor.stop();
         connected = false;
@@ -320,18 +320,18 @@ public class Channel<T extends Bucket.Syncable> {
         // parse the message and react to it
         String[] parts = message.split(":", MESSAGE_PARTS);
         String command = parts[COMMAND_PART];
-        
+
         run(command, parts[1]);
-        
+
     }
-    
+
     // send without the channel id, the socket manager should know which channel is writing
     private void sendMessage(String message){
         // send a message
         MessageEvent event = new MessageEvent(this, message);
         emit(event);
     }
-    
+
     private void emit(MessageEvent event){
         if (listener != null) {
             listener.onMessage(event);
@@ -339,38 +339,38 @@ public class Channel<T extends Bucket.Syncable> {
             Simperium.log(String.format("No one listening to channel %s", this));
         }
     }
-    
+
     public static class MessageEvent extends EventObject {
-        
+
         public String message;
-        
+
         public MessageEvent(Channel source, String message){
             super(source);
             this.message = message;
         }
-        
+
         public String getMessage(){
             return message;
         }
-        
+
         public String toString(){
             return getMessage();
         }
-        
+
     }
-    
+
     private void command(String name, Command command){
         commands.add(name, command);
     }
-    
+
     private void run(String name, String params){
         commands.run(name, params);
     }
-    
+
     public interface Listener {
         void onMessage(MessageEvent event);
     }
-    
+
     /**
      * Command and CommandInvoker provide a declaritive syntax for handling commands that come in
      * from Channel.onMessage. Takes a message like "auth:user@example.com" and finds the correct
@@ -386,10 +386,10 @@ public class Channel<T extends Bucket.Syncable> {
     private interface Command {
         void run(String params);
     }
-    
+
     private class CommandInvoker {
         private HashMap<String,Command> commands = new HashMap<String,Command>();
-        
+
         protected CommandInvoker add(String name, Command command){
             commands.put(name, command);
             return this;
@@ -403,7 +403,7 @@ public class Channel<T extends Bucket.Syncable> {
             }
         }
     }
-    
+
     static final String CURSOR_FORMAT = "%s::%s::%s";
     static final String QUERY_DELIMITER = ":";
     // static final Integer INDEX_MARK = 2;
@@ -413,20 +413,20 @@ public class Channel<T extends Bucket.Syncable> {
      * TODO: add a way to build an IndexQuery from an index response
      */
     private class IndexQuery {
-        
+
         private String mark = "";
         private Integer limit = INDEX_PAGE_SIZE;
-        
+
         public IndexQuery(){};
-        
+
         public IndexQuery(String mark){
             this(mark, INDEX_PAGE_SIZE);
         }
-        
+
         public IndexQuery(Integer limit){
             this.limit = limit;
         }
-        
+
         public IndexQuery(String mark, Integer limit){
             this.mark = mark;
             this.limit = limit;
@@ -439,18 +439,18 @@ public class Channel<T extends Bucket.Syncable> {
             }
             return String.format(CURSOR_FORMAT, COMMAND_INDEX, mark, limitString);
         }
-        
+
     }
-    
+
     private class ObjectVersion {
         private String key;
         private Integer version;
-        
+
         public ObjectVersion(String key, Integer version){
             this.key = key;
             this.version = version;
         }
-        
+
         public String toString(){
             return String.format("%s.%d", key, version);
         }
@@ -463,29 +463,29 @@ public class Channel<T extends Bucket.Syncable> {
      * The IndexProcessor then receives the object data and on a seperate thread asks
      * the StorageProvider to persist the object data. The storageProvider's operation
      * should not block the websocket thread in any way.
-     * 
+     *
      * Build up a list of entities and versions we need for the index. Allow the
      * channel to pass in the version data
      */
     private class IndexProcessor {
-        
+
         public static final String INDEX_OBJECT_ID_KEY = "id";
         public static final String INDEX_OBJECT_VERSION_KEY = "v";
-        
+
         final private String cv;
         final private Bucket bucket;
         private List<String> index = Collections.synchronizedList(new ArrayList<String>());
         private boolean complete = false;
         private Handler handler;
         final private IndexProcessorListener listener;
-        
+
         public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener){
             this.bucket = bucket;
             this.cv = cv;
             this.listener = listener;
         }
         public Boolean addObjectData(String versionData){
-            
+
             String[] objectParts = versionData.split("\n");
             String prefix = objectParts[0];
             int lastDot = prefix.lastIndexOf(".");
@@ -496,12 +496,12 @@ public class Channel<T extends Bucket.Syncable> {
             String key = prefix.substring(0, lastDot);
             String version = prefix.substring(lastDot + 1);
             String payload = objectParts[1];
-            
+
             if (payload.equals(RESPONSE_UNKNOWN)) {
                 Simperium.log(String.format("Object unkown to simperium: %s.%s", key, version));
                 return false;
             }
-            
+
             ObjectVersion objectVersion = new ObjectVersion(key, Integer.parseInt(version));
             synchronized(index){
                 if(!index.remove(objectVersion.toString())){
@@ -510,7 +510,7 @@ public class Channel<T extends Bucket.Syncable> {
                 }
             }
             Simperium.log(String.format("We were waiting for %s.%s", key, version));
-            
+
             JSONObject data = null;
             try {
                 JSONObject payloadJSON = new JSONObject(payload);
@@ -519,11 +519,11 @@ public class Channel<T extends Bucket.Syncable> {
                 Simperium.log("Failed to parse object JSON", e);
                 return false;
             }
-        
+
             Integer remoteVersion = Integer.parseInt(version);
             Map<String,Object> properties = Channel.convertJSON(data);
             T object = (T)bucket.buildObject(key, remoteVersion, properties);
-        
+
             if (bucket.containsKey(key)) {
                 // check if we have local changes pending?
                 bucket.updateObject(object);
@@ -532,11 +532,11 @@ public class Channel<T extends Bucket.Syncable> {
                 // add the bucket object to the bucket
                 bucket.addObject(object);
             }
-            
+
             if (complete && index.size() == 0) {
                 notifyDone();
             }
-            
+
             return true;
         }
         /**
@@ -544,7 +544,7 @@ public class Channel<T extends Bucket.Syncable> {
          * last page due to absence of cursor mark
          */
         public Boolean addIndexPage(JSONObject indexPage){
-            
+
             String currentIndex;
             try {
                 currentIndex = indexPage.getString(INDEX_CURRENT_VERSION_KEY);
@@ -552,11 +552,11 @@ public class Channel<T extends Bucket.Syncable> {
                 Simperium.log("Index did not have current version");
                 return false;
             }
-            
+
             if (!currentIndex.equals(cv)) {
                 return false;
             }
-            
+
             JSONArray indexVersions;
             try {
                 indexVersions = indexPage.getJSONArray(INDEX_VERSIONS_KEY);
@@ -582,15 +582,15 @@ public class Channel<T extends Bucket.Syncable> {
                         } else {
                             Simperium.log(String.format("Object is up to date: %s", version));
                         }
-                
+
                     } catch (JSONException e) {
                         Simperium.log(String.format("Error processing index: %d", i), e);
                     }
-            
+
                 }
 
             }
-            // 
+            //
             String nextMark = null;
             if (indexPage.has(INDEX_MARK_KEY)) {
                 try {
@@ -599,14 +599,14 @@ public class Channel<T extends Bucket.Syncable> {
                     nextMark = null;
                 }
             }
-        
+
             if (nextMark != null && nextMark.length() > 0) {
                 IndexQuery nextQuery = new IndexQuery(nextMark);
                 sendMessage(nextQuery.toString());
             } else {
                 setComplete();
             }
-            
+
             return true;
         }
         /**
@@ -621,14 +621,14 @@ public class Channel<T extends Bucket.Syncable> {
                 notifyDone();
             }
         }
-        
+
         private void notifyDone(){
             bucket.setChangeVersion(cv);
             listener.onComplete(cv);
         }
-                
+
     }
-    
+
     private interface ChangeProcessorListener<T extends Bucket.Syncable> {
         /**
          * Change has been applied.
@@ -641,7 +641,7 @@ public class Channel<T extends Bucket.Syncable> {
          */
         void onComplete();
     }
-    
+
     public interface OnChangeRetryListener {
         public void onRetry(Change change);
     }
@@ -653,17 +653,17 @@ public class Channel<T extends Bucket.Syncable> {
         private Map<String,Object> target;
         private String ccid;
         private OnChangeRetryListener listener;
-        
+
         public static final String OPERATION_MODIFY   = "M";
         public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
         public static final String ID_KEY             = "id";
         public static final String CHANGE_ID_KEY      = "ccid";
         public static final String SOURCE_VERSION_KEY = "sv";
-        
+
         public Change(String operation, String key){
             this(operation, key, null, null, null);
         }
-        
+
         public Change(String operation, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
             super();
             this.operation = operation;
@@ -733,7 +733,7 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String VALUE_KEY          = JSONDiff.DIFF_VALUE_KEY;
         public static final String OPERATION_MODIFY   = "M";
         public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
-        
+
         private String key;
         private String clientid;
         private List<String> ccids;
@@ -758,26 +758,26 @@ public class Channel<T extends Bucket.Syncable> {
             this.operation = operation;
             this.value = value;
         }
-        
+
         public RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
             this.clientid = clientid;
             this.key = key;
             this.ccids = ccids;
             this.errorCode = errorCode;
         }
-        
+
         public boolean isAcknowledgedBy(Change change){
             return hasChangeId(change) && getClientId().equals(Simperium.CLIENT_ID);
         }
-        
+
         public boolean isError(){
             return errorCode != null;
         }
-        
+
         public boolean isRemoveOperation(){
             return operation.equals(OPERATION_REMOVE);
         }
-        
+
         public boolean isModifyOperation(){
             return operation.equals(OPERATION_MODIFY);
         }
@@ -785,47 +785,47 @@ public class Channel<T extends Bucket.Syncable> {
         public boolean isAddOperation(){
             return isModifyOperation() && sourceVersion == null;
         }
-        
+
         public Integer getErrorCode(){
             return errorCode;
         }
-        
+
         public boolean isNew(){
             return !isError() && sourceVersion == null;
         }
-        
+
         public String getKey(){
             return key;
         }
-        
+
         public String getClientId(){
             return clientid;
         }
-        
+
         public Integer getSourceVersion(){
             return sourceVersion;
         }
-        
+
         public Integer getObjectVersion(){
             return entityVersion;
         }
-        
+
         public String getChangeVersion(){
             return changeVersion;
         }
-        
+
         public Map<String,Object> getPatch(){
             return value;
         }
-        
+
         public boolean hasChangeId(String ccid){
             return ccids.contains(ccid);
         }
-        
+
         public boolean hasChangeId(Change change){
             return hasChangeId(change.getChangeId());
         }
-        
+
         public static RemoteChange buildFromMap(Map<String,Object> changeData){
             // get the list of ccids that this applies to
             List<String> ccids = (List<String>)changeData.get(CHANGE_IDS_KEY);
@@ -843,11 +843,11 @@ public class Channel<T extends Bucket.Syncable> {
             Integer objectVersion = (Integer)changeData.get(ENTITY_VERSION_KEY);
             Map<String,Object> patch = (Map<String,Object>)changeData.get(VALUE_KEY);
             String changeVersion = (String)changeData.get(CHANGE_VERSION_KEY);
-            
+
             return new RemoteChange(client_id, id, ccids, changeVersion, sourceVersion, objectVersion, operation, patch);
-            
+
         }
-        
+
     }
     /**
      * ChangeProcessor should perform operations on a seperate thread as to not block the websocket
@@ -855,12 +855,12 @@ public class Channel<T extends Bucket.Syncable> {
      * We also need a way to pause and clear the queue when we download a new index.
      */
     private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable {
-        
+
         // public static final Integer CAPACITY = 200;
-        
-                
+
+
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
-        
+
         private Bucket<T> bucket;
         private JSONDiff diff = new JSONDiff();
         private ChangeProcessorListener listener;
@@ -872,7 +872,7 @@ public class Channel<T extends Bucket.Syncable> {
         private Handler handler;
         private Change pendingChange;
         private Timer retryTimer;
-        
+
         public ChangeProcessor(Bucket<T> bucket, ChangeProcessorListener<T> listener) {
             this.bucket = bucket;
             this.listener = listener;
@@ -882,7 +882,7 @@ public class Channel<T extends Bucket.Syncable> {
             this.handler = new Handler();
             this.retryTimer = new Timer();
         }
-        
+
         public void addChanges(List<Object> changes){
             Iterator iterator = changes.iterator();
             while(iterator.hasNext()){
@@ -890,7 +890,7 @@ public class Channel<T extends Bucket.Syncable> {
             }
             start();
         }
-        
+
         public void addChange(Map<String,Object> change){
             remoteQueue.add(change);
             start();
@@ -902,7 +902,7 @@ public class Channel<T extends Bucket.Syncable> {
             localQueue.add(change);
             start();
         }
-        
+
         public void start(){
             if (thread == null || thread.getState() == Thread.State.TERMINATED) {
                 Simperium.log("Starting up the change processor");
@@ -910,26 +910,26 @@ public class Channel<T extends Bucket.Syncable> {
                 thread.start();
             }
         }
-        
+
         public void stop(){
             // interrupt the thread
             if (this.thread != null) {
-                this.thread.interrupt();                
+                this.thread.interrupt();
             }
         }
-        
+
         protected void clear(){
             this.pendingChanges.clear();
             this.remoteQueue.clear();
             this.localQueue.clear();
         }
-        
+
         protected void abort(){
             clear();
             stop();
         }
-        
-        
+
+
         public void run(){
             // apply any remote changes we have
             synchronized(remoteQueue){
@@ -952,7 +952,7 @@ public class Channel<T extends Bucket.Syncable> {
                                 Simperium.log(String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
                                 // TODO: determine if we can retry this change by reapplying
                             } else {
-                                acknowledged = true;    
+                                acknowledged = true;
                             }
                         }
                     }
@@ -1000,7 +1000,7 @@ public class Channel<T extends Bucket.Syncable> {
                 )
             );
         }
-        
+
         private void sendChange(Change change){
             // send the change down the socket!
             if (!started) {
@@ -1009,7 +1009,7 @@ public class Channel<T extends Bucket.Syncable> {
                 return;
             }
             Simperium.log(String.format("Send local change: %s", change.getChangeId()));
-            
+
             Map<String,Object> map = new HashMap<String,Object>(3);
             map.put(Change.ID_KEY, change.getKey());
             map.put(Change.CHANGE_ID_KEY, change.getChangeId());
@@ -1018,17 +1018,17 @@ public class Channel<T extends Bucket.Syncable> {
             if (version != null && version > 0) {
                 map.put(Change.SOURCE_VERSION_KEY, version);
             }
-            
+
             if (change.requiresDiff()) {
                 Map<String,Object> diff = jsondiff.diff(change.getOrigin(), change.getTarget());
                 Map<String,Object> patch = (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
                 map.put(JSONDiff.DIFF_VALUE_KEY, patch);
             }
             JSONObject changeJSON = Channel.serializeJSON(map);
-            
+
             sendMessage(String.format("c:%s", changeJSON.toString()));
         }
-        
+
         private void applyRemoteChange(final RemoteChange change, final Boolean acknowledged){
             final ChangeProcessorListener changeListener = listener;
             if (change == null) return;
@@ -1062,7 +1062,7 @@ public class Channel<T extends Bucket.Syncable> {
                     return;
                 }
             }
-            
+
             // construct the new object
             final T updated = bucket.buildObject(
                 change.getKey(),
@@ -1080,11 +1080,11 @@ public class Channel<T extends Bucket.Syncable> {
                     }
                 }
             });
-            
+
         }
 
     }
-    
+
     public static Map<String,Object> convertJSON(JSONObject json){
         Map<String,Object> map = new HashMap<String,Object>(json.length());
         Iterator keys = json.keys();
@@ -1106,7 +1106,7 @@ public class Channel<T extends Bucket.Syncable> {
         }
         return map;
     }
-    
+
     public static List<Object> convertJSON(JSONArray json){
         List<Object> list = new ArrayList<Object>(json.length());
         for (int i=0; i<json.length(); i++) {
@@ -1126,7 +1126,7 @@ public class Channel<T extends Bucket.Syncable> {
         }
         return list;
     }
-        
+
     public static JSONObject serializeJSON(Map<String,Object>map){
         JSONObject json = new JSONObject();
         Iterator<String> keys = map.keySet().iterator();
@@ -1147,7 +1147,7 @@ public class Channel<T extends Bucket.Syncable> {
         }
         return json;
     }
-    
+
     public static JSONArray serializeJSON(List<Object>list){
         JSONArray json = new JSONArray();
         Iterator<Object> vals = list.iterator();
@@ -1163,5 +1163,5 @@ public class Channel<T extends Bucket.Syncable> {
         }
         return json;
     }
-    
+
 }

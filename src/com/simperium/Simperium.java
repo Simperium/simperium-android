@@ -26,7 +26,7 @@ import java.util.Properties;
 import android.content.res.Resources;
 
 public class Simperium implements User.AuthenticationListener {
-    
+
     public static final String VERSION = "duo-beta";
     public static final String CLIENT_ID = String.format("android-%s", VERSION);
     public static final String SHARED_PREFERENCES_NAME = "simperium";
@@ -38,16 +38,16 @@ public class Simperium implements User.AuthenticationListener {
     protected AsyncHttpClient httpClient;
     protected AuthHttpClient authClient;
     protected WebSocketManager socketManager;
-    
+
     private User user;
     private Context context;
     private User.AuthenticationListener authenticationListener;
     private StorageProvider storageProvider;
-    
+
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
         this(appId, appSecret, context, storageProvider, null);
     }
-    
+
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider, User.AuthenticationListener authenticationListener){
         this.appId = appId;
         this.appSecret = appSecret;
@@ -61,7 +61,7 @@ public class Simperium implements User.AuthenticationListener {
         loadUser();
         Simperium.log(String.format("Initializing Simperium %s", CLIENT_ID));
     }
-    
+
     private void loadUser(){
         user = new User(this);
         String token = getUserAccessToken();
@@ -72,20 +72,20 @@ public class Simperium implements User.AuthenticationListener {
             user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
         }
     }
-    
+
     public String getAppId(){
         return appId;
     }
-    
+
     public User getUser(){
         return user;
     }
-    
+
     public boolean needsAuthentication(){
         // we don't have an access token yet
         return user.needsAuthentication();
     }
-    
+
     /**
      * Creates a bucket and starts syncing data and uses the provided
      * Class for to instantiate data
@@ -109,29 +109,29 @@ public class Simperium implements User.AuthenticationListener {
     public Bucket<Bucket.Object> bucket(String bucketName){
         return bucket(bucketName, new Bucket.ObjectSchema());
     }
-        
+
     public User createUser(String email, String password, User.AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.createUser(user, handler);
     }
-    
+
     public User authorizeUser(String email, String password, User.AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.authorizeUser(user, handler);
     }
-    
+
     public static final void log(String msg){
         Log.d(TAG, msg);
     }
-    
+
     public static final void log(String tag, String msg){
         Log.d(tag, msg);
     }
-    
+
     public static final void log(String msg, Throwable error){
         Log.e(TAG, msg, error);
     }
-    
+
     public void onAuthenticationStatusChange(User.AuthenticationStatus status){
 
         switch (status) {
@@ -154,34 +154,33 @@ public class Simperium implements User.AuthenticationListener {
             authenticationListener.onAuthenticationStatusChange(status);
         }
     }
-    
+
     private SharedPreferences.Editor getPreferenceEditor(){
         SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
         return preferences.edit();
     }
-    
+
     private boolean clearUserAccessToken(){
         SharedPreferences.Editor editor = getPreferenceEditor();
         editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
         return editor.commit();
     }
-    
+
     private boolean saveUserAccessToken(){
         String token = user.getAccessToken();
         SharedPreferences.Editor editor = getPreferenceEditor();
         editor.putString(USER_ACCESS_TOKEN_PREFERENCE, token);
         return editor.commit();
     }
-    
+
     private String getUserAccessToken(){
         SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
         String token = preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
         return token;
     }
-    
+
     public static String uuid(){
         return UUID.randomUUID().toString().replace("-","");
     }
 
-                
 }

@@ -17,12 +17,12 @@ public class MemoryStore implements StorageProvider {
     private Map<Pair<String,String>, Bucket.Syncable> entities = new HashMap<Pair<String,String>, Bucket.Syncable>();
     private Map<Pair<String,String>, Integer> versions = new HashMap<Pair<String,String>, Integer>();
     private Map<String, String> bucketVersions = new HashMap<String,String>();
-    
+
     // Prepare the datastore to store entites for a bucket
     public void initialize(Bucket bucket){
-        
+
     }
-    
+
     private Pair bucketKey(Bucket bucket, String key){
         return Pair.create(bucket.getName(), key);
     }
@@ -80,5 +80,5 @@ public class MemoryStore implements StorageProvider {
     public void setChangeVersion(Bucket bucket, String string){
         bucketVersions.put(bucket.getName(), string);
     }
-    
+
 }

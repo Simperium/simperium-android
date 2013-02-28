@@ -36,17 +36,17 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     private boolean connected = false, reconnect = true;
     private HashMap<Channel,Integer> channelIndex = new HashMap<Channel,Integer>();;
     private HashMap<Integer,Channel> channels = new HashMap<Integer,Channel>();;
-    
+
     static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
-    
+
     private Timer heartbeatTimer, reconnectTimer;
     private int heartbeatCount = 0;
     private long reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
-    
+
     public WebSocketManager(String appId){
         this.appId = appId;
-        
+
         List<BasicNameValuePair> headers = Arrays.asList(
             new BasicNameValuePair(USER_AGENT_HEADER, Simperium.CLIENT_ID)
         );
@@ -71,7 +71,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         }
         return channel;
     }
-    
+
     protected void connect(){
         // if we have channels, then connect, otherwise wait for a channel
         if (!isConnected() && !channels.isEmpty()) {
@@ -80,7 +80,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
             socketClient.connect();
         }
     }
-    
+
     protected void disconnect(){
         // disconnect the channel
         if (isConnected()) {
@@ -90,19 +90,19 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
             socketClient.disconnect();
         }
     }
-    
+
     public boolean isConnected(){
         return connected;
     }
-    
+
     public boolean getConnected(){
         return isConnected();
     }
-    
+
     protected void setConnected(boolean connected){
         this.connected = connected;
     }
-    
+
     private void notifyChannelsConnected(){
         Set<Channel> channelSet = channelIndex.keySet();
         Iterator<Channel> iterator = channelSet.iterator();
@@ -111,7 +111,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
             channel.onConnect();
         }
     }
-    
+
     private void notifyChannelsDisconnected(){
         Set<Channel> channelSet = channelIndex.keySet();
         Iterator<Channel> iterator = channelSet.iterator();
@@ -120,11 +120,11 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
             channel.onDisconnect();
         }
     }
-    
+
     private void cancelHeartbeat(){
         if(heartbeatTimer != null) heartbeatTimer.cancel();
     }
-    
+
     private void scheduleHeartbeat(){
         cancelHeartbeat();
         heartbeatTimer = new Timer();
@@ -134,14 +134,14 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
             }
         }, HEARTBEAT_INTERVAL);
     }
-    
+
     private void sendHearbeat(){
         heartbeatCount ++;
         String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
         Simperium.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), command));
         socketClient.send(command);
     }
-    
+
     private void cancelReconnect(){
         if (reconnectTimer != null) reconnectTimer.cancel();
     }
@@ -157,7 +157,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         }, retryIn);
         Simperium.log(String.format("Retrying in %d", retryIn));
     }
-    
+
     // duplicating javascript reconnect interval calculation
     // doesn't do exponential backoff
     private long nextReconnectInterval(){
@@ -183,7 +183,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
         Simperium.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), message));
         socketClient.send(message);
     }
-    /** 
+    /**
      *
      * WebSocketClient.Listener methods for receiving status events from the socket
      *
@@ -227,5 +227,5 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
             return;
         }
     }
-    
+
 }

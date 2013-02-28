@@ -5,7 +5,7 @@
  *     simperium.createUser( ... ); // register new user
  *     simperium.authorizeUser( ... ); // authorizes an existing user
  *
- * Applications can provide a User.AuthenticationListener to the Simperium object to 
+ * Applications can provide a User.AuthenticationListener to the Simperium object to
  * detect a change in the user's status.
  */
 package com.simperium.client;
@@ -63,94 +63,94 @@ public class User {
     public static final String ACCESS_TOKEN_KEY = "access_token";
     public static final String PASSWORD_KEY = "password";
     public static final String USERID_KEY = "userid";
-    
+
     private String email;
     private String password;
     private String userId;
     private String accessToken;
     private AuthenticationStatus authenticationStatus = AuthenticationStatus.UNKNOWN;
     private AuthenticationListener listener;
-    
+
     // a user that hasn't been logged in
     protected User(AuthenticationListener listener){
         this(null, null, listener);
     }
-    
+
     protected User(String email, AuthenticationListener listener){
         this(email, null, listener);
     }
-    
+
     protected User(String email, String password, AuthenticationListener listener){
         this.email = email;
         this.password = password;
         this.listener = listener;
     }
-    
+
     public AuthenticationStatus getAuthenticationStatus(){
         return authenticationStatus;
     }
-    
+
     protected void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
         if (this.authenticationStatus != authenticationStatus) {
             this.authenticationStatus = authenticationStatus;
             listener.onAuthenticationStatusChange(this.authenticationStatus);
         }
     }
-    
+
     // check if we have an access token
     public boolean needsAuthentication(){
         return accessToken == null;
     }
-    
+
     public boolean hasAccessToken(){
         return accessToken != null;
     }
-    
+
     protected void setCredentials(String email, String password){
         setEmail(email);
         setPassword(password);
     }
-    
+
     public String getEmail(){
         return email;
     }
-    
+
     protected void setEmail(String email){
         this.email = email;
     }
-    
+
     protected void setPassword(String password){
         this.password = password;
     }
-    
-    
+
+
     public String getUserId(){
         return userId;
     }
-    
+
     public String getAccessToken(){
         return accessToken;
     }
-    
+
     protected void setAccessToken(String token){
         this.accessToken = token;
     }
-    
+
     public String toString(){
         return toJSONString();
     }
-    
+
     public String toJSONString(){
         return new JSONObject(toMap()).toString();
     }
-    
+
     private Map<String,String> toMap(){
         HashMap<String,String> fields = new HashMap<String,String>();
         fields.put(USERNAME_KEY, email);
         fields.put(PASSWORD_KEY, password);
         return fields;
     }
-    
+
     public HttpEntity toHttpEntity(){
         StringEntity entity;
         JSONObject json = new JSONObject(toMap());
@@ -160,9 +160,9 @@ public class User {
             entity = null;
         }
         return entity;
-        
+
     }
-    
+
     protected AsyncHttpResponseHandler getCreateResponseHandler(final User.AuthResponseHandler handler){
         // returns an AsyncHttpResponseHandlert
         final User user = this;
@@ -196,7 +196,7 @@ public class User {
             }
         };
     }
-    
+
     protected AsyncHttpResponseHandler getAuthorizeResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){
@@ -229,7 +229,7 @@ public class User {
             }
         };
     }
-    
+
     protected AsyncHttpResponseHandler getUpdateResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){
@@ -243,5 +243,5 @@ public class User {
             public void onFailure(Throwable error, String response){
             }
         };
-    }            
+    }
 }

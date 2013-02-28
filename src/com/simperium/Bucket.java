@@ -1,7 +1,7 @@
 /**
  * For storing and syncing entities with Simperium. To create a bucket you use
  * the Simperium.bucket instance method:
- *    
+ *
  *    // Initialize simperium
  *    Simperium simperium = new Simperium(...);
  *    Bucket notesBucket = simperium.bucket("notes", Note.class);
@@ -84,7 +84,7 @@ public class Bucket<T extends Bucket.Syncable> {
         Map<String,java.lang.Object> getDiffableValue();
     }
     /**
-     * 
+     *
      */
     protected static class Ghost implements Diffable {
         private String key;
@@ -111,7 +111,7 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     public static abstract class Syncable implements Diffable {
         private Diffable ghost;
-        
+
         public abstract void setBucket(Bucket bucket);
         public abstract Bucket getBucket();
         public abstract String bucketName();
@@ -175,44 +175,44 @@ public class Bucket<T extends Bucket.Syncable> {
      * A generic object used to represent a single object from a bucket
      */
     public static class Object extends Syncable {
-        
+
         private Bucket bucket;
         private String simperiumId;
         private Integer version = 0;
         private Diffable ghost;
-        
+
         protected Map<String,java.lang.Object> properties;
-        
+
         public Object(String key, Integer version, Map<String,java.lang.Object> properties){
             this.simperiumId = key;
             this.version = version;
             this.properties = Bucket.deepCopy(properties);
         }
-     
+
         public Object(String key){
             this(key, new Integer(0), new HashMap<String, java.lang.Object>());
         }
-        
+
         public Bucket getBucket(){
             return bucket;
         }
-    
+
         public void setBucket(Bucket bucket){
             this.bucket = bucket;
         }
-    
+
         public String getSimperiumId(){
             return simperiumId;
         }
-    
+
         public Integer getVersion(){
             return version;
         }
-        
+
         public Boolean isNew(){
             return version == null || version == 0;
         }
-    
+
         public String bucketName(){
             Bucket bucket = getBucket();
             if (bucket != null) {
@@ -220,20 +220,20 @@ public class Bucket<T extends Bucket.Syncable> {
             }
             return null;
         }
-        
+
         public String toString(){
             return String.format("%s - %s", getBucket().getName(), getSimperiumId());
         }
-    
+
         public Map<String,java.lang.Object> getDiffableValue(){
             return properties;
         }
-        
+
         public boolean equals(java.lang.Object o){
             if (o == null) {
                 return false;
             } else if( o == this){
-                return true;    
+                return true;
             } else if(o.getClass() != getClass()){
                 return false;
             }
@@ -241,9 +241,9 @@ public class Bucket<T extends Bucket.Syncable> {
             return other.getBucket().equals(getBucket()) && other.getSimperiumId().equals(getSimperiumId());
         }
     }
-    
+
     /**
-     * Tell the bucket to sync changes. 
+     * Tell the bucket to sync changes.
      */
     public void sync(T object){
         // TODO should we persists local modifications somewhere?
@@ -253,7 +253,7 @@ public class Bucket<T extends Bucket.Syncable> {
         storageProvider.updateObject(this, object.getSimperiumId(), object);
         channel.queueLocalChange(object);
     }
-    
+
     /**
      * Tell the bucket to remove the object
      */
@@ -287,7 +287,7 @@ public class Bucket<T extends Bucket.Syncable> {
             remove(object);
         }
     }
-    
+
     /**
      * Add a listener to the bucket. A listener cannot be added more than once.
      */
@@ -307,27 +307,27 @@ public class Bucket<T extends Bucket.Syncable> {
     public String getName(){
         return name;
     }
-    
+
     public String getRemoteName(){
         return schema.getRemoteName(this);
     }
-    
+
     public Boolean hasChangeVersion(){
         return storageProvider.hasChangeVersion(this);
     }
-    
+
     public Boolean hasChangeVersion(String version){
         return storageProvider.hasChangeVersion(this, version);
     }
-    
+
     public String getChangeVersion(){
         return storageProvider.getChangeVersion(this);
     }
-    
+
     public void setChangeVersion(String version){
         storageProvider.setChangeVersion(this, version);
     }
-    
+
     // starts tracking the object
     /**
      * Add an object to the bucket so simperium can start syncing it. Must
@@ -341,7 +341,7 @@ public class Bucket<T extends Bucket.Syncable> {
         }
         // TODO: sync the object over the socket
     }
-    
+
     protected T buildObject(String key, Integer version, Map<String,java.lang.Object> properties){
         T object = schema.build(key, version, properties);
         // set the bucket that is managing this object
@@ -351,11 +351,11 @@ public class Bucket<T extends Bucket.Syncable> {
         // TODO: setup the ghost
         return object;
     }
-    
+
     protected T buildObject(String key, Map<String,java.lang.Object> properties){
         return buildObject(key, 0, properties);
     }
-    
+
     protected T buildObject(String key){
         return buildObject(key, 0, new HashMap<String,java.lang.Object>());
     }
@@ -399,7 +399,7 @@ public class Bucket<T extends Bucket.Syncable> {
                 notify = new HashSet<Listener<T>>(listeners.size());
                 notify.addAll(listeners);
             }
-        
+
             Iterator<Listener<T>> iterator = notify.iterator();
             while(iterator.hasNext()) {
                 Listener<T> listener = iterator.next();
@@ -433,7 +433,7 @@ public class Bucket<T extends Bucket.Syncable> {
         }
     }
     /**
-     * 
+     *
      */
     protected void updateObject(String changeVersion, T object){
         updateObject(object);
@@ -444,11 +444,11 @@ public class Bucket<T extends Bucket.Syncable> {
     protected void setChannel(Channel channel){
         this.channel = channel;
     }
-    
+
     protected Channel getChannel(){
         return channel;
     }
-    
+
     /**
      * Tell the bucket that an object has local changes ready to sync.
      * @param (Diffable) object
@@ -470,7 +470,7 @@ public class Bucket<T extends Bucket.Syncable> {
         return storageProvider.getObject(this, key);
     }
     /**
-     * 
+     *
      */
     public void put(String key, T object){
         // storageProvider.putObject(this, key, object);
@@ -505,7 +505,7 @@ public class Bucket<T extends Bucket.Syncable> {
     public Integer getKeyVersion(String key){
         return storageProvider.getKeyVersion(this, key);
     }
-    
+
     public String uuid(){
         String key;
         do {
@@ -513,7 +513,7 @@ public class Bucket<T extends Bucket.Syncable> {
         } while(containsKey(key));
         return key;
     }
-        
+
     /**
      * Copy a hash
      */
