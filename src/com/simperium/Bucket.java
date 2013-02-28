@@ -24,12 +24,13 @@
 
 package com.simperium.client;
 
-import java.util.Vector;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.HashMap;
 
 import org.json.JSONObject;
@@ -37,6 +38,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 public class Bucket<T extends Bucket.Syncable> {
+    // The name used for the Simperium namespace
+    private String name;
+    // User provides the access token for authentication
+    private User user;
+    // The channel that provides networking and change processing.
+    private Channel channel;
+    // For storing the bucket listeners
+    private Set<Listener<T>> listeners;
+    private StorageProvider storageProvider;
+    private Schema<T> schema;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
@@ -46,7 +57,7 @@ public class Bucket<T extends Bucket.Syncable> {
         this.name = name;
         this.user = user;
         this.storageProvider = storageProvider;
-        this.listeners = new Vector<Listener<T>>();
+        this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
     }
     /**
@@ -231,23 +242,6 @@ public class Bucket<T extends Bucket.Syncable> {
             return other.getBucket().equals(getBucket()) && other.getSimperiumId().equals(getSimperiumId());
         }
     }
-    /**
-     * And now for the actual Bucket methods
-     */
-    // The name used for the Simperium namespace
-    private String name;
-    // User provides the access token for authentication
-    private User user;
-    // The channel that provides networking and change processing. This may be removed
-    // and functionality will be provided via a listener interface of some kind
-    // TODO: provide an interface for a class to observe when local changes are made
-    // this is how the Channel associated with the bucket will determine if there are
-    // local changes pending
-    private Channel channel;
-    // For storing the bucket listeners
-    private Vector<Listener<T>> listeners;
-    private StorageProvider storageProvider;
-    private Schema<T> schema;
     
     /**
      * Tell the bucket to sync changes. 
@@ -269,9 +263,9 @@ public class Bucket<T extends Bucket.Syncable> {
         // TODO: tell listener that item is removed?
         storageProvider.removeObject(this, object.getSimperiumId());
         channel.queueLocalDeletion(object);
-        Vector<Listener<T>> notify;
+        Set<Listener<T>> notify;
         synchronized(listeners){
-            notify = new Vector<Listener<T>>(listeners.size());
+            notify = new HashSet<Listener<T>>(listeners.size());
             notify.addAll(listeners);
         }
         Iterator<Listener<T>> iterator = notify.iterator();
@@ -296,10 +290,9 @@ public class Bucket<T extends Bucket.Syncable> {
     }
     
     /**
-     * Add a listener to the bucket
+     * Add a listener to the bucket. A listener cannot be added more than once.
      */
     public void addListener(Listener<T> listener){
-        // TODO: Change listenrs to a set so a listener doesn't get added multiple times?
         this.listeners.add(listener);
     }
     /**
@@ -380,9 +373,9 @@ public class Bucket<T extends Bucket.Syncable> {
     protected T newObject(String uuid){
         T object = buildObject(uuid, 0, new HashMap<String,java.lang.Object>());
         object.setBucket(this);
-        Vector<Listener<T>> notify;
+        Set<Listener<T>> notify;
         synchronized(listeners){
-            notify = new Vector<Listener<T>>(listeners.size());
+            notify = new HashSet<Listener<T>>(listeners.size());
             notify.addAll(listeners);
         }
         Iterator<Listener<T>> iterator = notify.iterator();
@@ -411,9 +404,9 @@ public class Bucket<T extends Bucket.Syncable> {
         object.setBucket(this);
         storageProvider.addObject(this, object.getSimperiumId(), object);
         // notify listeners that an object has been added
-        Vector<Listener<T>> notify;
+        Set<Listener<T>> notify;
         synchronized(listeners){
-            notify = new Vector<Listener<T>>(listeners.size());
+            notify = new HashSet<Listener<T>>(listeners.size());
             notify.addAll(listeners);
         }
         
@@ -433,9 +426,9 @@ public class Bucket<T extends Bucket.Syncable> {
     protected void updateObject(T object){
         object.setBucket(this);
         storageProvider.updateObject(this, object.getSimperiumId(), object);
-        Vector<Listener<T>> notify;
+        Set<Listener<T>> notify;
         synchronized(listeners){
-            notify = new Vector<Listener<T>>(listeners.size());
+            notify = new HashSet<Listener<T>>(listeners.size());
             notify.addAll(listeners);
         }
         Iterator<Listener<T>> iterator = notify.iterator();
