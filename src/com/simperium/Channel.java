@@ -29,6 +29,8 @@ import org.json.JSONException;
 import android.os.Looper;
 import android.os.Handler;
 
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Channel<T extends Bucket.Syncable> {
     // key names for init command json object
@@ -78,7 +80,7 @@ public class Channel<T extends Bucket.Syncable> {
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
     
-    public Channel(String appId, Bucket<T> bucket, User user, Listener listener){
+    public Channel(String appId, final Bucket<T> bucket, User user, Listener listener){
         this.appId = appId;
         this.bucket = bucket;
         this.user = user;
@@ -635,13 +637,19 @@ public class Channel<T extends Bucket.Syncable> {
          */
         void onComplete();
     }
-    private class Change {
+    
+    public interface OnChangeRetryListener {
+        public void onRetry(Change change);
+    }
+    
+    private static class Change extends TimerTask {
         private String operation;
         private String key;
         private Integer version;
         private Map<String,Object> origin;
         private Map<String,Object> target;
         private String ccid;
+        private OnChangeRetryListener listener;
         
         public static final String OPERATION_MODIFY   = "M";
         public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
@@ -654,6 +662,7 @@ public class Channel<T extends Bucket.Syncable> {
         }
         
         public Change(String operation, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
+            super();
             this.operation = operation;
             this.key = key;
             this.version = sourceVersion;
@@ -661,11 +670,26 @@ public class Channel<T extends Bucket.Syncable> {
             this.target = Bucket.deepCopy(target);
             this.ccid = Simperium.uuid();
         }
+        public void setAcknowledged(){
+            // stop the schedule task
+            Simperium.log(String.format("Change acknowledged %s", getChangeId()));
+            cancel();
+        }
+        public void setOnChangeRetryListener(OnChangeRetryListener listener){
+            this.listener = listener;
+        }
+        public void run(){
+            Simperium.log(String.format("Retry change: %s", getChangeId()));
+            listener.onRetry(this);
+        }
         public boolean keyMatches(Change otherChange){
             return otherChange.getKey().equals(getKey());
         }
         public String getKey(){
             return key;
+        }
+        public String getChangeId(){
+            return this.ccid;
         }
         /**
          * A JSON representation of this change object
@@ -690,6 +714,7 @@ public class Channel<T extends Bucket.Syncable> {
          * The diff of the origin and target
          */
         private Map<String,Object> getDiff(){
+            JSONDiff jsondiff = new JSONDiff();
             Map<String,Object> diff = jsondiff.diff(origin, target);
             return (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
         }
