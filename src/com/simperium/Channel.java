@@ -120,13 +120,14 @@ public class Channel<T extends Bucket.Syncable> {
         changeProcessor = new ChangeProcessor<T>(getBucket(), new ChangeProcessorListener<T>(){
             public void onComplete(){
             }
-            public void onAddObject(String cv, T object){
-                Bucket<T> bucket = getBucket();
-                bucket.addObject(cv, object);
+            public void onAddObject(String cv, String key, T object){
+                getBucket().addObject(cv, object);
             }
-            public void onUpdateObject(String cv, T object){
-                Bucket<T> bucket = getBucket();
-                bucket.updateObject(cv, object);
+            public void onUpdateObject(String cv, String key, T object){
+                getBucket().updateObject(cv, object);
+            }
+            public void onRemoveObject(String key){
+                getBucket().removeObjectWithKey(key);
             }
         });
     }

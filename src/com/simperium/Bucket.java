@@ -285,6 +285,16 @@ public class Bucket<T extends Bucket.Syncable> {
             }
         }
     }
+    /**
+     * Given the key for an object in the bucket, remove it if it exists
+     */
+    protected void removeObjectWithKey(String key){
+        T object = get(key);
+        if (object != null) {
+            // this will call onObjectRemoved on the listener
+            remove(object);
+        }
+    }
     
     /**
      * Add a listener to the bucket
