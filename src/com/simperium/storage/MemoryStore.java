@@ -41,7 +41,6 @@ public class MemoryStore implements StorageProvider {
         return bucketEntities;
     }
     public void addObject(Bucket bucket, String key, Bucket.Syncable object){
-        Simperium.log(String.format("Saving object %s in thread %s %s", key, Thread.currentThread().getName(), object.getDiffableValue()));
         Pair bucketKey = bucketKey(bucket, key);
         entities.put(bucketKey, object);
         versions.put(bucketKey, object.getVersion());
@@ -55,9 +54,7 @@ public class MemoryStore implements StorageProvider {
         versions.remove(bucketKey);
     }
     public Bucket.Syncable getObject(Bucket bucket, String key){
-        Simperium.log(String.format("Requesting object %s in thread %s", key, Thread.currentThread().getName()));
         Bucket.Syncable object = entities.get(bucketKey(bucket, key));
-        Simperium.log(String.format("Found object: %s %s", object, object.getDiffableValue()));
         return object;
     }
     public Boolean containsKey(Bucket bucket, String key){

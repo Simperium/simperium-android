@@ -174,7 +174,6 @@ public class Bucket<T extends Bucket.Syncable> {
         protected Map<String,java.lang.Object> properties;
         
         public Object(String key, Integer version, Map<String,java.lang.Object> properties){
-            Simperium.log(String.format("Initializing with properties: %s", properties));
             this.simperiumId = key;
             this.version = version;
             this.properties = Bucket.deepCopy(properties);
@@ -281,7 +280,7 @@ public class Bucket<T extends Bucket.Syncable> {
             try {
                 listener.onObjectRemoved(object.getSimperiumId(),object);
             } catch (Exception e) {
-                 Simperium.log(String.format("Listener failed onObjectRemoved %s", listener));
+                Simperium.log(String.format("Listener failed onObjectRemoved %s", listener));
             }
         }
     }
@@ -334,7 +333,6 @@ public class Bucket<T extends Bucket.Syncable> {
     }
     
     public void setChangeVersion(String version){
-        Simperium.log(String.format("Saving change version %s", version));
         storageProvider.setChangeVersion(this, version);
     }
     

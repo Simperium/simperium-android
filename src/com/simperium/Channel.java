@@ -158,9 +158,6 @@ public class Channel<T extends Bucket.Syncable> {
     protected void queueLocalChange(T object){
         // diff the object with it's ghost
         Map<String,Object> diff = jsondiff.diff(object.getUnmodifiedValue(), object.getDiffableValue());
-        Simperium.log(String.format("; %s", diff));
-        // before we send the change we need a unique id for the ccid
-        // public Change(String operation, String key, Integer sourceVersion, Map<String,Object> diff){
 
         Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumId(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());
         changeProcessor.addChange(change);
@@ -169,7 +166,6 @@ public class Channel<T extends Bucket.Syncable> {
     
     protected void queueLocalDeletion(T object){
         Change change = new Change(Change.OPERATION_REMOVE, object.getSimperiumId());
-        // Simperium.log(String.format("Send change: %s", change.toString()));
         changeProcessor.addChange(change);
     }
     
@@ -186,11 +182,6 @@ public class Channel<T extends Bucket.Syncable> {
         // listen for when the index processor is done so we can start the changeprocessor again
         // if we do have an index processor and the cv's match, add the page of items
         // to the queue.
-        // We need to track when we've received a copy of each object so we can start the change
-        // again
-        // query i:
-        // FIXME: Threading! http://developer.android.com/reference/java/util/concurrent/package-summary.html
-        // TODO: Determine check bucket object versions
         if (indexJson.equals(RESPONSE_UNKNOWN)) {
             // refresh the index
             getLatestVersions();
@@ -221,7 +212,7 @@ public class Channel<T extends Bucket.Syncable> {
             
             indexProcessor = new IndexProcessor(getBucket(), currentIndex, new IndexProcessorListener(){
                 public void onComplete(String cv){
-                    Simperium.log(String.format("Done with index! %s", cv));
+                    Simperium.log(String.format("Finished downloading index %s", cv));
                     changeProcessor.start();
                 }
             });
@@ -258,7 +249,7 @@ public class Channel<T extends Bucket.Syncable> {
         // we need to parse out the key and version, parse the json payload and
         // retrieve the data
         if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
-          Simperium.log(String.format("Don't know what to do with object: %s", versionData));
+          Simperium.log(String.format("Unkown Object for index: %s", versionData));
         } 
 
     }
@@ -582,7 +573,6 @@ public class Channel<T extends Bucket.Syncable> {
                             synchronized(index){
                                 index.add(objectVersion.toString());
                             }
-                            Simperium.log(String.format("Requesting object: %s", version));
                             sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
                         } else {
                             Simperium.log(String.format("Object is up to date: %s", version));
@@ -869,7 +859,6 @@ public class Channel<T extends Bucket.Syncable> {
             final String changeVersion = (String)change.get(CHANGE_VERSION_KEY);
             
             // construct the new object
-            Simperium.log(String.format("Try to apply %s to %s", patch, object.getDiffableValue()));
             final T updated = bucket.buildObject(objectKey, objectVersion, jsondiff.apply(object.getUnmodifiedValue(), patch));
             // notify the listener
             final ChangeProcessorListener changeListener = listener;
