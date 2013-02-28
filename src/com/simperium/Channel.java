@@ -742,28 +742,22 @@ public class Channel<T extends Bucket.Syncable> {
         }
         
         public void addChanges(List<Object> changes){
-            synchronized(remoteQueue) {
-                Iterator iterator = changes.iterator();
-                while(iterator.hasNext()){
-                    remoteQueue.add((Map<String,Object>)iterator.next());
-                }
+            Iterator iterator = changes.iterator();
+            while(iterator.hasNext()){
+                remoteQueue.add((Map<String,Object>)iterator.next());
             }
             start();
         }
         
         public void addChange(Map<String,Object> change){
-            synchronized(remoteQueue){
-                remoteQueue.add(change);
-            }
+            remoteQueue.add(change);
             start();
         }
         /**
          * Local change to be queued
          */
         public void addChange(Change change){
-            synchronized(localQueue){
-                localQueue.add(change);
-            }
+            localQueue.add(change);
             start();
         }
         
