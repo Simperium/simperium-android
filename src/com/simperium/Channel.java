@@ -642,7 +642,7 @@ public class Channel<T extends Bucket.Syncable> {
     public interface OnChangeRetryListener {
         public void onRetry(Change change);
     }
-    
+
     private static class Change extends TimerTask {
         private String operation;
         private String key;
@@ -731,6 +731,7 @@ public class Channel<T extends Bucket.Syncable> {
         public Change reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
             return new Change(operation, key, sourceVersion, origin, target);
         }
+
     }
     /**
      * ChangeProcessor should perform operations on a seperate thread as to not block the websocket
