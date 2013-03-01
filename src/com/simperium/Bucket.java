@@ -24,18 +24,14 @@
 
 package com.simperium.client;
 
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
-
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
 
 public class Bucket<T extends Bucket.Syncable> {
     // The name used for the Simperium namespace

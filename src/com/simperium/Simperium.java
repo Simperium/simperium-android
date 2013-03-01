@@ -1,29 +1,12 @@
 package com.simperium.client;
 
-import com.loopj.android.http.*;
-import com.loopj.android.http.JsonHttpResponseHandler;
-
-import android.util.Log;
-import android.content.Context;
-import android.content.SharedPreferences;
-
-import java.net.URI;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONException;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
-
 import java.util.UUID;
 
-import java.io.InputStream;
-import java.util.Properties;
+import com.loopj.android.http.*;
 
-import android.content.res.Resources;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
 
 public class Simperium implements User.AuthenticationListener {
 

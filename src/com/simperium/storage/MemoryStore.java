@@ -1,15 +1,17 @@
 package com.simperium.client.storage;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import com.simperium.client.Bucket;
 import com.simperium.client.Simperium;
 import com.simperium.client.StorageProvider;
-import com.simperium.client.Bucket;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
 
 import android.util.Pair;
+
 /**
  * Very naive storage system for testing. Not thread safe. Maps need to be threadsafe
  */

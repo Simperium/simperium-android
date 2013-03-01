@@ -8,21 +8,18 @@
  */
 package com.simperium.client;
 
-import com.codebutler.android_websockets.*;
-
 import java.net.URI;
-
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.HashMap;
-import org.apache.http.message.BasicNameValuePair;
-
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.net.ConnectException;
+
+import org.apache.http.message.BasicNameValuePair;
+
+import com.codebutler.android_websockets.*;
 
 public class WebSocketManager implements WebSocketClient.Listener, Channel.Listener {
     public static final String TAG = "SimpWS";

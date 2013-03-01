@@ -9,28 +9,23 @@
  */
 package com.simperium.client;
 
-import com.simperium.jsondiff.*;
-
-import java.util.EventObject;
-import java.util.EventListener;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.Iterator;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.Collections;
 import java.util.ArrayList;
-
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import android.os.Looper;
-import android.os.Handler;
-
+import java.util.Collections;
+import java.util.EventObject;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.simperium.jsondiff.*;
+
+import android.os.Handler;
 
 public class Channel<T extends Bucket.Syncable> {
     // key names for init command json object
@@ -1139,7 +1134,7 @@ public class Channel<T extends Bucket.Syncable> {
                     map.put(key, val);
                 }
             } catch (JSONException e) {
-                Simperium.log(String.format("Error: %s", e.getMessage()), e);
+                Simperium.log(String.format("Failed to convert JSON: %s", e.getMessage()), e);
             }
         }
         return map;
@@ -1158,7 +1153,7 @@ public class Channel<T extends Bucket.Syncable> {
                     list.add(val);
                 }
             } catch (JSONException e) {
-                Simperium.log(String.format("Error: %s", e.getMessage()), e);
+                Simperium.log(String.format("Faile to convert JSON: %s", e.getMessage()), e);
             }
 
         }

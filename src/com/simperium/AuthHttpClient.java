@@ -17,14 +17,10 @@
  */
 package com.simperium.client;
 
-import com.loopj.android.http.*;
-
 import org.apache.http.Header;
-import org.apache.http.client.HttpResponseException;
 import org.apache.http.message.BasicHeader;
-import org.apache.http.protocol.HttpContext;
 
-import android.util.Log;
+import com.loopj.android.http.*;
 
 public class AuthHttpClient {
 
