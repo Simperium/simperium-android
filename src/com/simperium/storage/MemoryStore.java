@@ -78,6 +78,7 @@ public class MemoryStore implements StorageProvider {
         return version == localVersion;
     }
     public void setChangeVersion(Bucket bucket, String string){
+        Simperium.log(String.format("Setting change version for bucket: %s to %s", bucket, string));
         bucketVersions.put(bucket.getName(), string);
     }
 

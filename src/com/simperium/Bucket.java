@@ -278,6 +278,13 @@ public class Bucket<T extends Bucket.Syncable> {
         }
     }
     /**
+     * Update the change version and remove the object with the given key
+     */
+    protected void removeObjectWithKey(String changeVersion, String key){
+        removeObjectWithKey(key);
+        setChangeVersion(changeVersion);
+    }
+    /**
      * Given the key for an object in the bucket, remove it if it exists
      */
     protected void removeObjectWithKey(String key){

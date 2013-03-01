@@ -128,8 +128,8 @@ public class Channel<T extends Bucket.Syncable> {
             public void onUpdateObject(String cv, String key, T object){
                 getBucket().updateObject(cv, object);
             }
-            public void onRemoveObject(String key){
-                getBucket().removeObjectWithKey(key);
+            public void onRemoveObject(String changeVersion, String key){
+                getBucket().removeObjectWithKey(changeVersion, key);
             }
         });
     }
@@ -171,10 +171,6 @@ public class Channel<T extends Bucket.Syncable> {
     protected void queueLocalDeletion(T object){
         Change change = new Change(Change.OPERATION_REMOVE, object.getSimperiumId());
         changeProcessor.addChange(change);
-    }
-
-    protected void queueLocalChange(List<T> objects){
-        // queue up a bunch of changes
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -635,7 +631,7 @@ public class Channel<T extends Bucket.Syncable> {
          */
         void onUpdateObject(String changeVersion, String key, T object);
         void onAddObject(String changeVersion, String key, T object);
-        void onRemoveObject(String key);
+        void onRemoveObject(String changeVersion, String key);
         /**
          * All changes have been processed and entering idle state
          */
@@ -643,7 +639,7 @@ public class Channel<T extends Bucket.Syncable> {
     }
 
     public interface OnChangeRetryListener {
-        public void onRetry(Change change);
+        public void onRetryChange(Change change);
     }
     private static class Change extends TimerTask {
         private String operation;
@@ -681,7 +677,7 @@ public class Channel<T extends Bucket.Syncable> {
         }
         public void run(){
             Simperium.log(String.format("Retry change: %s", getChangeId()));
-            listener.onRetry(this);
+            listener.onRetryChange(this);
         }
         public boolean keyMatches(Change otherChange){
             return otherChange.getKey().equals(getKey());
@@ -757,6 +753,7 @@ public class Channel<T extends Bucket.Syncable> {
             this.entityVersion = entityVersion;
             this.operation = operation;
             this.value = value;
+            this.changeVersion = changeVersion;
         }
 
         public RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
@@ -854,7 +851,7 @@ public class Channel<T extends Bucket.Syncable> {
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
-    private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable {
+    private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable, OnChangeRetryListener {
 
         // public static final Integer CAPACITY = 200;
 
@@ -899,7 +896,17 @@ public class Channel<T extends Bucket.Syncable> {
          * Local change to be queued
          */
         public void addChange(Change change){
-            localQueue.add(change);
+            synchronized (localQueue){
+                // compress all changes for this same key
+                Iterator<Change> iterator = localQueue.iterator();
+                while(iterator.hasNext()){
+                    Change queued = iterator.next();
+                    if(queued.getKey().equals(change.getKey())){
+                        iterator.remove();
+                    }
+                }
+                localQueue.add(change);
+            }
             start();
         }
 
@@ -937,6 +944,7 @@ public class Channel<T extends Bucket.Syncable> {
                 while(remoteQueue.size() > 0 && !Thread.interrupted()){
                     // take an item off the queue
                     RemoteChange remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
+                    Simperium.log(String.format("Received remote change with cv: %s", remoteChange.getChangeVersion()));
                     Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
@@ -976,17 +984,15 @@ public class Channel<T extends Bucket.Syncable> {
                             sendLater.add(localChange);
                             // let's get the next change
                         } else {
-                            // add the change to pending changes
-                            pendingChanges.put(localChange.getKey(), localChange);
-                            // send the change to simperium
-                            sendChange(localChange);
-                            localChange.setOnChangeRetryListener( new OnChangeRetryListener(){
-                                public void onRetry(Change change){
-                                    sendChange(change);
-                                }
-                            });
-                            // starts up the timer
-                            this.retryTimer.scheduleAtFixedRate(localChange, RETRY_DELAY_MS, RETRY_DELAY_MS);
+                            // send the change to simperium, if the change ends up being empty
+                            // then we'll just skip it
+                            if(sendChange(localChange)) {
+                                // add the change to pending changes
+                                pendingChanges.put(localChange.getKey(), localChange);
+                                localChange.setOnChangeRetryListener(this);
+                                // starts up the timer
+                                this.retryTimer.scheduleAtFixedRate(localChange, RETRY_DELAY_MS, RETRY_DELAY_MS);
+                            }
                         }
                     }
                 }
@@ -1000,13 +1006,17 @@ public class Channel<T extends Bucket.Syncable> {
                 )
             );
         }
-
-        private void sendChange(Change change){
+        
+        public void onRetryChange(Change change){
+            sendChange(change);
+        }
+        
+        private Boolean sendChange(Change change){
             // send the change down the socket!
             if (!started) {
-                // channel is not initialized, don't send
+                // channel is not initialized, send on reconnect
                 Simperium.log(String.format("Abort sending change, channel not initialized: %s", change.getChangeId()));
-                return;
+                return true;
             }
             Simperium.log(String.format("Send local change: %s", change.getChangeId()));
 
@@ -1021,12 +1031,16 @@ public class Channel<T extends Bucket.Syncable> {
 
             if (change.requiresDiff()) {
                 Map<String,Object> diff = jsondiff.diff(change.getOrigin(), change.getTarget());
+                if (diff.isEmpty()) {
+                    return false;
+                }
                 Map<String,Object> patch = (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
                 map.put(JSONDiff.DIFF_VALUE_KEY, patch);
             }
             JSONObject changeJSON = Channel.serializeJSON(map);
 
             sendMessage(String.format("c:%s", changeJSON.toString()));
+            return true;
         }
 
         private void applyRemoteChange(final RemoteChange change, final Boolean acknowledged){
@@ -1036,14 +1050,21 @@ public class Channel<T extends Bucket.Syncable> {
             if (change.isError()) return;
             // Remove operation, only notify if it's not an ACK
             if (change.isRemoveOperation()) {
-                // TODO: remove any locally queued changes for this object?
-                if (!acknowledged) {
-                    handler.post(new Runnable(){
-                        public void run(){
-                            changeListener.onRemoveObject(change.getKey());
+                // remove all queued changes that reference this same object
+                synchronized (localQueue){
+                    Iterator<Change> iterator = localQueue.iterator();
+                    while(iterator.hasNext()){
+                        Change queuedChange = iterator.next();
+                        if (queuedChange.getKey().equals(change.getKey())) {
+                            iterator.remove();
                         }
-                    });
+                    }
                 }
+                handler.post(new Runnable(){
+                    public void run(){
+                        changeListener.onRemoveObject(change.getChangeVersion(), change.getKey());
+                    }
+                });
                 return;
             }
             T object;
@@ -1069,6 +1090,23 @@ public class Channel<T extends Bucket.Syncable> {
                 change.getObjectVersion(),
                 jsondiff.apply(object.getUnmodifiedValue(), change.getPatch())
             );
+            // Compress all queued changes for the same object into a single change
+            synchronized (localQueue){
+                Change compressed = null;
+                Iterator<Change> queuedChanges = localQueue.iterator();
+                while(queuedChanges.hasNext()){
+                    Change queuedChange = queuedChanges.next();
+                    if (queuedChange.getKey().equals(change.getKey())) {
+                        queuedChanges.remove();
+                        Simperium.log(String.format("Compressed queued local change for %s", queuedChange.getKey()));
+                        compressed = queuedChange.reapplyOrigin(updated.getVersion(), updated.getUnmodifiedValue());
+                    }
+                }
+                if (compressed != null) {
+                    localQueue.add(compressed);
+                }
+            }
+            
             // notify the listener
             final boolean isNew = object.isNew() && !acknowledged;
             this.handler.post(new Runnable(){
