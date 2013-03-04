@@ -23,8 +23,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.simperium.jsondiff.*;
-
 import android.os.Handler;
 
 public class Channel<T extends Bucket.Syncable> {
