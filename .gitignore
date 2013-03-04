@@ -29,3 +29,5 @@ proguard/
 .idea/
 
 simperium.properties
+
+*.swp
