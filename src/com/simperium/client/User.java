@@ -225,7 +225,7 @@ public class User {
             }
         };
     }
-
+    
     protected AsyncHttpResponseHandler getUpdateResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){

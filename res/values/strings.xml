@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ACTIVITY_ENTRY_NAME</string>
+    <string name="email_hint">Email Address</string>
+    <string name="password_hint">Password</string>
+    <string name="signup_label">Sign Up</string>
+    <string name="signin_label">Sign In</string>
+    <string name="new_task">New Task</string>
+    <string name="edit_task">Edit Task</string>
+    <string name="delete_task">Delete Task</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="new_task_dialog_title">Add Task</string>
+    <string name="task_label_hint">Describe task</string>
 </resources>

@@ -3,6 +3,7 @@ package com.simperium.client;
 import java.util.UUID;
 
 import com.loopj.android.http.*;
+import com.simperium.client.User.AuthenticationStatus;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -27,6 +28,8 @@ public class Simperium implements User.AuthenticationListener {
     private User.AuthenticationListener authenticationListener;
     private StorageProvider storageProvider;
 
+    private static Simperium simperiumClient = null;
+    
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
         this(appId, appSecret, context, storageProvider, null);
     }
@@ -43,6 +46,15 @@ public class Simperium implements User.AuthenticationListener {
         this.storageProvider = storageProvider;
         loadUser();
         Simperium.log(String.format("Initializing Simperium %s", CLIENT_ID));
+        simperiumClient = this;
+    }
+    
+    
+    protected static Simperium getInstance() throws SimperiumNotInitializedException{
+    	if(null == simperiumClient)
+    		throw new SimperiumNotInitializedException("You must create an instance of Simperium before call this method.");
+    	
+    	return simperiumClient;
     }
 
     private void loadUser(){
@@ -101,6 +113,12 @@ public class Simperium implements User.AuthenticationListener {
     public User authorizeUser(String email, String password, User.AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.authorizeUser(user, handler);
+    }
+
+    public boolean deAuthorizeUser(){
+    	user.setAccessToken(null);
+    	user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
+    	return true;
     }
 
     public static final void log(String msg){

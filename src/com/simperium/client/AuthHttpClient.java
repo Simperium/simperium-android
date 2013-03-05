@@ -60,7 +60,8 @@ public class AuthHttpClient {
         httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
         return user;
     }
-
+    
+    
     private Header[] authHeaders(){
         Header[] headers = new Header[1];
         headers[0] = new BasicHeader(API_KEY_HEADER_NAME, appSecret);
