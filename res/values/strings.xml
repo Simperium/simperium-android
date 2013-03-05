@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ACTIVITY_ENTRY_NAME</string>
+    
+    <!-- account setup -->
+  	<string name="required_fields">Required Fields</string>
+  	<string name="required_field">Required Field</string>
+  	<string name="username_password_required">Please fill in all of the fields before submitting.</string>
+  	<string name="invalid_email_title">Invalid email</string>
+  	<string name="invalid_email_message">Your email address is not valid.</string>
     <string name="email_hint">Email Address</string>
     <string name="password_hint">Password</string>
     <string name="signup_label">Sign Up</string>
     <string name="signin_label">Sign In</string>
+    <string name="no_network_title">No network available</string>
+  	<string name="no_network_message">There is no network available. Please connect to a network and try again.</string>
+	  <string name="account_setup">Account Setup</string>
+	  <string name="attempting_configure">Attempting to configure account</string>
+    
     <string name="new_task">New Task</string>
     <string name="edit_task">Edit Task</string>
     <string name="delete_task">Delete Task</string>
