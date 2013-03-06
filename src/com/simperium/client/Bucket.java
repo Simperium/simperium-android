@@ -74,7 +74,7 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     public interface Diffable {
         // void setSimperiumId(String id);
-        String getSimperiumId();
+        String getSimperiumKey();
         // void setVersion(Integer version);
         Integer getVersion();
         Map<String,java.lang.Object> getDiffableValue();
@@ -92,7 +92,7 @@ public class Bucket<T extends Bucket.Syncable> {
             // copy the properties
             this.properties = Bucket.deepCopy(properties);
         }
-        public String getSimperiumId(){
+        public String getSimperiumKey(){
             return key;
         }
         public Integer getVersion(){
@@ -195,7 +195,7 @@ public class Bucket<T extends Bucket.Syncable> {
             this.bucket = bucket;
         }
 
-        public String getSimperiumId(){
+        public String getSimperiumKey(){
             return simperiumId;
         }
 
@@ -216,7 +216,7 @@ public class Bucket<T extends Bucket.Syncable> {
         }
 
         public String toString(){
-            return String.format("%s - %s", getBucket().getName(), getSimperiumId());
+            return String.format("%s - %s", getBucket().getName(), getSimperiumKey());
         }
 
         public Map<String,java.lang.Object> getDiffableValue(){
@@ -232,7 +232,7 @@ public class Bucket<T extends Bucket.Syncable> {
                 return false;
             }
             Bucket.Object other = (Bucket.Object) o;
-            return other.getBucket().equals(getBucket()) && other.getSimperiumId().equals(getSimperiumId());
+            return other.getBucket().equals(getBucket()) && other.getSimperiumKey().equals(getSimperiumKey());
         }
     }
 
@@ -244,7 +244,7 @@ public class Bucket<T extends Bucket.Syncable> {
         // TODO tell listener that items are updated?
         // create the change id here so we can identify it in the future?
         // pass it off to the channel
-        storageProvider.updateObject(this, object.getSimperiumId(), object);
+        storageProvider.updateObject(this, object.getSimperiumKey(), object);
         channel.queueLocalChange(object);
     }
 
@@ -254,7 +254,7 @@ public class Bucket<T extends Bucket.Syncable> {
     public void remove(T object){
         // TODO: remove item from storage
         // TODO: tell listener that item is removed?
-        storageProvider.removeObject(this, object.getSimperiumId());
+        storageProvider.removeObject(this, object.getSimperiumKey());
         channel.queueLocalDeletion(object);
         Set<Listener<T>> notify;
         synchronized(listeners){
@@ -265,7 +265,7 @@ public class Bucket<T extends Bucket.Syncable> {
         while(iterator.hasNext()){
             Listener<T> listener = iterator.next();
             try {
-                listener.onObjectRemoved(object.getSimperiumId(),object);
+                listener.onObjectRemoved(object.getSimperiumKey(),object);
             } catch (Exception e) {
                 Simperium.log(String.format("Listener failed onObjectRemoved %s", listener));
             }
@@ -392,7 +392,7 @@ public class Bucket<T extends Bucket.Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        storageProvider.addObject(this, object.getSimperiumId(), object);
+        storageProvider.addObject(this, object.getSimperiumKey(), object);
         // notify listeners that an object has been added
         if (notifyListeners) {
             Set<Listener<T>> notify;
@@ -405,7 +405,7 @@ public class Bucket<T extends Bucket.Syncable> {
             while(iterator.hasNext()) {
                 Listener<T> listener = iterator.next();
                 try {
-                    listener.onObjectAdded(object.getSimperiumId(), object);
+                    listener.onObjectAdded(object.getSimperiumKey(), object);
                 } catch(Exception e) {
                     Simperium.log(String.format("Listener failed onObjectAdded %s", listener), e);
                 }
@@ -417,7 +417,7 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     protected void updateObject(T object){
         object.setBucket(this);
-        storageProvider.updateObject(this, object.getSimperiumId(), object);
+        storageProvider.updateObject(this, object.getSimperiumKey(), object);
         Set<Listener<T>> notify;
         synchronized(listeners){
             notify = new HashSet<Listener<T>>(listeners.size());
@@ -427,7 +427,7 @@ public class Bucket<T extends Bucket.Syncable> {
         while(iterator.hasNext()) {
             Listener<T> listener = iterator.next();
             try {
-                listener.onObjectUpdated(object.getSimperiumId(), object.getVersion(), object);
+                listener.onObjectUpdated(object.getSimperiumKey(), object.getVersion(), object);
             } catch(Exception e) {
                 Simperium.log(String.format("Listener failed onObjectUpdated %s", listener));
             }

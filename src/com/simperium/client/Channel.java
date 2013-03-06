@@ -166,13 +166,13 @@ public class Channel<T extends Bucket.Syncable> {
         // diff the object with it's ghost
         Map<String,Object> diff = jsondiff.diff(object.getUnmodifiedValue(), object.getDiffableValue());
 
-        Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumId(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());
+        Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumKey(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());
         changeProcessor.addChange(change);
 
     }
 
     protected void queueLocalDeletion(T object){
-        Change change = new Change(Change.OPERATION_REMOVE, object.getSimperiumId());
+        Change change = new Change(Change.OPERATION_REMOVE, object.getSimperiumKey());
         changeProcessor.addChange(change);
     }
 
