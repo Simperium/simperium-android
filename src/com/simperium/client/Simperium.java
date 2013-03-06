@@ -184,4 +184,13 @@ public class Simperium implements User.AuthenticationListener {
         return UUID.randomUUID().toString().replace("-","");
     }
 
+	public User.AuthenticationListener getAuthenticationListener() {
+		return authenticationListener;
+	}
+
+	public void setAuthenticationListener(
+			User.AuthenticationListener authenticationListener) {
+		this.authenticationListener = authenticationListener;
+	}
+
 }
