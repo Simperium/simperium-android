@@ -233,16 +233,27 @@ public class LoginActivity extends Activity {
 					}
 
 					@Override
-					public void onInvalid(User user, Throwable error,
-							JSONObject errors) {
-						showLoginError(String.format("Invalid: %s", errors));
+					public void onInvalid(User user, Throwable error, JSONObject errors) {
+						if(error instanceof org.apache.http.client.HttpResponseException) {
+							org.apache.http.client.HttpResponseException errorObj = (org.apache.http.client.HttpResponseException) error;
+							if(errorObj.getStatusCode() == 401)
+								showLoginError(getString(R.string.login_failed_message));
+							else
+								String.format("Invalid: %s", errors);
+						}
 						Log.i(TAG, String.format("Invalid: %s", errors));
 					}
 
 					@Override
-					public void onFailure(User user, Throwable error,
-							String response) {
-						showLoginError(String.format("Failed: %s", response));
+					public void onFailure(User user, Throwable error, String response) {
+						if(error instanceof org.apache.http.client.HttpResponseException) {
+							org.apache.http.client.HttpResponseException errorObj = (org.apache.http.client.HttpResponseException) error;
+							if(errorObj.getStatusCode() == 401)
+								showLoginError(getString(R.string.login_failed_message));
+							else
+								showLoginError(response);
+							
+						}
 						Log.i(TAG, String.format("Failed: %s", response));
 					}
 				});

@@ -25,7 +25,8 @@
     <string name="dont_yet_have_an_account">Do not have an account yet?</string>
     <string name="already_have_an_account">Already have an account? Sign in</string>
     <string name="agree_terms_of_service">By signing up, you agree to our <u>Term of Service.</u></string>
-
+    <string name="login_failed_message">Could not login with the provided email address and password.</string>
+    
     <!-- errors -->
     <string name="error">Error</string>
     <string name="new_task">New Task</string>
