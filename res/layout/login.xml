@@ -27,19 +27,11 @@
             android:layout_below="@id/simperium_logo"
             android:paddingBottom="10dp" >
 
-            <TextView
-                android:id="@+id/l_section1"
-                style="@style/WordPressSectionHeader"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/l_section1"
-                android:text="@string/account_details" />
-
             <EditText
                 android:id="@+id/email_address"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:layout_below="@id/l_section1"
+                android:layout_below="@id/section1"
                 android:hint="@string/email_hint"
                 android:inputType="textEmailAddress" />
 

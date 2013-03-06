@@ -21,7 +21,6 @@
     <string name="no_network_message">There is no network available. Please connect to a network and try again.</string>
     <string name="account_setup">Account Setup</string>
     <string name="attempting_configure">Attempting to configure account</string>
-    <string name="account_details">Account Details</string>
     <string name="dont_yet_have_an_account">Do not have an account yet?</string>
     <string name="already_have_an_account">Already have an account? Sign in</string>
     <string name="agree_terms_of_service">By signing up, you agree to our <u>Term of Service.</u></string>
