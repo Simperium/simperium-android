@@ -18,10 +18,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Scanner;
+
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.BufferedInputStream;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import android.content.Context;
 
 import android.os.Handler;
 
@@ -68,12 +76,14 @@ public class Channel<T extends Bucket.Syncable> {
     private CommandInvoker commands = new CommandInvoker();
     private String appId;
 	private JSONDiff jsondiff = new JSONDiff();
+    private Context context;
 
     // for sending and receiving changes
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
 
-    public Channel(String appId, final Bucket<T> bucket, User user, Listener listener){
+    public Channel(Context context, String appId, final Bucket<T> bucket, User user, Listener listener){
+        this.context = context;
         this.appId = appId;
         this.bucket = bucket;
         this.user = user;
@@ -648,7 +658,23 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String ID_KEY             = "id";
         public static final String CHANGE_ID_KEY      = "ccid";
         public static final String SOURCE_VERSION_KEY = "sv";
-
+        public static final String TARGET_KEY         = "target";
+        public static final String ORIGIN_KEY         = "origin";
+        public static final String OPERATION_KEY      = "o";
+        
+        /**
+         * Constructs a change object from a map of values
+         */
+        protected static Change buildChange(Map<String,Object> properties){
+            return new Change(
+                (String)  properties.get(OPERATION_KEY),
+                (String)  properties.get(ID_KEY),
+                (Integer) properties.get(SOURCE_VERSION_KEY),
+                (Map<String,Object>) properties.get(ORIGIN_KEY),
+                (Map<String,Object>) properties.get(TARGET_KEY)
+            );
+        }
+        
         public Change(String operation, String key){
             this(operation, key, null, null, null);
         }
@@ -704,6 +730,23 @@ public class Channel<T extends Bucket.Syncable> {
          */
         public Change reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
             return new Change(operation, key, sourceVersion, origin, target);
+        }
+        
+        protected Map<String,Object> toJSONSerializable(){
+            Map<String,Object> props = new HashMap<String,Object>(3);
+            // key, version, origin, target, ccid
+            props.put(OPERATION_KEY, operation);
+            props.put(ID_KEY, key);
+            props.put(CHANGE_ID_KEY, ccid);
+            if (version != null) {
+                props.put(SOURCE_VERSION_KEY, version);
+            }
+            if (operation.equals(OPERATION_MODIFY)) {
+                props.put(ORIGIN_KEY, origin);
+                props.put(TARGET_KEY, target);
+            }
+            return props;
+            
         }
 
     }
@@ -850,6 +893,8 @@ public class Channel<T extends Bucket.Syncable> {
 
 
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
+        public static final String PENDING_KEY = "pending";
+        public static final String QUEUED_KEY = "queued";
 
         private Bucket<T> bucket;
         private JSONDiff diff = new JSONDiff();
@@ -862,34 +907,134 @@ public class Channel<T extends Bucket.Syncable> {
         private Handler handler;
         private Change pendingChange;
         private Timer retryTimer;
+        
+        private final Object lock = new Object();
 
         public ChangeProcessor(Bucket<T> bucket, ChangeProcessorListener<T> listener) {
             this.bucket = bucket;
             this.listener = listener;
-            this.remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>());
-            this.localQueue = Collections.synchronizedList(new ArrayList<Change>());
-            this.pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
+            this.remoteQueue = new ArrayList<Map<String,Object>>();
+            this.localQueue = new ArrayList<Change>();
+            this.pendingChanges = new HashMap<String,Change>();
             this.handler = new Handler();
             this.retryTimer = new Timer();
+            restore();
+        }
+        private String getFileName(){
+            return String.format("simperium-queue-%s-%s.json", bucket.getRemoteName(), user.getAccessToken());
+        }
+        private void save(){
+            try {
+                saveToFile();
+            } catch (java.io.IOException e) {
+                Simperium.log(String.format("Could not serialize change processor queue to file %s", getFileName()), e);
+            }
+        }
+        /**
+         * Save state of pending and locally queued items
+         */
+        private void saveToFile() throws java.io.IOException {
+            //  construct JSON string of pending and local queue
+            Simperium.log(String.format("Saving to file %s", getFileName()));
+            synchronized(lock){
+                FileOutputStream stream = null;
+                try {
+                    stream = context.openFileOutput(getFileName(), Context.MODE_PRIVATE);
+                    Map<String,Object> serialized = new HashMap<String,Object>(2);
+                    serialized.put(PENDING_KEY, pendingChanges);
+                    serialized.put(QUEUED_KEY, localQueue);
+                    JSONObject json = Channel.serializeJSON(serialized);
+                    String jsonString = json.toString();
+                    Simperium.log(String.format("Saving: %s", jsonString));
+                    stream.write(jsonString.getBytes(), 0, jsonString.length());
+                } finally {
+                    if(stream !=null) stream.close();
+                }
+            }
+        }
+        
+        private void restore(){
+            try {
+                restoreFromFile();
+            } catch (Exception e) {
+                Simperium.log(String.format("Could not restore from file: %s", getFileName()), e);
+            }
+            Simperium.log(
+                String.format(
+                    "Restored change processwor with %d remote and %d local changes %d pending",
+                    remoteQueue.size(), localQueue.size(), pendingChanges.size()
+                )
+            );
+            
+        }
+        /**
+         * 
+         */
+        private void restoreFromFile() throws java.io.IOException, org.json.JSONException {
+            // read JSON string and reconstruct
+            synchronized(lock){
+                BufferedInputStream stream = null;
+                try {
+                    stream = new BufferedInputStream(context.openFileInput(getFileName()));
+                    byte[] contents = new byte[1024];
+                    int bytesRead = 0;
+                    StringBuilder builder = new StringBuilder();
+                    while((bytesRead = stream.read(contents)) != -1){
+                        builder.append(new String(contents, 0, bytesRead));
+                    }
+                    JSONObject json = new JSONObject(builder.toString());
+                    Map<String,Object> changeData = Channel.convertJSON(json);
+                    Simperium.log(String.format("We have changes from serialized file %s", changeData));
+                    
+                    if (changeData.containsKey(PENDING_KEY)) {
+                        Map<String,Map<String,Object>> pendingData = (Map<String,Map<String,Object>>)changeData.get(PENDING_KEY);
+                        Iterator<Map.Entry<String,Map<String,Object>>> pendingEntries = pendingData.entrySet().iterator();
+                        while(pendingEntries.hasNext()){
+                            Map.Entry<String, Map<String,Object>> entry = pendingEntries.next();
+                            pendingChanges.put(entry.getKey(), Change.buildChange(entry.getValue()));
+                        }
+                    }
+                    if (changeData.containsKey(QUEUED_KEY)) {
+                        List<Map<String,Object>> queuedData = (List<Map<String,Object>>)changeData.get(QUEUED_KEY);
+                        Iterator<Map<String,Object>> queuedItems = queuedData.iterator();
+                        while(queuedItems.hasNext()){
+                            localQueue.add(Change.buildChange(queuedItems.next()));
+                        }
+                    }
+                    
+                } finally {
+                    if(stream != null) stream.close();
+                }
+            }
+        }
+        /**
+         * 
+         */
+        private void clearFile(){
+            
         }
 
         public void addChanges(List<Object> changes){
-            Iterator iterator = changes.iterator();
-            while(iterator.hasNext()){
-                remoteQueue.add((Map<String,Object>)iterator.next());
+            synchronized(lock){
+                Iterator iterator = changes.iterator();
+                while(iterator.hasNext()){
+                    remoteQueue.add((Map<String,Object>)iterator.next());
+                }
             }
             start();
         }
 
         public void addChange(Map<String,Object> change){
-            remoteQueue.add(change);
+            synchronized(lock){                
+                remoteQueue.add(change);
+            }
             start();
         }
         /**
          * Local change to be queued
          */
         public void addChange(Change change){
-            synchronized (localQueue){
+            synchronized (lock){
                 // compress all changes for this same key
                 Iterator<Change> iterator = localQueue.iterator();
                 while(iterator.hasNext()){
@@ -900,6 +1045,7 @@ public class Channel<T extends Bucket.Syncable> {
                 }
                 localQueue.add(change);
             }
+            save();
             start();
         }
 
@@ -932,7 +1078,7 @@ public class Channel<T extends Bucket.Syncable> {
 
         public void run(){
             // apply any remote changes we have
-            synchronized(remoteQueue){
+            synchronized(lock){
                 // bail if thread is interrupted
                 while(remoteQueue.size() > 0 && !Thread.interrupted()){
                     // take an item off the queue
@@ -941,20 +1087,18 @@ public class Channel<T extends Bucket.Syncable> {
                     Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
-                    synchronized(pendingChanges){
-                        Change change = pendingChanges.get(remoteChange.getKey());
-                        if (change != null && remoteChange.isAcknowledgedBy(change)) {
-                            // this is an ACK
-                            // stop the change from sending retries
-                            change.stopRetryTimer();
-                            // change is no longer pending so remove it
-                            pendingChanges.remove(change.getKey());
-                            if (remoteChange.isError()) {
-                                Simperium.log(String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
-                                // TODO: determine if we can retry this change by reapplying
-                            } else {
-                                acknowledged = true;
-                            }
+                    Change change = pendingChanges.get(remoteChange.getKey());
+                    if (change != null && remoteChange.isAcknowledgedBy(change)) {
+                        // this is an ACK
+                        // stop the change from sending retries
+                        change.stopRetryTimer();
+                        // change is no longer pending so remove it
+                        pendingChanges.remove(change.getKey());
+                        if (remoteChange.isError()) {
+                            Simperium.log(String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
+                            // TODO: determine if we can retry this change by reapplying
+                        } else {
+                            acknowledged = true;
                         }
                     }
                     // apply the remote change
@@ -963,41 +1107,42 @@ public class Channel<T extends Bucket.Syncable> {
             }
             // if we have a change to an object that is waiting for an ack
             final List<Change> sendLater = new ArrayList<Change>();
-            synchronized(localQueue){
+            synchronized(lock){
                 // find the first local change whose key does not exist in the pendingChanges
                 while(localQueue.size() > 0 && !Thread.interrupted()){
                     // take the first change of the queue
                     Change localChange = localQueue.remove(0);
-                    synchronized(pendingChanges){
                         // check if there's a pending change with the same key
-                        if (pendingChanges.containsKey(localChange.getKey())) {
-                            // we have a change for this key that has not been acked
-                            // so send it later
-                            Simperium.log(String.format("Changes pending for %s re-queueing %s", localChange.getKey(), localChange.getChangeId()));
-                            sendLater.add(localChange);
-                            // let's get the next change
-                        } else {
-                            // send the change to simperium, if the change ends up being empty
-                            // then we'll just skip it
-                            if(sendChange(localChange)) {
-                                // add the change to pending changes
-                                pendingChanges.put(localChange.getKey(), localChange);
-                                localChange.setOnChangeRetryListener(this);
-                                // starts up the timer
-                                this.retryTimer.scheduleAtFixedRate(localChange, RETRY_DELAY_MS, RETRY_DELAY_MS);
-                            }
+                    if (pendingChanges.containsKey(localChange.getKey())) {
+                        // we have a change for this key that has not been acked
+                        // so send it later
+                        Simperium.log(String.format("Changes pending for %s re-queueing %s", localChange.getKey(), localChange.getChangeId()));
+                        sendLater.add(localChange);
+                        // let's get the next change
+                    } else {
+                        // send the change to simperium, if the change ends up being empty
+                        // then we'll just skip it
+                        if(sendChange(localChange)) {
+                            // add the change to pending changes
+                            pendingChanges.put(localChange.getKey(), localChange);
+                            localChange.setOnChangeRetryListener(this);
+                            // starts up the timer
+                            this.retryTimer.scheduleAtFixedRate(localChange, RETRY_DELAY_MS, RETRY_DELAY_MS);
                         }
                     }
                 }
             }
             // add the sendLater changes back on top of the queue
-            localQueue.addAll(0, sendLater);
-            Simperium.log(
-                String.format(
-                    "Done processing thread with %d remote and %d local changes %d pending",
-                    remoteQueue.size(), localQueue.size(), pendingChanges.size()
-                )
-            );
+            synchronized(lock){
+                localQueue.addAll(0, sendLater);
+                save();
+                Simperium.log(
+                    String.format(
+                        "Done processing thread with %d remote and %d local changes %d pending",
+                        remoteQueue.size(), localQueue.size(), pendingChanges.size()
+                    )
+                );
+            }
         }
         
         public void onRetryChange(Change change){
@@ -1044,7 +1189,7 @@ public class Channel<T extends Bucket.Syncable> {
             // Remove operation, only notify if it's not an ACK
             if (change.isRemoveOperation()) {
                 // remove all queued changes that reference this same object
-                synchronized (localQueue){
+                synchronized (lock){
                     Iterator<Change> iterator = localQueue.iterator();
                     while(iterator.hasNext()){
                         Change queuedChange = iterator.next();
@@ -1084,7 +1229,7 @@ public class Channel<T extends Bucket.Syncable> {
                 jsondiff.apply(object.getUnmodifiedValue(), change.getPatch())
             );
             // Compress all queued changes for the same object into a single change
-            synchronized (localQueue){
+            synchronized (lock){
                 Change compressed = null;
                 Iterator<Change> queuedChanges = localQueue.iterator();
                 while(queuedChanges.hasNext()){
@@ -1169,6 +1314,8 @@ public class Channel<T extends Bucket.Syncable> {
                     json.put(key, serializeJSON((Map<String,Object>) val));
                 } else if(val instanceof List){
                     json.put(key, serializeJSON((List<Object>) val));
+                } else if(val instanceof Change){
+                    json.put(key, serializeJSON(((Change) val).toJSONSerializable()));
                 } else {
                     json.put(key, val);
                 }
@@ -1188,6 +1335,8 @@ public class Channel<T extends Bucket.Syncable> {
                 json.put(serializeJSON((Map<String,Object>) val));
             } else if(val instanceof List) {
                 json.put(serializeJSON((List<Object>) val));
+            } else if(val instanceof Change){
+                json.put(serializeJSON(((Change) val).toJSONSerializable()));
             } else {
                 json.put(val);
             }

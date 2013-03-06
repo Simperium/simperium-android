@@ -27,9 +27,8 @@ public class Simperium implements User.AuthenticationListener {
     private Context context;
     private User.AuthenticationListener authenticationListener;
     private StorageProvider storageProvider;
-
     private static Simperium simperiumClient = null;
-    
+        
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
         this(appId, appSecret, context, storageProvider, null);
     }
@@ -91,7 +90,7 @@ public class Simperium implements User.AuthenticationListener {
         // TODO: cache the bucket by user and bucketName and return the
         // same bucket if asked for again
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider);
-        Channel<T> channel = socketManager.createChannel(bucket, user);
+        Channel<T> channel = socketManager.createChannel(context, bucket, user);
         bucket.setChannel(channel);
         return bucket;
     }

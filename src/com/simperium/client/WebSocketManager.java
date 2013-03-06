@@ -8,6 +8,8 @@
  */
 package com.simperium.client;
 
+import android.content.Context;
+
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,9 +55,9 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public <T extends Bucket.Syncable> Channel<T> createChannel(Bucket<T> bucket, User user){
+    public <T extends Bucket.Syncable> Channel<T> createChannel(Context context, Bucket<T> bucket, User user){
         // create a channel
-        Channel<T> channel = new Channel<T>(appId, bucket, user, this);
+        Channel<T> channel = new Channel<T>(context, appId, bucket, user, this);
         int channelId = channels.size();
         channelIndex.put(channel, channelId);
         channels.put(channelId, channel);
