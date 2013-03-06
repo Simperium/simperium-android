@@ -288,4 +288,15 @@ public class LoginActivity extends Activity {
 			action.start();
 		}
 	}
+	
+	@Override
+	public void onBackPressed() {
+		Bundle bundle = new Bundle();
+		bundle.putInt("returnStatus", -1);
+		Intent mIntent = new Intent();
+		mIntent.putExtras(bundle);
+		setResult(RESULT_OK, mIntent);
+		finish();
+	}
+	
 }
