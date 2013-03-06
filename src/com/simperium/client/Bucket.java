@@ -154,7 +154,7 @@ public class Bucket<T extends Bucket.Syncable> {
         public String getRemoteName(Bucket bucket) {
             return bucket.getName();
         }
-        public abstract T build(String key, Integer version, Map<String,java.lang.Object>properties);
+        public abstract T build(String key, Map<String,java.lang.Object>properties);
     }
     /**
      * Basic implementation of Bucket.Schema for Bucket.Object
@@ -163,8 +163,8 @@ public class Bucket<T extends Bucket.Syncable> {
         public String getRemoteName(Bucket bucket){
             return bucket.getName();
         }
-        public Object build(String key, Integer version, Map<String,java.lang.Object> properties){
-            return new Object(key, version, properties);
+        public Object build(String key, Map<String,java.lang.Object> properties){
+            return new Object(key, properties);
         }
     }
     /**
@@ -174,19 +174,17 @@ public class Bucket<T extends Bucket.Syncable> {
 
         private Bucket bucket;
         private String simperiumId;
-        private Integer version = 0;
         private Diffable ghost;
 
         protected Map<String,java.lang.Object> properties;
 
-        public Object(String key, Integer version, Map<String,java.lang.Object> properties){
+        public Object(String key, Map<String,java.lang.Object> properties){
             this.simperiumId = key;
-            this.version = version;
             this.properties = Bucket.deepCopy(properties);
         }
 
         public Object(String key){
-            this(key, new Integer(0), new HashMap<String, java.lang.Object>());
+            this(key, new HashMap<String, java.lang.Object>());
         }
 
         public Bucket getBucket(){
@@ -202,11 +200,11 @@ public class Bucket<T extends Bucket.Syncable> {
         }
 
         public Integer getVersion(){
-            return version;
+            return ghost.getVersion();
         }
 
         public Boolean isNew(){
-            return version == null || version == 0;
+            return ghost.getVersion() == null || ghost.getVersion() == 0;
         }
 
         public String bucketName(){
@@ -346,7 +344,7 @@ public class Bucket<T extends Bucket.Syncable> {
     }
 
     protected T buildObject(String key, Integer version, Map<String,java.lang.Object> properties){
-        T object = schema.build(key, version, properties);
+        T object = schema.build(key, properties);
         // set the bucket that is managing this object
         object.setBucket(this);
         // set the diffable ghost object to determine local modifications
