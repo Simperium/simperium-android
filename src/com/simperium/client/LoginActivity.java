@@ -183,7 +183,7 @@ public class LoginActivity extends Activity {
 
 		pd = ProgressDialog.show(LoginActivity.this,
 				getString(R.string.account_setup),
-				getString(R.string.attempting_configure), true, false);
+				getString(R.string.signing_up), true, false);
 		
 		simperium.createUser(email, password, new User.AuthResponseHandler() {
 			@Override
@@ -196,13 +196,13 @@ public class LoginActivity extends Activity {
 
 			@Override
 			public void onInvalid(User user, Throwable error, JSONObject errors) {
-				showLoginError(String.format("Invalid: %s", errors));
+				showLoginError(errors.toString());
 				Log.i(TAG, String.format("Invalid: %s", errors));
 			}
 
 			@Override
 			public void onFailure(User user, Throwable error, String response) {
-				showLoginError(String.format("Failed: %s", response));
+				showLoginError(response);
 				Log.i(TAG, String.format("Failed: %s", response));
 			}
 		});
@@ -218,16 +218,14 @@ public class LoginActivity extends Activity {
 		
 		pd = ProgressDialog.show(LoginActivity.this,
 				getString(R.string.account_setup),
-				getString(R.string.attempting_configure), true, false);
+				getString(R.string.signing_in), true, false);
 		
 		simperium.authorizeUser(email, password,
 				new User.AuthResponseHandler() {
 					@Override
 					public void onSuccess(User user) {
-						Log.i(TAG,
-								String.format("Success! %s %s",
-										user.getUserId(), user));
-						if(pd != null ) 
+						Log.i(TAG, String.format("Success! %s %s", user.getUserId(), user));
+						if(pd != null) 
 							pd.dismiss();
 						registerUser(user);
 					}
@@ -239,7 +237,7 @@ public class LoginActivity extends Activity {
 							if(errorObj.getStatusCode() == 401)
 								showLoginError(getString(R.string.login_failed_message));
 							else
-								String.format("Invalid: %s", errors);
+								showLoginError(error.toString());
 						}
 						Log.i(TAG, String.format("Invalid: %s", errors));
 					}
@@ -252,7 +250,6 @@ public class LoginActivity extends Activity {
 								showLoginError(getString(R.string.login_failed_message));
 							else
 								showLoginError(response);
-							
 						}
 						Log.i(TAG, String.format("Failed: %s", response));
 					}
