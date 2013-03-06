@@ -118,6 +118,7 @@ public class Simperium implements User.AuthenticationListener {
     public boolean deAuthorizeUser(){
     	user.setAccessToken(null);
     	user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
+    	clearUserAccessToken();
     	return true;
     }
 
