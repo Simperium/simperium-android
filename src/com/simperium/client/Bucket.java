@@ -44,15 +44,17 @@ public class Bucket<T extends Bucket.Syncable> {
     private Set<Listener<T>> listeners;
     private StorageProvider storageProvider;
     private Schema<T> schema;
+    private GhostStore ghostStore;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    protected Bucket(String name, Schema<T>schema, User user, StorageProvider storageProvider){
+    protected Bucket(String name, Schema<T>schema, User user, StorageProvider storageProvider, GhostStore ghostStore){
         this.name = name;
         this.user = user;
         this.storageProvider = storageProvider;
+        this.ghostStore = ghostStore;
         this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
     }
@@ -64,9 +66,9 @@ public class Bucket<T extends Bucket.Syncable> {
      *    can perform their necessary save operations
      */
     public static interface Listener<T extends Bucket.Syncable> {
-        void onObjectRemoved(String key, T object);
-        void onObjectUpdated(String key, Integer version, T object);
-        void onObjectAdded(String key, T object);
+        public void onObjectRemoved(String key, T object);
+        public void onObjectUpdated(String key, T object);
+        public void onObjectAdded(String key, T object);
     }
     /**
      * The interface all objects must conform to in order to be able to be
@@ -314,19 +316,19 @@ public class Bucket<T extends Bucket.Syncable> {
     }
 
     public Boolean hasChangeVersion(){
-        return storageProvider.hasChangeVersion(this);
+        return ghostStore.hasChangeVersion(this);
     }
 
     public Boolean hasChangeVersion(String version){
-        return storageProvider.hasChangeVersion(this, version);
+        return ghostStore.hasChangeVersion(this, version);
     }
 
     public String getChangeVersion(){
-        return storageProvider.getChangeVersion(this);
+        return ghostStore.getChangeVersion(this);
     }
 
     public void setChangeVersion(String version){
-        storageProvider.setChangeVersion(this, version);
+        ghostStore.setChangeVersion(this, version);
     }
 
     // starts tracking the object
@@ -343,22 +345,25 @@ public class Bucket<T extends Bucket.Syncable> {
         // TODO: sync the object over the socket
     }
 
-    protected T buildObject(String key, Integer version, Map<String,java.lang.Object> properties){
+    protected T buildObject(String key, Map<String,java.lang.Object> properties){
         T object = schema.build(key, properties);
         // set the bucket that is managing this object
         object.setBucket(this);
         // set the diffable ghost object to determine local modifications
-        object.setGhost(new Ghost(key, version, properties));
-        // TODO: setup the ghost
+        object.setGhost(new Ghost(key, 0, properties));
         return object;
     }
 
-    protected T buildObject(String key, Map<String,java.lang.Object> properties){
-        return buildObject(key, 0, properties);
-    }
 
     protected T buildObject(String key){
-        return buildObject(key, 0, new HashMap<String,java.lang.Object>());
+        return buildObject(key, new HashMap<String,java.lang.Object>());
+    }
+    
+    protected T buildObject(Ghost ghost){
+        T object = schema.build(ghost.getSimperiumKey(), Bucket.deepCopy(ghost.getDiffableValue()));
+        object.setGhost(ghost);
+        object.setBucket(this);
+        return object;
     }
     /**
      * Returns a new objecty tracked by this bucket
@@ -371,9 +376,44 @@ public class Bucket<T extends Bucket.Syncable> {
      * return null if the uuid exists?
      */
     protected T newObject(String uuid){
-        T object = buildObject(uuid, 0, new HashMap<String,java.lang.Object>());
+        T object = buildObject(uuid, new HashMap<String,java.lang.Object>());
         addObject(object);
         return object;
+    }
+    /**
+     * Save the ghost data and update the change version, tell the storage provider
+     * that a new object has been added
+     */
+    protected void addObjectWithGhost(String changeVersion, Bucket.Ghost ghost){
+        setChangeVersion(changeVersion);
+        addObjectWithGhost(ghost);
+    }
+    /**
+     * Add object from new ghost data, no corresponding change version so this
+     * came from an index request
+     */
+    protected void addObjectWithGhost(Bucket.Ghost ghost){
+        ghostStore.saveGhost(this, ghost);
+        T object = buildObject(ghost);
+        Simperium.log("Built object with ghost, add it");
+        addObject(object);
+    }
+    /**
+     * Update the ghost data
+     */
+    protected void updateObjectWithGhost(String changeVersion, Bucket.Ghost ghost){
+        setChangeVersion(changeVersion);
+        ghostStore.saveGhost(this, ghost);
+        T object = buildObject(ghost);
+        Simperium.log("Built object with ghost, updated it");
+        updateObject(object);
+    }
+    protected void updateGhost(Bucket.Ghost ghost){
+        ghostStore.saveGhost(this, ghost);
+        Simperium.log("Update the ghost!");
+    }
+    protected Bucket.Ghost getGhost(String key){
+        return ghostStore.getGhost(this, key);
     }
     /**
      * Add a new object with corresponding change version
@@ -394,6 +434,7 @@ public class Bucket<T extends Bucket.Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
+        Simperium.log("Added an object, let's tell the storage provider");
         storageProvider.addObject(this, object.getSimperiumKey(), object);
         // notify listeners that an object has been added
         if (notifyListeners) {
@@ -429,7 +470,7 @@ public class Bucket<T extends Bucket.Syncable> {
         while(iterator.hasNext()) {
             Listener<T> listener = iterator.next();
             try {
-                listener.onObjectUpdated(object.getSimperiumKey(), object.getVersion(), object);
+                listener.onObjectUpdated(object.getSimperiumKey(), object);
             } catch(Exception e) {
                 Simperium.log(String.format("Listener failed onObjectUpdated %s", listener));
             }
@@ -465,12 +506,27 @@ public class Bucket<T extends Bucket.Syncable> {
     public void start(){
         channel.start();
     }
+    /*
+     * Reset bucket what is on the server
+     */
+    public void reset(){
+        // TODO: tell the datastore to delete everything it has
+        channel.reset();
+		// Clear the ghost store
+		ghostStore.reset();
+    }
     /**
      * Get a single object object that matches key
      */
     public T get(String key){
-        // TODO: ask the datastore to find the object
-        return storageProvider.getObject(this, key);
+        // Datastore constructs the object for us
+        T object = storageProvider.getObject(this, key);
+        // We assume that it's current state is the server state
+        // if it isn't then we should have a pending or queued change
+        // in the channel's change processor which will update the ghost
+        // to the correct state
+        object.setGhost(new Ghost(key, object.getVersion(), object.getDiffableValue()));
+        return object;
     }
     /**
      *
@@ -494,19 +550,22 @@ public class Bucket<T extends Bucket.Syncable> {
      * Does bucket have at least the requested version?
      */
     public Boolean containsKey(String key){
-        return storageProvider.containsKey(this, key);
+        Ghost ghost = ghostStore.getGhost(this, key);
+        return ghost != null;
     }
     /**
      * Ask storage if it has at least the requested version or newer
      */
     public Boolean hasKeyVersion(String key, Integer version){
-        return storageProvider.hasKeyVersion(this, key, version);
+        Ghost ghost = ghostStore.getGhost(this, key);
+        return ghost != null && ghost.getVersion().equals(version);
     }
     /**
      * Which version of the key do we have
      */
     public Integer getKeyVersion(String key){
-        return storageProvider.getKeyVersion(this, key);
+        Ghost ghost = ghostStore.getGhost(this, key);
+        return ghost.getVersion();
     }
 
     public String uuid(){

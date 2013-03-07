@@ -29,6 +29,7 @@ public class Simperium implements User.AuthenticationListener {
     private User.AuthenticationListener authenticationListener;
     private StorageProvider storageProvider;
     private static Simperium simperiumClient = null;
+	private GhostStore ghostStore;
         
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
         this(appId, appSecret, context, storageProvider, null);
@@ -44,6 +45,7 @@ public class Simperium implements User.AuthenticationListener {
         socketManager = new WebSocketManager(appId);
         this.authenticationListener = authenticationListener;
         this.storageProvider = storageProvider;
+		ghostStore = new GhostStore(context);
         loadUser();
         Simperium.log(String.format("Initializing Simperium %s", CLIENT_ID));
         simperiumClient = this;
@@ -88,9 +90,7 @@ public class Simperium implements User.AuthenticationListener {
      * @param bucketName the namespace to store the data in simperium
      */
     public <T extends Bucket.Syncable> Bucket<T> bucket(String bucketName, Bucket.Schema<T> schema){
-        // TODO: cache the bucket by user and bucketName and return the
-        // same bucket if asked for again
-        Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider);
+        Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider, ghostStore);
         Channel<T> channel = socketManager.createChannel(context, bucket, user);
         bucket.setChannel(channel);
         return bucket;

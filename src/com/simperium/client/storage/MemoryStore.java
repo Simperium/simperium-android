@@ -17,7 +17,6 @@ import android.util.Pair;
  */
 public class MemoryStore implements StorageProvider {
     private Map<Pair<String,String>, Bucket.Syncable> entities = new HashMap<Pair<String,String>, Bucket.Syncable>();
-    private Map<Pair<String,String>, Integer> versions = new HashMap<Pair<String,String>, Integer>();
     private Map<String, String> bucketVersions = new HashMap<String,String>();
 
     // Prepare the datastore to store entites for a bucket
@@ -45,7 +44,6 @@ public class MemoryStore implements StorageProvider {
     public void addObject(Bucket bucket, String key, Bucket.Syncable object){
         Pair bucketKey = bucketKey(bucket, key);
         entities.put(bucketKey, object);
-        versions.put(bucketKey, object.getVersion());
     }
     public void updateObject(Bucket bucket, String key, Bucket.Syncable object){
         addObject(bucket, key, object);
@@ -53,35 +51,10 @@ public class MemoryStore implements StorageProvider {
     public void removeObject(Bucket bucket, String key){
         Pair bucketKey = bucketKey(bucket, key);
         entities.remove(bucketKey);
-        versions.remove(bucketKey);
     }
     public Bucket.Syncable getObject(Bucket bucket, String key){
         Bucket.Syncable object = entities.get(bucketKey(bucket, key));
         return object;
-    }
-    public Boolean containsKey(Bucket bucket, String key){
-        return entities.containsKey(bucketKey(bucket, key));
-    }
-    public Boolean hasKeyVersion(Bucket bucket, String key, Integer version){
-        Integer localVersion = getKeyVersion(bucket, key);
-        return localVersion != null && localVersion >= version;
-    }
-    public Integer getKeyVersion(Bucket bucket, String key){
-        return versions.get(bucketKey(bucket, key));
-    }
-    public String getChangeVersion(Bucket bucket){
-        return bucketVersions.get(bucket.getName());
-    }
-    public Boolean hasChangeVersion(Bucket bucket){
-        return bucketVersions.containsKey(bucket.getName());
-    }
-    public Boolean hasChangeVersion(Bucket bucket, String version){
-        String localVersion = bucketVersions.get(bucket.getName());
-        return version == localVersion;
-    }
-    public void setChangeVersion(Bucket bucket, String string){
-        Simperium.log(String.format("Setting change version for bucket: %s to %s", bucket, string));
-        bucketVersions.put(bucket.getName(), string);
     }
 
 }

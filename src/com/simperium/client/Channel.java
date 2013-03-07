@@ -122,20 +122,31 @@ public class Channel<T extends Bucket.Syncable> {
             }
         });
 
-        changeProcessor = new ChangeProcessor<T>(getBucket(), new ChangeProcessorListener<T>(){
+        changeProcessor = new ChangeProcessor(getBucket(), new ChangeProcessorListener(){
             public void onComplete(){
             }
-            public void onAddObject(String cv, String key, T object){
-                getBucket().addObject(cv, object);
+			public void onAcknowledgedChange(String cv, String key, Bucket.Ghost object){
+				getBucket().updateObjectWithGhost(cv, object);
+			}
+            public void onAddObject(String cv, String key, Bucket.Ghost object){
+                getBucket().addObjectWithGhost(cv, object);
             }
-            public void onUpdateObject(String cv, String key, T object){
-                getBucket().updateObject(cv, object);
+            public void onUpdateObject(String cv, String key, Bucket.Ghost object){
+                getBucket().updateObjectWithGhost(cv, object);
             }
             public void onRemoveObject(String changeVersion, String key){
                 getBucket().removeObjectWithKey(changeVersion, key);
             }
         });
     }
+	
+	protected void reset(){
+		if (started) {
+			getLatestVersions();			
+		} else {
+			startOnConnect = true;	
+		}
+	}
 
     private boolean hasChangeVersion(){
         return bucket.hasChangeVersion();
@@ -520,17 +531,10 @@ public class Channel<T extends Bucket.Syncable> {
             }
 
             Integer remoteVersion = Integer.parseInt(version);
+			// build the ghost and update
             Map<String,Object> properties = Channel.convertJSON(data);
-            T object = (T)bucket.buildObject(key, remoteVersion, properties);
-
-            if (bucket.containsKey(key)) {
-                // check if we have local changes pending?
-                bucket.updateObject(object);
-            } else {
-                // construct the bucket object with version data
-                // add the bucket object to the bucket
-                bucket.addObject(object);
-            }
+			Bucket.Ghost ghost = new Bucket.Ghost(key, remoteVersion, properties);
+			bucket.addObjectWithGhost(ghost);
 
             if (complete && index.size() == 0) {
                 notifyDone();
@@ -628,12 +632,13 @@ public class Channel<T extends Bucket.Syncable> {
 
     }
 
-    private interface ChangeProcessorListener<T extends Bucket.Syncable> {
+    private interface ChangeProcessorListener {
         /**
          * Change has been applied.
          */
-        void onUpdateObject(String changeVersion, String key, T object);
-        void onAddObject(String changeVersion, String key, T object);
+		void onAcknowledgedChange(String changeVersion, String key, Bucket.Ghost object);
+        void onUpdateObject(String changeVersion, String key, Bucket.Ghost object);
+        void onAddObject(String changeVersion, String key, Bucket.Ghost object);
         void onRemoveObject(String changeVersion, String key);
         /**
          * All changes have been processed and entering idle state
@@ -887,7 +892,7 @@ public class Channel<T extends Bucket.Syncable> {
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
-    private class ChangeProcessor<T extends Bucket.Syncable> implements Runnable, OnChangeRetryListener {
+    private class ChangeProcessor implements Runnable, OnChangeRetryListener {
 
         // public static final Integer CAPACITY = 200;
 
@@ -896,7 +901,7 @@ public class Channel<T extends Bucket.Syncable> {
         public static final String PENDING_KEY = "pending";
         public static final String QUEUED_KEY = "queued";
 
-        private Bucket<T> bucket;
+        private Bucket<? extends Bucket.Syncable> bucket;
         private JSONDiff diff = new JSONDiff();
         private ChangeProcessorListener listener;
         private Thread thread;
@@ -910,7 +915,7 @@ public class Channel<T extends Bucket.Syncable> {
         
         private final Object lock = new Object();
 
-        public ChangeProcessor(Bucket<T> bucket, ChangeProcessorListener<T> listener) {
+        public ChangeProcessor(Bucket<? extends Bucket.Syncable> bucket, ChangeProcessorListener listener) {
             this.bucket = bucket;
             this.listener = listener;
             this.remoteQueue = new ArrayList<Map<String,Object>>();
@@ -1205,11 +1210,11 @@ public class Channel<T extends Bucket.Syncable> {
                 });
                 return;
             }
-            T object;
+            Bucket.Ghost object;
             if (change.isAddOperation()) {
-                object = bucket.buildObject(change.getKey());
+                object = new Bucket.Ghost(change.getKey(), 0, new HashMap<String,Object>());
             } else {
-                object = bucket.get(change.getKey());
+                object = bucket.getGhost(change.getKey());
                 if (null == object) {
                    Simperium.log(String.format("Local object missing: %s", change.getKey()));
                    return;
@@ -1223,10 +1228,10 @@ public class Channel<T extends Bucket.Syncable> {
             }
 
             // construct the new object
-            final T updated = bucket.buildObject(
+            final Bucket.Ghost updated = new Bucket.Ghost(
                 change.getKey(),
                 change.getObjectVersion(),
-                jsondiff.apply(object.getUnmodifiedValue(), change.getPatch())
+                jsondiff.apply(object.getDiffableValue(), change.getPatch())
             );
             // Compress all queued changes for the same object into a single change
             synchronized (lock){
@@ -1237,7 +1242,7 @@ public class Channel<T extends Bucket.Syncable> {
                     if (queuedChange.getKey().equals(change.getKey())) {
                         queuedChanges.remove();
                         Simperium.log(String.format("Compressed queued local change for %s", queuedChange.getKey()));
-                        compressed = queuedChange.reapplyOrigin(updated.getVersion(), updated.getUnmodifiedValue());
+                        compressed = queuedChange.reapplyOrigin(updated.getVersion(), updated.getDiffableValue());
                     }
                 }
                 if (compressed != null) {
@@ -1246,10 +1251,14 @@ public class Channel<T extends Bucket.Syncable> {
             }
             
             // notify the listener
-            final boolean isNew = object.isNew() && !acknowledged;
+            final boolean isNew = change.isAddOperation();
+			// if it's an acknowledge then we don't need to update the storageprovider
+			// but we want to update the stored ghost object
             this.handler.post(new Runnable(){
                 public void run(){
-                    if(isNew){
+					if (acknowledged) {
+						changeListener.onAcknowledgedChange(change.getChangeVersion(), change.getKey(), updated);
+					} else if(isNew){
                         changeListener.onAddObject(change.getChangeVersion(), change.getKey(), updated);
                     } else {
                         changeListener.onUpdateObject(change.getChangeVersion(), change.getKey(), updated);
