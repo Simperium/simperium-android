@@ -86,7 +86,7 @@ public class Bucket<T extends Bucket.Syncable> {
         private String key;
         private Integer version;
         private Map<String, java.lang.Object> properties;
-        private Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
+        public Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
             this.key = key;
             this.version = version;
             // copy the properties
@@ -386,6 +386,8 @@ public class Bucket<T extends Bucket.Syncable> {
      * Adds a new object to the bucket
      */
     protected void addObject(T object){
+    	object.ghost = new Ghost(object.getSimperiumKey(), 0, new HashMap<String, Object>());
+    	
         // Allows the storage provider to persist the object
         Boolean notifyListeners = true;
         if (!object.getBucket().equals(this)) {
