@@ -115,6 +115,7 @@ public class LoginActivity extends Activity {
 
 	private void registerUser(User user) {
 		// TODO: finish activity
+		setResult(RESULT_OK);
 		finish();
 	}
 
@@ -291,11 +292,7 @@ public class LoginActivity extends Activity {
 	
 	@Override
 	public void onBackPressed() {
-		Bundle bundle = new Bundle();
-		bundle.putInt("returnStatus", -1);
-		Intent mIntent = new Intent();
-		mIntent.putExtras(bundle);
-		setResult(RESULT_OK, mIntent);
+		setResult(RESULT_CANCELED);
 		finish();
 	}
 	

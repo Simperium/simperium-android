@@ -15,6 +15,7 @@ public class Simperium implements User.AuthenticationListener {
     public static final String CLIENT_ID = String.format("android-%s", VERSION);
     public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
+    public static final int SIGNUP_SIGNIN_REQUEST = 1000;  // The request code
     private String appId;
     private String appSecret;
 
