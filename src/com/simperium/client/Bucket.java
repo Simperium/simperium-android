@@ -386,7 +386,7 @@ public class Bucket<T extends Bucket.Syncable> {
      * Adds a new object to the bucket
      */
     protected void addObject(T object){
-    	object.ghost = new Ghost(object.getSimperiumKey(), 0, new HashMap<String, Object>());
+    	object.ghost = new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>());
     	
         // Allows the storage provider to persist the object
         Boolean notifyListeners = true;
