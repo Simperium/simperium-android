@@ -111,6 +111,7 @@ public class GhostStore {
 		Cursor cursor = database.query(GHOSTS_TABLE_NAME, columns, where, args, null, null, null);
 		Bucket.Ghost ghost = null;
 		if (cursor.getCount() > 0) {
+			cursor.moveToFirst();
 			ghost = new Bucket.Ghost(cursor.getString(0), cursor.getInt(1), deserializeGhostData(cursor.getString(2)));
 		}
 		cursor.close();
