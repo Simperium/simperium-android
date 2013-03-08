@@ -175,13 +175,12 @@ public class Bucket<T extends Bucket.Syncable> {
     public static class Object extends Syncable {
 
         private Bucket bucket;
-        private String simperiumId;
-        private Diffable ghost;
+        private String simperiumKey;
 
         protected Map<String,java.lang.Object> properties;
 
         public Object(String key, Map<String,java.lang.Object> properties){
-            this.simperiumId = key;
+            this.simperiumKey = key;
             this.properties = Bucket.deepCopy(properties);
         }
 
@@ -198,16 +197,16 @@ public class Bucket<T extends Bucket.Syncable> {
         }
 
         public String getSimperiumKey(){
-            return simperiumId;
+            return simperiumKey;
         }
 
         public Integer getVersion(){
-			Simperium.log(String.format("Ghost? %s", ghost));
-            return ghost.getVersion();
+			Simperium.log(String.format("t %s", getGhost()));
+            return getGhost().getVersion();
         }
 
         public Boolean isNew(){
-            return ghost.getVersion() == null || ghost.getVersion() == 0;
+            return getGhost().getVersion() == null || getGhost().getVersion() == 0;
         }
 
         public String bucketName(){
@@ -243,12 +242,14 @@ public class Bucket<T extends Bucket.Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(T object){
-        // TODO should we persists local modifications somewhere?
-        // TODO tell listener that items are updated?
-        // create the change id here so we can identify it in the future?
-        // pass it off to the channel
-        storageProvider.updateObject(this, object.getSimperiumKey(), object);
-        channel.queueLocalChange(object);
+    	if (object.isNew()) {
+    		storageProvider.addObject(this, object.getSimperiumKey(), object);
+    	} else {    		
+    		storageProvider.updateObject(this, object.getSimperiumKey(), object);
+    	}
+    	
+    	if (object.isModified())
+    		channel.queueLocalChange(object);
     }
 
     /**
@@ -378,7 +379,8 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     protected T newObject(String uuid){
         T object = buildObject(uuid, new HashMap<String,java.lang.Object>());
-        addObject(object);
+        object.setBucket(this);
+        object.setGhost(new Ghost(uuid, 0, new HashMap<String, java.lang.Object>()));
         return object;
     }
     /**
@@ -427,7 +429,7 @@ public class Bucket<T extends Bucket.Syncable> {
      * Adds a new object to the bucket
      */
     protected void addObject(T object){
-    	object.ghost = new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>());
+    	object.setGhost(new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>()));
     	
         // Allows the storage provider to persist the object
         Boolean notifyListeners = true;
