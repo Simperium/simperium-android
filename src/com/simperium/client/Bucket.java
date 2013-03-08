@@ -206,6 +206,7 @@ public class Bucket<T extends Bucket.Syncable> {
         }
 
         public Boolean isNew(){
+			Simperium.log(String.format("g %s", getGhost()));
             return getGhost().getVersion() == null || getGhost().getVersion() == 0;
         }
 
@@ -242,7 +243,7 @@ public class Bucket<T extends Bucket.Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(T object){
-    	if (object.isNew()) {
+    	if (object.isNew() && !ghostStore.hasGhost(this, object.getSimperiumKey())) {
     		storageProvider.addObject(this, object.getSimperiumKey(), object);
     	} else {    		
     		storageProvider.updateObject(this, object.getSimperiumKey(), object);
@@ -380,7 +381,10 @@ public class Bucket<T extends Bucket.Syncable> {
     protected T newObject(String uuid){
         T object = buildObject(uuid, new HashMap<String,java.lang.Object>());
         object.setBucket(this);
-        object.setGhost(new Ghost(uuid, 0, new HashMap<String, java.lang.Object>()));
+		Ghost ghost = new Ghost(uuid, 0, new HashMap<String, java.lang.Object>());
+        object.setGhost(ghost);
+		ghostStore.saveGhost(this, ghost);
+		Simperium.log(String.format("Build new object %s with ghost %s", object, object.getGhost()));
         return object;
     }
     /**
@@ -437,7 +441,7 @@ public class Bucket<T extends Bucket.Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        Simperium.log("Added an object, let's tell the storage provider");
+        Simperium.log(String.format("Added an object, let's tell the storage provider %s %s", object, object.getGhost()));
         storageProvider.addObject(this, object.getSimperiumKey(), object);
         // notify listeners that an object has been added
         if (notifyListeners) {

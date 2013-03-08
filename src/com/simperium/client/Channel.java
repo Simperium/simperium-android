@@ -126,6 +126,7 @@ public class Channel<T extends Bucket.Syncable> {
             public void onComplete(){
             }
 			public void onAcknowledgedChange(String cv, String key, Bucket.Ghost object){
+				Simperium.log(String.format("Acknowledging change: %s", object));
 				getBucket().updateObjectWithGhost(cv, object);
 			}
             public void onAddObject(String cv, String key, Bucket.Ghost object){
@@ -178,6 +179,7 @@ public class Channel<T extends Bucket.Syncable> {
 		Simperium.log(String.format("Object: %s", object.getDiffableValue()));
 		Simperium.log(String.format("Ghost: %s", object.getGhost().getDiffableValue()));
         Map<String,Object> diff = jsondiff.diff(object.getUnmodifiedValue(), object.getDiffableValue());
+		Simperium.log(String.format("Diff: %s", diff));
 
         Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumKey(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());
         changeProcessor.addChange(change);
@@ -961,6 +963,9 @@ public class Channel<T extends Bucket.Syncable> {
         }
         
         private void restore(){
+			// don't restore unless we have a user
+			if (user == null || !user.hasAccessToken()) return;
+			
             try {
                 restoreFromFile();
             } catch (Exception e) {

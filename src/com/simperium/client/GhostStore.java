@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.Cursor;
 
 import java.util.Map;
+import java.util.HashMap;
 
 import org.json.JSONObject;
 
@@ -121,6 +122,11 @@ public class GhostStore {
 		return ghost;
 	}
 	
+	public Boolean hasGhost(Bucket bucket, String key){
+		Bucket.Ghost ghost = getGhost(bucket, key);
+		return ghost != null;
+	}
+
 	protected void deleteGhost(Bucket bucket, Bucket.Ghost ghost){
 		// REMOVE
 		
