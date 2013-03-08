@@ -110,6 +110,9 @@ public class JSONDiff {
 
 	public Map<String,Object> diff(Object a, Object b){
 		HashMap<String,Object> m = new HashMap<String,Object>();
+		if (a==null || b==null) {
+			
+		}
 		if (a.equals(b)) {
 			return m;
 		}

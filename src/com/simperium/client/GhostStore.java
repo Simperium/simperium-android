@@ -7,6 +7,8 @@ import android.database.Cursor;
 
 import java.util.Map;
 
+import org.json.JSONObject;
+
 public class GhostStore {
 	
 	private static final String DATABASE_NAME="simperium-ghost";
@@ -92,13 +94,14 @@ public class GhostStore {
 		values.put(BUCKET_NAME_FIELD, bucket.getName());
 		values.put(VERSION_FIELD, ghost.getVersion());
 		values.put(OBJECT_KEY_FIELD, ghost.getSimperiumKey());
-		values.put(PAYLOAD_FIELD, serializeGhostData(ghost));
+		String payload = serializeGhostData(ghost);
+		values.put(PAYLOAD_FIELD, payload);
 		if (cursor.getCount() > 0) {
 			int count = database.update(GHOSTS_TABLE_NAME, values, where, args);
-			Simperium.log(String.format("Updated ghost(%d): %s.%d", count, ghost.getSimperiumKey(), ghost.getVersion()));
+			Simperium.log(String.format("Updated ghost(%d): %s.%d %s", count, ghost.getSimperiumKey(), ghost.getVersion(), payload));
 		} else {
 			long id = database.insertOrThrow(GHOSTS_TABLE_NAME, null, values);
-			Simperium.log(String.format("Created ghost(id:%d): %s.%d", id, ghost.getSimperiumKey(), ghost.getVersion()));
+			Simperium.log(String.format("Created ghost(id:%d): %s.%d %s", id, ghost.getSimperiumKey(), ghost.getVersion(), payload));
 		}
 		cursor.close();
 	}
@@ -112,7 +115,7 @@ public class GhostStore {
 		Bucket.Ghost ghost = null;
 		if (cursor.getCount() > 0) {
 			cursor.moveToFirst();
-			ghost = new Bucket.Ghost(cursor.getString(0), cursor.getInt(1), deserializeGhostData(cursor.getString(2)));
+			ghost = new Bucket.Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)));
 		}
 		cursor.close();
 		return ghost;
@@ -124,7 +127,11 @@ public class GhostStore {
 	}
 	
 	private String serializeGhostData(Bucket.Ghost ghost){
-		return "";
+		JSONObject json = Channel.serializeJSON(ghost.getDiffableValue());
+		if (json != null) {
+			return json.toString();
+		}
+		return null;
 	}
 	
 	private Map<String,Object> deserializeGhostData(String data){

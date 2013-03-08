@@ -175,6 +175,8 @@ public class Channel<T extends Bucket.Syncable> {
      */
     protected void queueLocalChange(T object){
         // diff the object with it's ghost
+		Simperium.log(String.format("Object: %s", object.getDiffableValue()));
+		Simperium.log(String.format("Ghost: %s", object.getGhost().getDiffableValue()));
         Map<String,Object> diff = jsondiff.diff(object.getUnmodifiedValue(), object.getDiffableValue());
 
         Change change = new Change(Change.OPERATION_MODIFY, object.getSimperiumKey(), object.getVersion(), object.getUnmodifiedValue(), object.getDiffableValue());

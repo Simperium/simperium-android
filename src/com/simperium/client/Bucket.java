@@ -114,7 +114,7 @@ public class Bucket<T extends Bucket.Syncable> {
         public abstract Bucket getBucket();
         public abstract String bucketName();
         public abstract Boolean isNew();
-        private Diffable getGhost(){
+        protected Diffable getGhost(){
             return ghost;
         }
         public Integer getVersion(){
@@ -202,6 +202,7 @@ public class Bucket<T extends Bucket.Syncable> {
         }
 
         public Integer getVersion(){
+			Simperium.log(String.format("Ghost? %s", ghost));
             return ghost.getVersion();
         }
 
@@ -523,6 +524,7 @@ public class Bucket<T extends Bucket.Syncable> {
         Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
 		T object = schema.build(key, properties);
 		Ghost ghost = ghostStore.getGhost(this, key);
+		Simperium.log(String.format("Fetched ghost for %s %s", key, ghost));
 		object.setBucket(this);
         object.setGhost(ghost);
         return object;
