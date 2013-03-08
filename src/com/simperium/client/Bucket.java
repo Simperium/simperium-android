@@ -520,12 +520,11 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     public T get(String key){
         // Datastore constructs the object for us
-        T object = storageProvider.getObject(this, key);
-        // We assume that it's current state is the server state
-        // if it isn't then we should have a pending or queued change
-        // in the channel's change processor which will update the ghost
-        // to the correct state
-        object.setGhost(new Ghost(key, object.getVersion(), object.getDiffableValue()));
+        Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
+		T object = schema.build(key, properties);
+		Ghost ghost = ghostStore.getGhost(this, key);
+		object.setBucket(this);
+        object.setGhost(ghost);
         return object;
     }
     /**
@@ -533,18 +532,6 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     public void put(String key, T object){
         // storageProvider.putObject(this, key, object);
-    }
-    /**
-     * Get a list of objects based on the provided keys
-     */
-    public List<T> getAll(String[] ... keys){
-        return null;
-    }
-    /**
-     * Ask the storage adapter for all of the entities in this bucket
-     */
-    public List<T> allEntities(){
-        return (List<T>)storageProvider.allEntities(this);
     }
     /**
      * Does bucket have at least the requested version?
