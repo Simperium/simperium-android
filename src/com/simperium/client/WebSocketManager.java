@@ -23,7 +23,12 @@ import org.apache.http.message.BasicNameValuePair;
 
 import com.codebutler.android_websockets.*;
 
-public class WebSocketManager implements WebSocketClient.Listener, Channel.Listener {
+public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMessageListener {
+
+    public enum ConnectionStatus {
+        DISCONNECTED, CONNECTING, CONNECTED
+    }
+
     public static final String TAG = "SimpWS";
     private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/websocket";
     private static final String SOCKETIO_URL = "https://api.simperium.com/";
@@ -32,7 +37,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     private String appId;
     private String clientId;
     private WebSocketClient socketClient;
-    private boolean connected = false, reconnect = true;
+    private boolean reconnect = true;
     private HashMap<Channel,Integer> channelIndex = new HashMap<Channel,Integer>();;
     private HashMap<Integer,Channel> channels = new HashMap<Integer,Channel>();;
 
@@ -42,6 +47,8 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     private Timer heartbeatTimer, reconnectTimer;
     private int heartbeatCount = 0;
     private long reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
+
+    private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
 
     public WebSocketManager(String appId){
         this.appId = appId;
@@ -73,8 +80,9 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
 
     protected void connect(){
         // if we have channels, then connect, otherwise wait for a channel
-        if (!isConnected() && !channels.isEmpty()) {
+        if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
             Simperium.log(String.format("Connecting to %s", WEBSOCKET_URL));
+            setConnectionStatus(ConnectionStatus.CONNECTING);
             reconnect = true;
             socketClient.connect();
         }
@@ -82,24 +90,32 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
 
     protected void disconnect(){
         // disconnect the channel
+        reconnect = false;
         if (isConnected()) {
             Simperium.log("Disconnecting");
             // being told to disconnect so don't automatically reconnect
-            reconnect = false;
             socketClient.disconnect();
         }
     }
 
     public boolean isConnected(){
-        return connected;
+        return connectionStatus == ConnectionStatus.CONNECTED;
+    }
+
+    public boolean isConnecting(){
+        return connectionStatus == ConnectionStatus.CONNECTING;
+    }
+
+    public boolean isDisconnected(){
+        return connectionStatus == ConnectionStatus.DISCONNECTED;
     }
 
     public boolean getConnected(){
         return isConnected();
     }
 
-    protected void setConnected(boolean connected){
-        this.connected = connected;
+    protected void setConnectionStatus(ConnectionStatus status){
+        connectionStatus = status;
     }
 
     private void notifyChannelsConnected(){
@@ -122,6 +138,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
 
     private void cancelHeartbeat(){
         if(heartbeatTimer != null) heartbeatTimer.cancel();
+        heartbeatCount = 0;
     }
 
     private void scheduleHeartbeat(){
@@ -171,7 +188,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
 
     /**
      *
-     * Channel.Listener event listener
+     * Channel.OnMessageListener event listener
      *
      */
     public void onMessage(Channel.MessageEvent event){
@@ -188,8 +205,8 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
      *
      */
     public void onConnect(){
-        Simperium.log(String.format("Connect %s", this));
-        setConnected(true);
+        Simperium.log(String.format("Connected %s", this));
+        setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
         heartbeatCount = 0; // reset heartbeat count
         scheduleHeartbeat();
@@ -213,14 +230,14 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.Liste
     }
     public void onDisconnect(int code, String reason){
         Simperium.log(String.format("Disconnect %d %s", code, reason));
-        setConnected(false);
+        setConnectionStatus(ConnectionStatus.DISCONNECTED);
         notifyChannelsDisconnected();
         cancelHeartbeat();
         if(reconnect) scheduleReconnect();
     }
     public void onError(Exception error) {
         Simperium.log(String.format("Error: %s", error), error);
-        setConnected(false);
+        setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
             scheduleReconnect();
             return;
