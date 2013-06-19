@@ -59,6 +59,26 @@ public class Simperium implements User.AuthenticationListener {
     	return simperiumClient;
     }
 
+    public void connect(){
+        socketManager.connect();
+    }
+
+    public void disconnect(){
+        socketManager.disconnect();
+    }
+
+    public boolean isConnected(){
+        return socketManager.isConnected();
+    }
+
+    public boolean isConnecting(){
+        return socketManager.isConnecting();
+    }
+
+    public boolean isDisconnected(){
+        return socketManager.isDisconnected();
+    }
+
     private void loadUser(){
         user = new User(this);
         String token = getUserAccessToken();
