@@ -128,7 +128,7 @@ public class User {
         return accessToken;
     }
 
-    protected void setAccessToken(String token){
+    public void setAccessToken(String token){
         this.accessToken = token;
     }
 
