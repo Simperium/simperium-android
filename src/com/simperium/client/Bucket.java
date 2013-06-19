@@ -86,9 +86,10 @@ public class Bucket<T extends Bucket.Syncable> {
      */
     protected static class Ghost implements Diffable {
         private String key;
-        private Integer version;
+        private Integer version = 0;
         private Map<String, java.lang.Object> properties;
-        public Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
+
+        protected Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
             this.key = key;
             this.version = version;
             // copy the properties
@@ -103,25 +104,32 @@ public class Bucket<T extends Bucket.Syncable> {
         public Map<String, java.lang.Object> getDiffableValue(){
             return properties;
         }
+        public String getVersionId(){
+            return String.format("%s.%d", key, version);
+        }
     }
     /**
      * An object that can be diffed and changes sent
      */
     public static abstract class Syncable implements Diffable {
-        private Diffable ghost;
-
-        public abstract void setBucket(Bucket bucket);
-        public abstract Bucket getBucket();
-        public abstract String bucketName();
-        public abstract Boolean isNew();
-        protected Diffable getGhost(){
+        private Ghost ghost;
+        private Bucket bucket;
+            
+        public Integer getVersion(){
+            return ghost.getVersion();
+        }
+        protected Ghost getGhost(){
             return ghost;
         }
-        public Integer getVersion(){
-            return this.ghost.getVersion();
-        }
-        private void setGhost(Diffable ghost){
+        protected void setGhost(Ghost ghost){
             this.ghost = ghost;
+            Simperium.log("Updated ghost, now have version %s", getVersionId());
+        }
+        /**
+         * Has this ever been synced
+         */
+        public Boolean isNew(){
+            return getVersion() == null || getVersion() == 0;
         }
         /**
          * Does the local object have modifications?
@@ -129,6 +137,15 @@ public class Bucket<T extends Bucket.Syncable> {
         public Boolean isModified(){
             return !getDiffableValue().equals(ghost.getDiffableValue());
         }
+        
+        public Bucket getBucket(){
+            return bucket;
+        }
+
+        public void setBucket(Bucket bucket){
+            this.bucket = bucket;
+        }
+        
         /**
          * Returns the object as it should appear on the server
          */
@@ -138,14 +155,20 @@ public class Bucket<T extends Bucket.Syncable> {
         /**
          * Send modifications over the socket to simperium
          */
-        public void save(){
-            getBucket().sync(this);
+        public Change save(){
+            return getBucket().sync(this);
         }
         /**
          * Sends a delete operation over the socket
          */
-        public void delete(){
-            getBucket().remove(this);
+        public Change delete(){
+            return getBucket().remove(this);
+        }
+        /**
+         * Key.VersionId
+         */
+        public String getVersionId(){
+            return getGhost().getVersionId();
         }
     }
     /**
@@ -153,20 +176,28 @@ public class Bucket<T extends Bucket.Syncable> {
      * instatiate custom Bucket.Object instances
      */
     public static abstract class Schema<T extends Bucket.Syncable> {
-        public String getRemoteName(Bucket bucket) {
-            return bucket.getName();
-        }
+        public abstract String getRemoteName();
         public abstract T build(String key, Map<String,java.lang.Object>properties);
     }
     /**
      * Basic implementation of Bucket.Schema for Bucket.Object
      */
-    public static class ObjectSchema extends Schema<Object>{
-        public String getRemoteName(Bucket bucket){
-            return bucket.getName();
+    public static class ObjectSchema extends Schema<Bucket.Object>{
+        private String remoteName;
+        public ObjectSchema(String remoteName){
+            this.remoteName = remoteName;
         }
-        public Object build(String key, Map<String,java.lang.Object> properties){
-            return new Object(key, properties);
+        public String getRemoteName(){
+            return remoteName;
+        }
+        public String getRemoteName(Bucket bucket){
+            if (remoteName == null) {
+                return bucket.getName();                
+            }
+            return remoteName;
+        }
+        public Bucket.Object build(String key, Map<String,java.lang.Object> properties){
+            return new Bucket.Object(key, properties);
         }
     }
     /**
@@ -176,6 +207,7 @@ public class Bucket<T extends Bucket.Syncable> {
 
         private Bucket bucket;
         private String simperiumKey;
+        private Diffable ghost;
 
         protected Map<String,java.lang.Object> properties;
 
@@ -188,41 +220,18 @@ public class Bucket<T extends Bucket.Syncable> {
             this(key, new HashMap<String, java.lang.Object>());
         }
 
-        public Bucket getBucket(){
-            return bucket;
-        }
-
-        public void setBucket(Bucket bucket){
-            this.bucket = bucket;
-        }
-
         public String getSimperiumKey(){
             return simperiumKey;
         }
 
-        public Integer getVersion(){
-			Simperium.log(String.format("t %s", getGhost()));
-            return getGhost().getVersion();
-        }
-
-        public Boolean isNew(){
-			Simperium.log(String.format("g %s", getGhost()));
-            return getGhost().getVersion() == null || getGhost().getVersion() == 0;
-        }
-
-        public String bucketName(){
-            Bucket bucket = getBucket();
-            if (bucket != null) {
-                return bucket.getName();
-            }
-            return null;
-        }
-
         public String toString(){
-            return String.format("%s - %s", getBucket().getName(), getSimperiumKey());
+            return String.format("%s - %s", getBucket().getName(), getVersionId());
         }
 
         public Map<String,java.lang.Object> getDiffableValue(){
+            if (properties == null) {
+                properties = new HashMap<String,java.lang.Object>();
+            }
             return properties;
         }
 
@@ -242,25 +251,24 @@ public class Bucket<T extends Bucket.Syncable> {
     /**
      * Tell the bucket to sync changes.
      */
-    public void sync(T object){
-    	if (object.isNew() && !ghostStore.hasGhost(this, object.getSimperiumKey())) {
-    		storageProvider.addObject(this, object.getSimperiumKey(), object);
-    	} else {    		
-    		storageProvider.updateObject(this, object.getSimperiumKey(), object);
-    	}
-    	
-    	if (object.isModified())
-    		channel.queueLocalChange(object);
+    public Change sync(T object){
+        if (object.isNew() && !ghostStore.hasGhost(this, object.getSimperiumKey())) {
+            storageProvider.addObject(this, object.getSimperiumKey(), object);
+        } else {            
+            storageProvider.updateObject(this, object.getSimperiumKey(), object);
+        }
+        
+        if (object.isModified())
+            return channel.queueLocalChange(object);
+        return null;
     }
 
     /**
      * Tell the bucket to remove the object
      */
-    public void remove(T object){
-        // TODO: remove item from storage
-        // TODO: tell listener that item is removed?
+    public Change remove(T object){
         storageProvider.removeObject(this, object.getSimperiumKey());
-        channel.queueLocalDeletion(object);
+        Change change = channel.queueLocalDeletion(object);
         Set<Listener<T>> notify;
         synchronized(listeners){
             notify = new HashSet<Listener<T>>(listeners.size());
@@ -275,6 +283,7 @@ public class Bucket<T extends Bucket.Syncable> {
                 Simperium.log(String.format("Listener failed onObjectRemoved %s", listener));
             }
         }
+        return change;
     }
     /**
      * Update the change version and remove the object with the given key
@@ -315,7 +324,7 @@ public class Bucket<T extends Bucket.Syncable> {
     }
 
     public String getRemoteName(){
-        return schema.getRemoteName(this);
+        return schema.getRemoteName();
     }
 
     public Boolean hasChangeVersion(){
@@ -369,6 +378,13 @@ public class Bucket<T extends Bucket.Syncable> {
         return object;
     }
     /**
+     * Get an object by its key, should we throw an error if the object isn't
+     * there?
+     */
+    public T getObject(String uuid){
+        return get(uuid);
+    }
+    /**
      * Returns a new objecty tracked by this bucket
      */
     public T newObject(){
@@ -381,10 +397,10 @@ public class Bucket<T extends Bucket.Syncable> {
     protected T newObject(String uuid){
         T object = buildObject(uuid, new HashMap<String,java.lang.Object>());
         object.setBucket(this);
-		Ghost ghost = new Ghost(uuid, 0, new HashMap<String, java.lang.Object>());
+        Ghost ghost = new Ghost(uuid, 0, new HashMap<String, java.lang.Object>());
         object.setGhost(ghost);
-		ghostStore.saveGhost(this, ghost);
-		Simperium.log(String.format("Build new object %s with ghost %s", object, object.getGhost()));
+        ghostStore.saveGhost(this, ghost);
+        Simperium.log(String.format("Build new object %s with ghost %s", object, object.getGhost()));
         return object;
     }
     /**
@@ -433,8 +449,8 @@ public class Bucket<T extends Bucket.Syncable> {
      * Adds a new object to the bucket
      */
     protected void addObject(T object){
-    	object.setGhost(new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>()));
-    	
+        object.setGhost(new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>()));
+        
         // Allows the storage provider to persist the object
         Boolean notifyListeners = true;
         if (!object.getBucket().equals(this)) {
@@ -519,8 +535,8 @@ public class Bucket<T extends Bucket.Syncable> {
     public void reset(){
         // TODO: tell the datastore to delete everything it has
         channel.reset();
-		// Clear the ghost store
-		ghostStore.reset();
+        // Clear the ghost store
+        ghostStore.reset();
     }
     /**
      * Get a single object object that matches key
@@ -528,18 +544,12 @@ public class Bucket<T extends Bucket.Syncable> {
     public T get(String key){
         // Datastore constructs the object for us
         Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
-		T object = schema.build(key, properties);
-		Ghost ghost = ghostStore.getGhost(this, key);
-		Simperium.log(String.format("Fetched ghost for %s %s", key, ghost));
-		object.setBucket(this);
+        T object = schema.build(key, properties);
+        Ghost ghost = ghostStore.getGhost(this, key);
+        Simperium.log(String.format("Fetched ghost for %s %s", key, ghost));
+        object.setBucket(this);
         object.setGhost(ghost);
         return object;
-    }
-    /**
-     *
-     */
-    public void put(String key, T object){
-        // storageProvider.putObject(this, key, object);
     }
     /**
      * Does bucket have at least the requested version?
