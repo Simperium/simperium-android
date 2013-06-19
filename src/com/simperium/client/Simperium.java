@@ -122,7 +122,13 @@ public class Simperium implements User.AuthenticationListener {
      * @param bucketName namespace to store the data in simperium
      */
     public Bucket<Bucket.Object> bucket(String bucketName){
-        return bucket(bucketName, new Bucket.ObjectSchema());
+        return bucket(bucketName, new Bucket.ObjectSchema(bucketName));
+    }
+    /**
+     * Creates a bucket and uses the Schema remote name as the bucket name.
+     */
+    public <T extends Bucket.Syncable> Bucket<T> bucket(Bucket.Schema<T> schema){
+        return bucket(schema.getRemoteName(), schema);
     }
 
     public User createUser(String email, String password, User.AuthResponseHandler handler){
