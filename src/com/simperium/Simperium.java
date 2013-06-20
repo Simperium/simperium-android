@@ -1,9 +1,20 @@
 package com.simperium.client;
 
-import java.util.UUID;
-
 import com.loopj.android.http.*;
+
+import com.simperium.storage.StorageProvider;
+import com.simperium.client.Bucket;
+import com.simperium.client.BucketObject;
+import com.simperium.client.BucketSchema;
+import com.simperium.client.Channel;
+import com.simperium.client.GhostStore;
+import com.simperium.client.Syncable;
+import com.simperium.client.User;
+import com.simperium.client.User.AuthenticationListener;
 import com.simperium.client.User.AuthenticationStatus;
+import com.simperium.client.User.AuthResponseHandler;
+import com.simperium.util.Logger;
+import static com.simperium.util.Uuid.uuid;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -19,14 +30,13 @@ public class Simperium implements User.AuthenticationListener {
     private String appId;
     private String appSecret;
 
-    public static final String TAG = "Simperium";
     protected AsyncHttpClient httpClient;
     protected AuthHttpClient authClient;
     protected WebSocketManager socketManager;
 
     private User user;
     private Context context;
-    private User.AuthenticationListener authenticationListener;
+    private AuthenticationListener authenticationListener;
     private StorageProvider storageProvider;
     private static Simperium simperiumClient = null;
 	private GhostStore ghostStore;
@@ -35,7 +45,7 @@ public class Simperium implements User.AuthenticationListener {
         this(appId, appSecret, context, storageProvider, null);
     }
 
-    public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider, User.AuthenticationListener authenticationListener){
+    public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider, AuthenticationListener authenticationListener){
         this.appId = appId;
         this.appSecret = appSecret;
         this.context = context;
@@ -47,7 +57,7 @@ public class Simperium implements User.AuthenticationListener {
         this.storageProvider = storageProvider;
 		ghostStore = new GhostStore(context);
         loadUser();
-        Simperium.log(String.format("Initializing Simperium %s", CLIENT_ID));
+        Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
         simperiumClient = this;
     }
     
@@ -84,9 +94,9 @@ public class Simperium implements User.AuthenticationListener {
         String token = getUserAccessToken();
         if (token != null) {
             user.setAccessToken(token);
-            user.setAuthenticationStatus(User.AuthenticationStatus.AUTHENTICATED);
+            user.setAuthenticationStatus(AuthenticationStatus.AUTHENTICATED);
         } else {
-            user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+            user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
         }
     }
 
@@ -109,34 +119,34 @@ public class Simperium implements User.AuthenticationListener {
      *
      * @param bucketName the namespace to store the data in simperium
      */
-    public <T extends Bucket.Syncable> Bucket<T> bucket(String bucketName, Bucket.Schema<T> schema){
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider, ghostStore);
         Channel<T> channel = socketManager.createChannel(context, bucket, user);
         bucket.setChannel(channel);
         return bucket;
     }
     /**
-     * Creates a bucket and starts syncing data. Users the generic Bucket.Object for
+     * Creates a bucket and starts syncing data. Users the generic BucketObject for
      * serializing and deserializing data
      *
      * @param bucketName namespace to store the data in simperium
      */
-    public Bucket<Bucket.Object> bucket(String bucketName){
-        return bucket(bucketName, new Bucket.ObjectSchema(bucketName));
+    public Bucket<BucketObject> bucket(String bucketName){
+        return bucket(bucketName, new BucketObject.Schema(bucketName));
     }
     /**
      * Creates a bucket and uses the Schema remote name as the bucket name.
      */
-    public <T extends Bucket.Syncable> Bucket<T> bucket(Bucket.Schema<T> schema){
+    public <T extends Syncable> Bucket<T> bucket(BucketSchema<T> schema){
         return bucket(schema.getRemoteName(), schema);
     }
 
-    public User createUser(String email, String password, User.AuthResponseHandler handler){
+    public User createUser(String email, String password, AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.createUser(user, handler);
     }
 
-    public User authorizeUser(String email, String password, User.AuthResponseHandler handler){
+    public User authorizeUser(String email, String password, AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.authorizeUser(user, handler);
     }
@@ -148,19 +158,7 @@ public class Simperium implements User.AuthenticationListener {
     	return true;
     }
 
-    public static final void log(String msg){
-        Log.d(TAG, msg);
-    }
-
-    public static final void log(String tag, String msg){
-        Log.d(tag, msg);
-    }
-
-    public static final void log(String msg, Throwable error){
-        Log.e(TAG, msg, error);
-    }
-
-    public void onAuthenticationStatusChange(User.AuthenticationStatus status){
+    public void onAuthenticationStatusChange(AuthenticationStatus status){
 
         switch (status) {
             case AUTHENTICATED:
@@ -207,16 +205,12 @@ public class Simperium implements User.AuthenticationListener {
         return token;
     }
 
-    public static String uuid(){
-        return UUID.randomUUID().toString().replace("-","");
-    }
-
-	public User.AuthenticationListener getAuthenticationListener() {
+	public AuthenticationListener getAuthenticationListener() {
 		return authenticationListener;
 	}
 
 	public void setAuthenticationListener(
-			User.AuthenticationListener authenticationListener) {
+			AuthenticationListener authenticationListener) {
 		this.authenticationListener = authenticationListener;
 	}
 

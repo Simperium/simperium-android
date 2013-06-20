@@ -33,7 +33,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class Bucket<T extends Bucket.Syncable> {
+import com.simperium.client.cache.ObjectCacheProvider;
+import com.simperium.storage.StorageProvider;
+import com.simperium.util.Logger;
+import com.simperium.util.Uuid;
+
+public class Bucket<T extends Syncable> {
     // The name used for the Simperium namespace
     private String name;
     // User provides the access token for authentication
@@ -43,14 +48,15 @@ public class Bucket<T extends Bucket.Syncable> {
     // For storing the bucket listeners
     private Set<Listener<T>> listeners;
     private StorageProvider storageProvider;
-    private Schema<T> schema;
+    private BucketSchema<T> schema;
     private GhostStore ghostStore;
+    private ObjectCacheProvider<T> cacheProvider;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    protected Bucket(String name, Schema<T>schema, User user, StorageProvider storageProvider, GhostStore ghostStore){
+    public Bucket(String name, BucketSchema<T>schema, User user, StorageProvider storageProvider, GhostStore ghostStore){
         this.name = name;
         this.user = user;
         this.storageProvider = storageProvider;
@@ -65,193 +71,16 @@ public class Bucket<T extends Bucket.Syncable> {
      *  - Storage mechanisms can listen to all changes (local and remote) so they
      *    can perform their necessary save operations
      */
-    public static interface Listener<T extends Bucket.Syncable> {
+    public interface Listener<T extends Syncable> {
         public void onObjectRemoved(String key, T object);
         public void onObjectUpdated(String key, T object);
         public void onObjectAdded(String key, T object);
-    }
-    /**
-     * The interface all objects must conform to in order to be able to be
-     * tracked by Simperium. For a default implementation see BucketObject
-     */
-    public interface Diffable {
-        // void setSimperiumId(String id);
-        String getSimperiumKey();
-        // void setVersion(Integer version);
-        Integer getVersion();
-        Map<String,java.lang.Object> getDiffableValue();
-    }
-    /**
-     *
-     */
-    protected static class Ghost implements Diffable {
-        private String key;
-        private Integer version = 0;
-        private Map<String, java.lang.Object> properties;
-
-        protected Ghost(String key, Integer version, Map<String, java.lang.Object> properties){
-            this.key = key;
-            this.version = version;
-            // copy the properties
-            this.properties = Bucket.deepCopy(properties);
-        }
-        public String getSimperiumKey(){
-            return key;
-        }
-        public Integer getVersion(){
-            return version;
-        }
-        public Map<String, java.lang.Object> getDiffableValue(){
-            return properties;
-        }
-        public String getVersionId(){
-            return String.format("%s.%d", key, version);
-        }
-    }
-    /**
-     * An object that can be diffed and changes sent
-     */
-    public static abstract class Syncable implements Diffable {
-        private Ghost ghost;
-        private Bucket bucket;
-            
-        public Integer getVersion(){
-            return ghost.getVersion();
-        }
-        protected Ghost getGhost(){
-            return ghost;
-        }
-        protected void setGhost(Ghost ghost){
-            this.ghost = ghost;
-            Simperium.log("Updated ghost, now have version %s", getVersionId());
-        }
-        /**
-         * Has this ever been synced
-         */
-        public Boolean isNew(){
-            return getVersion() == null || getVersion() == 0;
-        }
-        /**
-         * Does the local object have modifications?
-         */
-        public Boolean isModified(){
-            return !getDiffableValue().equals(ghost.getDiffableValue());
-        }
-        
-        public Bucket getBucket(){
-            return bucket;
-        }
-
-        public void setBucket(Bucket bucket){
-            this.bucket = bucket;
-        }
-        
-        /**
-         * Returns the object as it should appear on the server
-         */
-        public Map<String, java.lang.Object>getUnmodifiedValue(){
-            return getGhost().getDiffableValue();
-        }
-        /**
-         * Send modifications over the socket to simperium
-         */
-        public Change save(){
-            return getBucket().sync(this);
-        }
-        /**
-         * Sends a delete operation over the socket
-         */
-        public Change delete(){
-            return getBucket().remove(this);
-        }
-        /**
-         * Key.VersionId
-         */
-        public String getVersionId(){
-            return getGhost().getVersionId();
-        }
-    }
-    /**
-     * An interface to allow applications to provide a schema for a bucket and a way
-     * instatiate custom Bucket.Object instances
-     */
-    public static abstract class Schema<T extends Bucket.Syncable> {
-        public abstract String getRemoteName();
-        public abstract T build(String key, Map<String,java.lang.Object>properties);
-    }
-    /**
-     * Basic implementation of Bucket.Schema for Bucket.Object
-     */
-    public static class ObjectSchema extends Schema<Bucket.Object>{
-        private String remoteName;
-        public ObjectSchema(String remoteName){
-            this.remoteName = remoteName;
-        }
-        public String getRemoteName(){
-            return remoteName;
-        }
-        public String getRemoteName(Bucket bucket){
-            if (remoteName == null) {
-                return bucket.getName();                
-            }
-            return remoteName;
-        }
-        public Bucket.Object build(String key, Map<String,java.lang.Object> properties){
-            return new Bucket.Object(key, properties);
-        }
-    }
-    /**
-     * A generic object used to represent a single object from a bucket
-     */
-    public static class Object extends Syncable {
-
-        private Bucket bucket;
-        private String simperiumKey;
-        private Diffable ghost;
-
-        protected Map<String,java.lang.Object> properties;
-
-        public Object(String key, Map<String,java.lang.Object> properties){
-            this.simperiumKey = key;
-            this.properties = Bucket.deepCopy(properties);
-        }
-
-        public Object(String key){
-            this(key, new HashMap<String, java.lang.Object>());
-        }
-
-        public String getSimperiumKey(){
-            return simperiumKey;
-        }
-
-        public String toString(){
-            return String.format("%s - %s", getBucket().getName(), getVersionId());
-        }
-
-        public Map<String,java.lang.Object> getDiffableValue(){
-            if (properties == null) {
-                properties = new HashMap<String,java.lang.Object>();
-            }
-            return properties;
-        }
-
-        public boolean equals(java.lang.Object o){
-            if (o == null) {
-                return false;
-            } else if( o == this){
-                return true;
-            } else if(o.getClass() != getClass()){
-                return false;
-            }
-            Bucket.Object other = (Bucket.Object) o;
-            return other.getBucket().equals(getBucket()) && other.getSimperiumKey().equals(getSimperiumKey());
-        }
     }
 
     /**
      * Tell the bucket to sync changes.
      */
-    public Change sync(T object){
+    public Change<T> sync(T object){
         if (object.isNew() && !ghostStore.hasGhost(this, object.getSimperiumKey())) {
             storageProvider.addObject(this, object.getSimperiumKey(), object);
         } else {            
@@ -280,7 +109,7 @@ public class Bucket<T extends Bucket.Syncable> {
             try {
                 listener.onObjectRemoved(object.getSimperiumKey(),object);
             } catch (Exception e) {
-                Simperium.log(String.format("Listener failed onObjectRemoved %s", listener));
+                Logger.log(String.format("Listener failed onObjectRemoved %s", listener));
             }
         }
         return change;
@@ -400,14 +229,14 @@ public class Bucket<T extends Bucket.Syncable> {
         Ghost ghost = new Ghost(uuid, 0, new HashMap<String, java.lang.Object>());
         object.setGhost(ghost);
         ghostStore.saveGhost(this, ghost);
-        Simperium.log(String.format("Build new object %s with ghost %s", object, object.getGhost()));
+        log(String.format("Build new object %s with ghost %s", object, object.getGhost()));
         return object;
     }
     /**
      * Save the ghost data and update the change version, tell the storage provider
      * that a new object has been added
      */
-    protected void addObjectWithGhost(String changeVersion, Bucket.Ghost ghost){
+    protected void addObjectWithGhost(String changeVersion, Ghost ghost){
         setChangeVersion(changeVersion);
         addObjectWithGhost(ghost);
     }
@@ -415,27 +244,27 @@ public class Bucket<T extends Bucket.Syncable> {
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
      */
-    protected void addObjectWithGhost(Bucket.Ghost ghost){
+    protected void addObjectWithGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Simperium.log("Built object with ghost, add it");
+        Logger.log("Built object with ghost, add it");
         addObject(object);
     }
     /**
      * Update the ghost data
      */
-    protected void updateObjectWithGhost(String changeVersion, Bucket.Ghost ghost){
+    protected void updateObjectWithGhost(String changeVersion, Ghost ghost){
         setChangeVersion(changeVersion);
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Simperium.log("Built object with ghost, updated it");
+        Logger.log("Built object with ghost, updated it");
         updateObject(object);
     }
-    protected void updateGhost(Bucket.Ghost ghost){
+    protected void updateGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
-        Simperium.log("Update the ghost!");
+        Logger.log("Update the ghost!");
     }
-    protected Bucket.Ghost getGhost(String key){
+    protected Ghost getGhost(String key){
         return ghostStore.getGhost(this, key);
     }
     /**
@@ -457,7 +286,7 @@ public class Bucket<T extends Bucket.Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        Simperium.log(String.format("Added an object, let's tell the storage provider %s %s", object, object.getGhost()));
+        Logger.log(String.format("Added an object, let's tell the storage provider %s %s", object, object.getGhost()));
         storageProvider.addObject(this, object.getSimperiumKey(), object);
         // notify listeners that an object has been added
         if (notifyListeners) {
@@ -473,7 +302,7 @@ public class Bucket<T extends Bucket.Syncable> {
                 try {
                     listener.onObjectAdded(object.getSimperiumKey(), object);
                 } catch(Exception e) {
-                    Simperium.log(String.format("Listener failed onObjectAdded %s", listener), e);
+                    Logger.log(String.format("Listener failed onObjectAdded %s", listener), e);
                 }
             }
         }
@@ -495,7 +324,7 @@ public class Bucket<T extends Bucket.Syncable> {
             try {
                 listener.onObjectUpdated(object.getSimperiumKey(), object);
             } catch(Exception e) {
-                Simperium.log(String.format("Listener failed onObjectUpdated %s", listener));
+                Logger.log(String.format("Listener failed onObjectUpdated %s", listener));
             }
         }
     }
@@ -508,11 +337,11 @@ public class Bucket<T extends Bucket.Syncable> {
     }
     // TODO: remove the channel getter/setter, Channel will use a listening
     // interface
-    protected void setChannel(Channel channel){
+    public void setChannel(Channel channel){
         this.channel = channel;
     }
 
-    protected Channel getChannel(){
+    public Channel getChannel(){
         return channel;
     }
 
@@ -533,10 +362,10 @@ public class Bucket<T extends Bucket.Syncable> {
      * Reset bucket what is on the server
      */
     public void reset(){
-        // TODO: tell the datastore to delete everything it has
+        storageProvider.resetBucket(this);
+        ghostStore.resetBucket(this);
         channel.reset();
         // Clear the ghost store
-        ghostStore.reset();
     }
     /**
      * Get a single object object that matches key
@@ -546,7 +375,7 @@ public class Bucket<T extends Bucket.Syncable> {
         Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
         T object = schema.build(key, properties);
         Ghost ghost = ghostStore.getGhost(this, key);
-        Simperium.log(String.format("Fetched ghost for %s %s", key, ghost));
+        log(String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
         return object;
@@ -576,7 +405,7 @@ public class Bucket<T extends Bucket.Syncable> {
     public String uuid(){
         String key;
         do {
-            key = Simperium.uuid();
+            key = Uuid.uuid();
         } while(containsKey(key));
         return key;
     }
@@ -593,7 +422,7 @@ public class Bucket<T extends Bucket.Syncable> {
         while(keys.hasNext()){
             String key = (String)keys.next();
             java.lang.Object val = map.get(key);
-            // log(String.format("Hello! %s", json.get(key).getClass().getName()));
+            // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
             if (val instanceof Map) {
                 copy.put(key, deepCopy((Map<String,java.lang.Object>) val));
             } else if (val instanceof List) {

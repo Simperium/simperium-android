@@ -1,4 +1,4 @@
-package com.simperium.client;
+package com.simperium.util;
 
 import java.util.Map;
 import java.util.List;

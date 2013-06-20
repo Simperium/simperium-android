@@ -22,7 +22,9 @@ import android.widget.TextView;
 
 import org.json.*;
 
-import com.simperium.client.util.AlertUtil;
+import com.simperium.util.AlertUtil;
+import com.simperium.client.User;
+import com.simperium.util.Logger;
 
 public class LoginActivity extends Activity {
 
@@ -47,7 +49,7 @@ public class LoginActivity extends Activity {
 		try {
 			simperium = Simperium.getInstance();
 		} catch (SimperiumNotInitializedException e) {
-			Simperium.log("Can't create the LoginActivity", e);
+			Logger.log("Can't create the LoginActivity", e);
 		}
 
 		mSystemService = (ConnectivityManager) getApplicationContext()

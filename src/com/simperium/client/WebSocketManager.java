@@ -10,6 +10,12 @@ package com.simperium.client;
 
 import android.content.Context;
 
+import com.simperium.client.Bucket;
+import com.simperium.client.Syncable;
+import com.simperium.client.Channel;
+import com.simperium.client.User;
+import com.simperium.util.Logger;
+
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -62,7 +68,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public <T extends Bucket.Syncable> Channel<T> createChannel(Context context, Bucket<T> bucket, User user){
+    public <T extends Syncable> Channel<T> createChannel(Context context, Bucket<T> bucket, User user){
         // create a channel
         Channel<T> channel = new Channel<T>(context, appId, bucket, user, this);
         int channelId = channels.size();
@@ -81,7 +87,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     protected void connect(){
         // if we have channels, then connect, otherwise wait for a channel
         if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
-            Simperium.log(String.format("Connecting to %s", WEBSOCKET_URL));
+            Logger.log(String.format("Connecting to %s", WEBSOCKET_URL));
             setConnectionStatus(ConnectionStatus.CONNECTING);
             reconnect = true;
             socketClient.connect();
@@ -92,7 +98,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         // disconnect the channel
         reconnect = false;
         if (isConnected()) {
-            Simperium.log("Disconnecting");
+            Logger.log("Disconnecting");
             // being told to disconnect so don't automatically reconnect
             socketClient.disconnect();
         }
@@ -154,7 +160,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     private void sendHearbeat(){
         heartbeatCount ++;
         String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
-        Simperium.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), command));
+        Logger.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), command));
         socketClient.send(command);
     }
 
@@ -171,7 +177,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
                 connect();
             }
         }, retryIn);
-        Simperium.log(String.format("Retrying in %d", retryIn));
+        Logger.log(String.format("Retrying in %d", retryIn));
     }
 
     // duplicating javascript reconnect interval calculation
@@ -196,7 +202,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
-        Simperium.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), message));
+        Logger.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), message));
         socketClient.send(message);
     }
     /**
@@ -205,7 +211,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      *
      */
     public void onConnect(){
-        Simperium.log(String.format("Connected %s", this));
+        Logger.log(String.format("Connected %s", this));
         setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
         heartbeatCount = 0; // reset heartbeat count
@@ -215,7 +221,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     }
     public void onMessage(String message){
         scheduleHeartbeat();
-        Simperium.log(TAG, String.format("%s <= %s", Thread.currentThread().getName(), message));
+        Logger.log(TAG, String.format("%s <= %s", Thread.currentThread().getName(), message));
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);
@@ -226,17 +232,17 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         channel.receiveMessage(parts[1]);
     }
     public void onMessage(byte[] data){
-        Simperium.log(String.format("From socket (data) %s", new String(data)));
+        Logger.log(String.format("From socket (data) %s", new String(data)));
     }
     public void onDisconnect(int code, String reason){
-        Simperium.log(String.format("Disconnect %d %s", code, reason));
+        Logger.log(String.format("Disconnect %d %s", code, reason));
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         notifyChannelsDisconnected();
         cancelHeartbeat();
         if(reconnect) scheduleReconnect();
     }
     public void onError(Exception error) {
-        Simperium.log(String.format("Error: %s", error), error);
+        Logger.log(String.format("Error: %s", error), error);
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
             scheduleReconnect();

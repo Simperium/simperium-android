@@ -16,6 +16,10 @@
  */
 package com.simperium.client;
 
+import com.simperium.client.Simperium;
+import com.simperium.util.JSONDiff;
+import com.simperium.util.Logger;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EventObject;
@@ -40,7 +44,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-public class Channel<T extends Bucket.Syncable> {
+public class Channel<T extends Syncable> {
     // key names for init command json object
     static final String FIELD_CLIENT_ID   = "clientid";
     static final String FIELD_API_VERSION = "api";
@@ -133,7 +137,7 @@ public class Channel<T extends Bucket.Syncable> {
             public void onComplete(){
             }
             public void onAcknowledgedChange(String cv, String key, T object){
-                Simperium.log(String.format("Acknowledging change: %s", object));
+                Logger.log(String.format("Acknowledging change: %s", object));
                 getBucket().updateObjectWithGhost(cv, object.getGhost());
             }
             public void onAddObject(String cv, String key, T object){
@@ -149,6 +153,7 @@ public class Channel<T extends Bucket.Syncable> {
     }
         
     protected void reset(){
+        changeProcessor.reset();
         if (started) {
             getLatestVersions();            
         } else {
@@ -211,13 +216,13 @@ public class Channel<T extends Bucket.Syncable> {
         try {
             index = new JSONObject(indexJson);
         } catch (Exception e) {
-            Simperium.log(String.format("Index had invalid json: %s", indexJson));
+            Logger.log(String.format("Index had invalid json: %s", indexJson));
             return;
         }
         // if we don't have a processor or we are getting a different cv
         if (indexProcessor == null || !indexProcessor.addIndexPage(index)) {
             // make sure we're not processing changes and clear pending changes
-            changeProcessor.clear();
+            changeProcessor.reset();
             // start a new index
             String currentIndex;
             try {
@@ -232,7 +237,7 @@ public class Channel<T extends Bucket.Syncable> {
         } else {
             // received an index page for a different change version
             // TODO: What do we do now?
-            Simperium.log("Processing index?");
+            Logger.log("Processing index?");
         }
 
     }
@@ -240,7 +245,7 @@ public class Channel<T extends Bucket.Syncable> {
     private IndexProcessorListener indexProcessorListener = new IndexProcessorListener(){
         @Override
         public void onComplete(String cv){
-            Simperium.log(String.format("Finished downloading index %s", cv));
+            Logger.log(String.format("Finished downloading index %s", cv));
             changeProcessor.start();
         }
     };
@@ -248,21 +253,21 @@ public class Channel<T extends Bucket.Syncable> {
     private void handleRemoteChanges(String changesJson){
         JSONArray changes;
         if (changesJson.equals(RESPONSE_UNKNOWN)) {
-            Simperium.log("CV is out of date");
-            changeProcessor.clear();
+            Logger.log("CV is out of date");
+            changeProcessor.reset();
             getLatestVersions();
             return;
         }
         try {
             changes = new JSONArray(changesJson);
         } catch (JSONException e){
-            Simperium.log("Failed to parse remote changes JSON", e);
+            Logger.log("Failed to parse remote changes JSON", e);
             return;
         }
         // Loop through each change? Convert changes to array list
         List<Object> changeList = Channel.convertJSON(changes);
         changeProcessor.addChanges(changeList);
-        Simperium.log(String.format("Received %d change(s)", changes.length()));
+        Logger.log(String.format("Received %d change(s)", changes.length()));
     }
 
     private static final String ENTITY_DATA_KEY = "data";
@@ -271,7 +276,7 @@ public class Channel<T extends Bucket.Syncable> {
         // we need to parse out the key and version, parse the json payload and
         // retrieve the data
         if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
-          Simperium.log(String.format("Unkown Object for index: %s", versionData));
+          Logger.log(String.format("Unkown Object for index: %s", versionData));
         }
 
     }
@@ -317,16 +322,15 @@ public class Channel<T extends Bucket.Syncable> {
         }
         String initParams = new JSONObject(init).toString();
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
-        Simperium.log(String.format("Sending init message! %s %s", message, Thread.currentThread().getName()));
         sendMessage(message);
     }
     // websocket
-    protected void onConnect(){
+    public void onConnect(){
         connected = true;
         if(startOnConnect) start();
     }
 
-    protected void onDisconnect(){
+    public void onDisconnect(){
         changeProcessor.stop();
         connected = false;
         started = false;
@@ -335,7 +339,7 @@ public class Channel<T extends Bucket.Syncable> {
      * Receive a message from the WebSocketManager which already strips the channel
      * prefix from the message.
      */
-    protected void receiveMessage(String message){
+    public void receiveMessage(String message){
         // parse the message and react to it
         String[] parts = message.split(":", MESSAGE_PARTS);
         String command = parts[COMMAND_PART];
@@ -355,7 +359,7 @@ public class Channel<T extends Bucket.Syncable> {
         if (listener != null) {
             listener.onMessage(event);
         } else {
-            Simperium.log(String.format("No one listening to channel %s", this));
+            Logger.log(String.format("No one listening to channel %s", this));
         }
     }
 
@@ -418,7 +422,7 @@ public class Channel<T extends Bucket.Syncable> {
                 Command command = commands.get(name);
                 command.run(params);
             } else {
-                Simperium.log(String.format("Don't know how to run: %s", name));
+                Logger.log(String.format("Don't know how to run: %s", name));
             }
         }
     }
@@ -499,7 +503,7 @@ public class Channel<T extends Bucket.Syncable> {
         final private IndexProcessorListener listener;
 
         public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener){
-            Simperium.log(String.format("Starting index processor with version: %s for bucket %s", cv, bucket));
+            Logger.log(String.format("Starting index processor with version: %s for bucket %s", cv, bucket));
             this.bucket = bucket;
             this.cv = cv;
             this.listener = listener;
@@ -510,7 +514,7 @@ public class Channel<T extends Bucket.Syncable> {
             String prefix = objectParts[0];
             int lastDot = prefix.lastIndexOf(".");
             if (lastDot == -1) {
-                Simperium.log(String.format("Missing version string: %s", prefix));
+                Logger.log(String.format("Missing version string: %s", prefix));
                 return false;
             }
             String key = prefix.substring(0, lastDot);
@@ -518,32 +522,32 @@ public class Channel<T extends Bucket.Syncable> {
             String payload = objectParts[1];
 
             if (payload.equals(RESPONSE_UNKNOWN)) {
-                Simperium.log(String.format("Object unkown to simperium: %s.%s", key, version));
+                Logger.log(String.format("Object unkown to simperium: %s.%s", key, version));
                 return false;
             }
 
             ObjectVersion objectVersion = new ObjectVersion(key, Integer.parseInt(version));
             synchronized(index){
                 if(!index.remove(objectVersion.toString())){
-                    Simperium.log(String.format("Index didn't have %s", objectVersion));
+                    Logger.log(String.format("Index didn't have %s", objectVersion));
                     return false;
                 }
             }
-            Simperium.log(String.format("We were waiting for %s.%s", key, version));
+            Logger.log(String.format("We were waiting for %s.%s", key, version));
 
             JSONObject data = null;
             try {
                 JSONObject payloadJSON = new JSONObject(payload);
                 data = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
             } catch (JSONException e) {
-                Simperium.log("Failed to parse object JSON", e);
+                Logger.log("Failed to parse object JSON", e);
                 return false;
             }
 
             Integer remoteVersion = Integer.parseInt(version);
             // build the ghost and update
             Map<String,Object> properties = Channel.convertJSON(data);
-            Bucket.Ghost ghost = new Bucket.Ghost(key, remoteVersion, properties);
+            Ghost ghost = new Ghost(key, remoteVersion, properties);
             bucket.addObjectWithGhost(ghost);
 
             if (complete && index.size() == 0) {
@@ -562,7 +566,7 @@ public class Channel<T extends Bucket.Syncable> {
             try {
                 currentIndex = indexPage.getString(INDEX_CURRENT_VERSION_KEY);
             } catch(JSONException e){
-                Simperium.log(String.format("Index did not have current version %s", cv));
+                Logger.log(String.format("Index did not have current version %s", cv));
                 currentIndex = "";
             }
 
@@ -574,10 +578,10 @@ public class Channel<T extends Bucket.Syncable> {
             try {
                 indexVersions = indexPage.getJSONArray(INDEX_VERSIONS_KEY);
             } catch(JSONException e){
-                Simperium.log(String.format("Index did not have entities: %s", indexPage));
+                Logger.log(String.format("Index did not have entities: %s", indexPage));
                 return true;
             }
-            Simperium.log(String.format("received %d entities", indexVersions.length()));
+            Logger.log(String.format("received %d entities", indexVersions.length()));
             if (indexVersions.length() > 0) {
                 // query for each item that we don't have locally in the bucket
                 for (int i=0; i<indexVersions.length(); i++) {
@@ -593,11 +597,11 @@ public class Channel<T extends Bucket.Syncable> {
                             }
                             sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
                         } else {
-                            Simperium.log(String.format("Object is up to date: %s", version));
+                            Logger.log(String.format("Object is up to date: %s", version));
                         }
 
                     } catch (JSONException e) {
-                        Simperium.log(String.format("Error processing index: %d", i), e);
+                        Logger.log(String.format("Error processing index: %d", i), e);
                     }
 
                 }
@@ -648,7 +652,7 @@ public class Channel<T extends Bucket.Syncable> {
 
     }
 
-    private interface ChangeProcessorListener<T extends Bucket.Syncable> {
+    private interface ChangeProcessorListener<T extends Syncable> {
         /**
          * Change has been applied.
          */
@@ -671,7 +675,7 @@ public class Channel<T extends Bucket.Syncable> {
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
-    private class ChangeProcessor implements Runnable, Change.OnRetryListener {
+    private class ChangeProcessor implements Runnable, Change.OnRetryListener<T> {
 
         // public static final Integer CAPACITY = 200;
 
@@ -702,7 +706,7 @@ public class Channel<T extends Bucket.Syncable> {
             HandlerThread handlerThread = new HandlerThread(handlerThreadName);
             handlerThread.start();
             this.handler = new Handler(handlerThread.getLooper());
-            Simperium.log(String.format("Starting change processor handler on thread %s", this.handler.getLooper().getThread().getName()));
+            Logger.log(String.format("Starting change processor handler on thread %s", this.handler.getLooper().getThread().getName()));
             this.retryTimer = new Timer();
             restore();
         }
@@ -713,7 +717,7 @@ public class Channel<T extends Bucket.Syncable> {
             try {
                 saveToFile();
             } catch (java.io.IOException e) {
-                Simperium.log(String.format("Could not serialize change processor queue to file %s", getFileName()), e);
+                Logger.log(String.format("Could not serialize change processor queue to file %s", getFileName()), e);
             }
         }
         /**
@@ -721,7 +725,7 @@ public class Channel<T extends Bucket.Syncable> {
          */
         private void saveToFile() throws java.io.IOException {
             //  construct JSON string of pending and local queue
-            Simperium.log(String.format("Saving to file %s", getFileName()));
+            Logger.log(String.format("Saving to file %s", getFileName()));
             synchronized(lock){
                 FileOutputStream stream = null;
                 try {
@@ -731,7 +735,7 @@ public class Channel<T extends Bucket.Syncable> {
                     serialized.put(QUEUED_KEY, localQueue);
                     JSONObject json = Channel.serializeJSON(serialized);
                     String jsonString = json.toString();
-                    Simperium.log(String.format("Saving: %s", jsonString));
+                    Logger.log(String.format("Saving: %s", jsonString));
                     stream.write(jsonString.getBytes(), 0, jsonString.length());
                 } finally {
                     if(stream !=null) stream.close();
@@ -746,9 +750,9 @@ public class Channel<T extends Bucket.Syncable> {
             try {
                 restoreFromFile();
             } catch (Exception e) {
-                Simperium.log(String.format("Could not restore from file: %s", getFileName()), e);
+                Logger.log(String.format("Could not restore from file: %s", getFileName()), e);
             }
-            Simperium.log(
+            Logger.log(
                 String.format(
                     "Restored change processwor with %d remote and %d local changes %d pending",
                     remoteQueue.size(), localQueue.size(), pendingChanges.size()
@@ -773,7 +777,7 @@ public class Channel<T extends Bucket.Syncable> {
                     }
                     JSONObject json = new JSONObject(builder.toString());
                     Map<String,Object> changeData = Channel.convertJSON(json);
-                    Simperium.log(String.format("We have changes from serialized file %s", changeData));
+                    Logger.log(String.format("We have changes from serialized file %s", changeData));
                     
                     if (changeData.containsKey(PENDING_KEY)) {
                         Map<String,Map<String,Object>> pendingData = (Map<String,Map<String,Object>>)changeData.get(PENDING_KEY);
@@ -792,7 +796,7 @@ public class Channel<T extends Bucket.Syncable> {
                             Map<String,Object> queuedItem = queuedItems.next();
                             String key = (String) queuedItem.get(Change.ID_KEY);
                             T object = bucket.get(key);
-                            localQueue.add(Change.buildChange(object, queuedItems.next()));
+                            localQueue.add(Change.buildChange(object, queuedItem));
                         }
                     }
                     
@@ -805,7 +809,7 @@ public class Channel<T extends Bucket.Syncable> {
          * 
          */
         private void clearFile(){
-            
+            context.deleteFile(getFileName());
         }
 
         public void addChanges(List<Object> changes){
@@ -846,7 +850,7 @@ public class Channel<T extends Bucket.Syncable> {
         public void start(){
             // channel must be started and have complete index
             if (!started || !haveCompleteIndex()) {
-                Simperium.log(
+                Logger.log(
                     String.format(
                         "Need an index before processing changes %d remote and %d local changes %d pending",
                         remoteQueue.size(), localQueue.size(), pendingChanges.size()
@@ -856,7 +860,7 @@ public class Channel<T extends Bucket.Syncable> {
                 return;
             }
             if (thread == null || thread.getState() == Thread.State.TERMINATED) {
-                Simperium.log(
+                Logger.log(
                     String.format(
                         "Starting up the change processor with %d remote and %d local changes %d pending",
                         remoteQueue.size(), localQueue.size(), pendingChanges.size()
@@ -864,6 +868,8 @@ public class Channel<T extends Bucket.Syncable> {
                 );
                 thread = new Thread(this);
                 thread.start();
+            } else {
+                Logger.log("Didn't start thread");
             }
         }
 
@@ -874,12 +880,13 @@ public class Channel<T extends Bucket.Syncable> {
             }
         }
 
-        protected void clear(){
-            this.pendingChanges.clear();
+        protected void reset(){
+            pendingChanges.clear();
+            clearFile();
         }
 
         protected void abort(){
-            clear();
+            reset();
             stop();
         }
 
@@ -889,7 +896,7 @@ public class Channel<T extends Bucket.Syncable> {
             processRemoteChanges();
             // if we have a change to an object that is waiting for an ack
             processLocalChanges();
-            Simperium.log(
+            Logger.log(
                 String.format(
                     "Done processing thread with %d remote and %d local changes %d pending",
                     remoteQueue.size(), localQueue.size(), pendingChanges.size()
@@ -903,18 +910,18 @@ public class Channel<T extends Bucket.Syncable> {
                 while(remoteQueue.size() > 0 && !Thread.interrupted()){
                     // take an item off the queue
                     RemoteChange remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
-                    Simperium.log(String.format("Received remote change with cv: %s", remoteChange.getChangeVersion()));
+                    Logger.log(String.format("Received remote change with cv: %s", remoteChange.getChangeVersion()));
                     Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
                     Change change = null;
                     synchronized(pendingChanges){
                         change = pendingChanges.get(remoteChange.getKey());
-                        if (change != null && change.acknowledges(remoteChange)) {
+                        if (remoteChange.isAcknowledgedBy(change)) {
                             // change is no longer pending so remove it
                             pendingChanges.remove(change.getKey());
                             if (remoteChange.isError()) {
-                                Simperium.log(String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
+                                Logger.log(String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
                                 // TODO: determine if we can retry this change by reapplying
                             }
                         }
@@ -936,7 +943,7 @@ public class Channel<T extends Bucket.Syncable> {
                     if (pendingChanges.containsKey(localChange.getKey())) {
                         // we have a change for this key that has not been acked
                         // so send it later
-                        Simperium.log(String.format("Changes pending for %s re-queueing %s", localChange.getKey(), localChange.getChangeId()));
+                        Logger.log(String.format("Changes pending for %s re-queueing %s", localChange.getKey(), localChange.getChangeId()));
                         sendLater.add(localChange);
                         // let's get the next change
                     } else {
@@ -955,28 +962,23 @@ public class Channel<T extends Bucket.Syncable> {
             // add the sendLater changes back on top of the queue
             synchronized(lock){
                 localQueue.addAll(0, sendLater);
-                save();
-                Simperium.log(
-                    String.format(
-                        "Done processing thread with %d remote and %d local changes %d pending",
-                        remoteQueue.size(), localQueue.size(), pendingChanges.size()
-                    )
-                );
             }
+            save();
         }
 
-        public void onRetryChange(Change change){
+        @Override
+        public void onRetry(Change<T> change){
             sendChange(change);
         }
 
-        private Boolean sendChange(Change change){
+        private Boolean sendChange(Change<T> change){
             // send the change down the socket!
             if (!connected) {
                 // channel is not initialized, send on reconnect
-                Simperium.log(String.format("Abort sending change, channel not initialized: %s", change.getChangeId()));
+                Logger.log(String.format("Abort sending change, channel not initialized: %s", change.getChangeId()));
                 return true;
             }
-            Simperium.log(String.format("Send local change: %s", change.getChangeId()));
+            Logger.log(String.format("*** Send local change: %s", change.getChangeId()));
 
             Map<String,Object> map = new HashMap<String,Object>(3);
             map.put(Change.ID_KEY, change.getKey());
@@ -1021,7 +1023,7 @@ public class Channel<T extends Bucket.Syncable> {
                 handler.post(new Runnable(){
                     public void run(){
                         changeListener.onRemoveObject(change.getChangeVersion(), change.getKey());
-                        change.setApplied(true);
+                        change.setApplied();
                     }
                 });
                 return;
@@ -1032,17 +1034,17 @@ public class Channel<T extends Bucket.Syncable> {
             } else {
                 object = bucket.getObject(change.getKey());
                 if (null == object) {
-                   Simperium.log(String.format("Local object missing: %s", change.getKey()));
+                   Logger.log(String.format("Local object missing: %s", change.getKey()));
                    return;
                 }
                 // we need to check if we have the correct version
                 // TODO: handle how to sync if source version doesn't match local object
                 if (!object.isNew() && !change.getSourceVersion().equals(object.getVersion())) {
-                    Simperium.log(String.format("Local version %d of object does not match sv: %s %d", object.getVersion(), change.getKey(), change.getSourceVersion()));
+                    Logger.log(String.format("Local version %d of object does not match sv: %s %d", object.getVersion(), change.getKey(), change.getSourceVersion()));
                     return;
                 }
             }
-            Bucket.Ghost ghost = new Bucket.Ghost(
+            Ghost ghost = new Ghost(
                 object.getSimperiumKey(),
                 change.getObjectVersion(),
                 jsondiff.apply(object.getDiffableValue(), change.getPatch())
@@ -1056,7 +1058,7 @@ public class Channel<T extends Bucket.Syncable> {
                     Change queuedChange = queuedChanges.next();
                     if (queuedChange.getKey().equals(change.getKey())) {
                         queuedChanges.remove();
-                        Simperium.log(String.format("Compressed queued local change for %s", queuedChange.getKey()));
+                        Logger.log(String.format("Compressed queued local change for %s", queuedChange.getKey()));
                         compressed = queuedChange.reapplyOrigin(object.getVersion(), object.getUnmodifiedValue());
                     }
                 }
@@ -1074,8 +1076,7 @@ public class Channel<T extends Bucket.Syncable> {
                     } else {
                         changeListener.onUpdateObject(change.getChangeVersion(), change.getKey(), object);
                     }
-                    Simperium.log("Set remote change to applied");
-                    change.setApplied(true);
+                    change.setApplied();
                 }
             });
 
@@ -1090,7 +1091,7 @@ public class Channel<T extends Bucket.Syncable> {
             String key = (String)keys.next();
             try {
                 Object val = json.get(key);
-                // log(String.format("Hello! %s", json.get(key).getClass().getName()));
+                // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
                 if (val.getClass().equals(JSONObject.class)) {
                     map.put(key, convertJSON((JSONObject) val));
                 } else if (val.getClass().equals(JSONArray.class)) {
@@ -1099,7 +1100,7 @@ public class Channel<T extends Bucket.Syncable> {
                     map.put(key, val);
                 }
             } catch (JSONException e) {
-                Simperium.log(String.format("Failed to convert JSON: %s", e.getMessage()), e);
+                Logger.log(String.format("Failed to convert JSON: %s", e.getMessage()), e);
             }
         }
         return map;
@@ -1118,7 +1119,7 @@ public class Channel<T extends Bucket.Syncable> {
                     list.add(val);
                 }
             } catch (JSONException e) {
-                Simperium.log(String.format("Faile to convert JSON: %s", e.getMessage()), e);
+                Logger.log(String.format("Faile to convert JSON: %s", e.getMessage()), e);
             }
 
         }
@@ -1142,7 +1143,7 @@ public class Channel<T extends Bucket.Syncable> {
                     json.put(key, val);
                 }
             } catch(JSONException e){
-               Simperium.log(String.format("Failed to serialize %s", val));
+               Logger.log(String.format("Failed to serialize %s", val));
             }
         }
         return json;

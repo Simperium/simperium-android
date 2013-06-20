@@ -1,13 +1,15 @@
 package com.simperium.testapp;
 
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketObject;
+import com.simperium.client.BucketSchema;
 
 import java.util.Map;
 
-public class Farm extends Bucket.Object {
+public class Farm extends BucketObject {
     public static String BUCKET_NAME="farm";
 
-    public static class Schema extends Bucket.Schema<Farm> {
+    public static class Schema extends BucketSchema<Farm> {
         @Override
         public String getRemoteName(){
             return Farm.BUCKET_NAME;

@@ -1,5 +1,9 @@
 package com.simperium.client;
 
+import com.simperium.client.Simperium;
+import com.simperium.util.JSONDiff;
+import com.simperium.util.Logger;
+
 import java.util.List;
 import java.util.Map;
 
@@ -54,10 +58,6 @@ class RemoteChange {
         this.errorCode = errorCode;
     }
 
-    protected void setChange(Change change){
-        this.change = change;
-    }
-
     protected boolean isAcknowledged(){
         return change != null;
     }
@@ -66,12 +66,23 @@ class RemoteChange {
         return applied;
     }
 
-    protected void setApplied(boolean isApplied){
-        applied = isApplied;
+    protected void setApplied(){
+        if (applied == false) {
+            applied = true;
+            change.setComplete();
+        }
     }
 
     protected boolean isAcknowledgedBy(Change change){
-        return hasChangeId(change) && getClientId().equals(Simperium.CLIENT_ID);
+        if (change == null) return false;
+        // if we have a Change with the same change id from the same client id
+        // then we were waiting for this change
+        if(hasChangeId(change) && getClientId().equals(Simperium.CLIENT_ID)){
+            this.change = change;
+            change.setAcknowledged();
+            return true;
+        }
+        return false;
     }
 
     protected boolean isError(){
@@ -139,7 +150,7 @@ class RemoteChange {
         String id = (String)changeData.get(ID_KEY);
         if (changeData.containsKey(ERROR_KEY)) {
             Integer errorCode = (Integer)changeData.get(ERROR_KEY);
-            Simperium.log(String.format("Received error for change: %d", errorCode, changeData));
+            Logger.log(String.format("Received error for change: %d", errorCode, changeData));
             return new RemoteChange(client_id, id, ccids, errorCode);
         }
         String operation = (String)changeData.get(OPERATION_KEY);

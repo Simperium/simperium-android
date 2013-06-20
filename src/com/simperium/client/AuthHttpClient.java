@@ -17,6 +17,9 @@
  */
 package com.simperium.client;
 
+import com.simperium.client.User;
+import com.simperium.util.Logger;
+
 import org.apache.http.Header;
 import org.apache.http.message.BasicHeader;
 
@@ -49,14 +52,14 @@ public class AuthHttpClient {
 
     public User createUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("create/");
-        Simperium.log(String.format("Requesting: %s", url));
+        Logger.log(String.format("Requesting: %s", url));
         httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getCreateResponseHandler(handler));
         return user;
     }
 
     public User authorizeUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("authorize/");
-        Simperium.log(String.format("Requesting: %s", url));
+        Logger.log(String.format("Requesting: %s", url));
         httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
         return user;
     }

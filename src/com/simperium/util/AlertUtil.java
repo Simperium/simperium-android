@@ -1,4 +1,4 @@
-package com.simperium.client.util;
+package com.simperium.util;
 /*
  * Copyright (C) 2011 wordpress.org
  *

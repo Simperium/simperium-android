@@ -10,8 +10,12 @@ import java.util.HashMap;
 
 import org.json.JSONObject;
 
+import static com.simperium.client.Channel.serializeJSON;
+import static com.simperium.client.Channel.convertJSON;
+import com.simperium.util.Logger;
+
 public class GhostStore {
-	
+    
 	private static final String DATABASE_NAME="simperium-ghost";
 	private static final String GHOSTS_TABLE_NAME="ghosts";
 	private static final String VERSIONS_TABLE_NAME="changeVersions";
@@ -37,6 +41,13 @@ public class GhostStore {
 		database.delete(GHOSTS_TABLE_NAME, null, null);
 		database.delete(VERSIONS_TABLE_NAME, null, null);
 	}
+    
+    protected void resetBucket(Bucket bucket){
+		String[] args = { bucket.getName() };
+        String where = "bucketName=?";
+        database.delete(GHOSTS_TABLE_NAME, where, args);
+        database.delete(VERSIONS_TABLE_NAME, where, args);
+    }
 	
 	protected Cursor queryChangeVersion(Bucket bucket){
 		String[] columns = { BUCKET_NAME_FIELD, CHANGE_VERSION_FIELD };
@@ -54,7 +65,7 @@ public class GhostStore {
 	}
 	
 	protected boolean hasChangeVersion(Bucket bucket, String cv){
-		// Simperium.log(String.format("Do we have CV: %s", cv));
+		// Logger.log(String.format("Do we have CV: %s", cv));
 		String storedVersion = getChangeVersion(bucket);
 		return storedVersion != null && storedVersion.equals(cv);
 	}
@@ -62,7 +73,7 @@ public class GhostStore {
 	protected String getChangeVersion(Bucket bucket){
 		Cursor cursor = queryChangeVersion(bucket);
 		String storedVersion = null;
-		Simperium.log(String.format("Column count %d Result count %d", cursor.getColumnCount(), cursor.getCount()));
+		Logger.log(String.format("Column count %d Result count %d", cursor.getColumnCount(), cursor.getCount()));
 		if (cursor.getCount() > 0) {
 			cursor.moveToFirst();
 			storedVersion = cursor.getString(1);
@@ -82,10 +93,10 @@ public class GhostStore {
 		} else {
 			database.insert(VERSIONS_TABLE_NAME, null, values);
 		}
-		Simperium.log(String.format("Set change version to: %s", cv));
+		Logger.log(String.format("Set change version to: %s", cv));
 	}
 
-	protected void saveGhost(Bucket bucket, Bucket.Ghost ghost){
+	protected void saveGhost(Bucket bucket, Ghost ghost){
 		// CREATE/UPDATE
 		String where = "bucketName=? AND simperiumKey=?";
 		String[] args = { bucket.getName(), ghost.getSimperiumKey() };
@@ -99,41 +110,41 @@ public class GhostStore {
 		values.put(PAYLOAD_FIELD, payload);
 		if (cursor.getCount() > 0) {
 			int count = database.update(GHOSTS_TABLE_NAME, values, where, args);
-			Simperium.log(String.format("Updated ghost(%d): %s.%d %s", count, ghost.getSimperiumKey(), ghost.getVersion(), payload));
+			Logger.log(String.format("Updated ghost(%d): %s.%d %s", count, ghost.getSimperiumKey(), ghost.getVersion(), payload));
 		} else {
 			long id = database.insertOrThrow(GHOSTS_TABLE_NAME, null, values);
-			Simperium.log(String.format("Created ghost(id:%d): %s.%d %s", id, ghost.getSimperiumKey(), ghost.getVersion(), payload));
+			Logger.log(String.format("Created ghost(id:%d): %s.%d %s", id, ghost.getSimperiumKey(), ghost.getVersion(), payload));
 		}
 		cursor.close();
 	}
 
-	public Bucket.Ghost getGhost(Bucket bucket, String key){
+	public Ghost getGhost(Bucket bucket, String key){
 		// public Cursor query (String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy)
 		String[] columns = { BUCKET_NAME_FIELD, OBJECT_KEY_FIELD, VERSION_FIELD, PAYLOAD_FIELD };
 		String where = "bucketName=? AND simperiumKey=?";
 		String[] args = { bucket.getName(), key };
 		Cursor cursor = database.query(GHOSTS_TABLE_NAME, columns, where, args, null, null, null);
-		Bucket.Ghost ghost = null;
+		Ghost ghost = null;
 		if (cursor.getCount() > 0) {
 			cursor.moveToFirst();
-			ghost = new Bucket.Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)));
+			ghost = new Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)));
 		}
 		cursor.close();
 		return ghost;
 	}
 	
 	public Boolean hasGhost(Bucket bucket, String key){
-		Bucket.Ghost ghost = getGhost(bucket, key);
+		Ghost ghost = getGhost(bucket, key);
 		return ghost != null;
 	}
 
-	protected void deleteGhost(Bucket bucket, Bucket.Ghost ghost){
+	protected void deleteGhost(Bucket bucket, Ghost ghost){
 		// REMOVE
 		
 	}
 	
-	private String serializeGhostData(Bucket.Ghost ghost){
-		JSONObject json = Channel.serializeJSON(ghost.getDiffableValue());
+	private String serializeGhostData(Ghost ghost){
+		JSONObject json = serializeJSON(ghost.getDiffableValue());
 		if (json != null) {
 			return json.toString();
 		}
@@ -143,9 +154,9 @@ public class GhostStore {
 	private Map<String,Object> deserializeGhostData(String data){
 		Map<String,Object> properties = null;
 		try {
-			properties = Channel.convertJSON(new org.json.JSONObject(data));
+			properties = convertJSON(new org.json.JSONObject(data));
 		} catch (org.json.JSONException e) {
-			Simperium.log(String.format("Failed to deserialize ghost data %s", data), e);
+			Logger.log(String.format("Failed to deserialize ghost data %s", data), e);
 		}
 		return properties;
 	}

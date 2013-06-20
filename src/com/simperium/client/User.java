@@ -10,6 +10,8 @@
  */
 package com.simperium.client;
 
+import com.simperium.util.Logger;
+
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
@@ -68,15 +70,15 @@ public class User {
     private AuthenticationListener listener;
 
     // a user that hasn't been logged in
-    protected User(AuthenticationListener listener){
+    public User(AuthenticationListener listener){
         this(null, null, listener);
     }
 
-    protected User(String email, AuthenticationListener listener){
+    public User(String email, AuthenticationListener listener){
         this(email, null, listener);
     }
 
-    protected User(String email, String password, AuthenticationListener listener){
+    public User(String email, String password, AuthenticationListener listener){
         this.email = email;
         this.password = password;
         this.listener = listener;
@@ -86,7 +88,7 @@ public class User {
         return authenticationStatus;
     }
 
-    protected void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
+    public void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
         if (this.authenticationStatus != authenticationStatus) {
             this.authenticationStatus = authenticationStatus;
             listener.onAuthenticationStatusChange(this.authenticationStatus);
@@ -102,7 +104,7 @@ public class User {
         return accessToken != null;
     }
 
-    protected void setCredentials(String email, String password){
+    public void setCredentials(String email, String password){
         setEmail(email);
         setPassword(password);
     }
@@ -111,14 +113,13 @@ public class User {
         return email;
     }
 
-    protected void setEmail(String email){
+    public void setEmail(String email){
         this.email = email;
     }
 
-    protected void setPassword(String password){
+    public void setPassword(String password){
         this.password = password;
     }
-
 
     public String getUserId(){
         return userId;
@@ -159,14 +160,14 @@ public class User {
 
     }
 
-    protected AsyncHttpResponseHandler getCreateResponseHandler(final User.AuthResponseHandler handler){
+    public AsyncHttpResponseHandler getCreateResponseHandler(final User.AuthResponseHandler handler){
         // returns an AsyncHttpResponseHandlert
         final User user = this;
         return new JsonHttpResponseHandler(){
             @Override
             public void onSuccess(int statusCode, JSONObject response){
                 // parse the response to JSON
-                Simperium.log(String.format("Success: %s", response));
+                Logger.log(String.format("Success: %s", response));
                 // user was created, notify of a new user
                 try {
                     userId = response.getString(USERID_KEY);
@@ -180,26 +181,26 @@ public class User {
             }
             @Override
             public void onFailure(Throwable error, JSONObject response){
-                Simperium.log(String.format("Error: %s", error));
-                Simperium.log(String.format("Reponse: %s", response));
+                Logger.log(String.format("Error: %s", error));
+                Logger.log(String.format("Reponse: %s", response));
                 handler.onInvalid(user, error, response);
             }
             @Override
             public void onFailure(Throwable error, String response){
-                Simperium.log(String.format("Error: %s", error));
-                Simperium.log(String.format("Reponse: %s", response));
+                Logger.log(String.format("Error: %s", error));
+                Logger.log(String.format("Reponse: %s", response));
                 handler.onFailure(user, error, response);
             }
         };
     }
 
-    protected AsyncHttpResponseHandler getAuthorizeResponseHandler(final User.AuthResponseHandler handler){
+    public AsyncHttpResponseHandler getAuthorizeResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){
             @Override
             public void onSuccess(int statusCode, JSONObject response){
                 // parse the response to JSON
-                Simperium.log(String.format("Success: %s", response));
+                Logger.log(String.format("Success: %s", response));
                 // user was created, notify of a new user
                 try {
                     userId = response.getString(USERID_KEY);
@@ -213,20 +214,20 @@ public class User {
             }
             @Override
             public void onFailure(Throwable error, JSONObject response){
-                Simperium.log(String.format("Error: %s", error));
-                Simperium.log(String.format("Reponse: %s", response));
+                Logger.log(String.format("Error: %s", error));
+                Logger.log(String.format("Reponse: %s", response));
                 handler.onInvalid(user, error, response);
             }
             @Override
             public void onFailure(Throwable error, String response){
-                Simperium.log(String.format("Error: %s", error));
-                Simperium.log(String.format("Reponse: %s", response));
+                Logger.log(String.format("Error: %s", error));
+                Logger.log(String.format("Reponse: %s", response));
                 handler.onFailure(user, error, response);
             }
         };
     }
     
-    protected AsyncHttpResponseHandler getUpdateResponseHandler(final User.AuthResponseHandler handler){
+    public AsyncHttpResponseHandler getUpdateResponseHandler(final User.AuthResponseHandler handler){
         final User user = this;
         return new JsonHttpResponseHandler(){
             @Override

@@ -9,7 +9,7 @@ import java.util.Properties;
 import java.io.InputStream;
 
 import com.simperium.client.Simperium;
-import com.simperium.client.storage.MemoryStore;
+import com.simperium.storage.MemoryStore;
 import com.simperium.client.Bucket;
 
 public class MainActivity extends Activity

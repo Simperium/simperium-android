@@ -4,10 +4,23 @@ import java.util.TimerTask;
 import java.util.Map;
 import java.util.HashMap;
 
-public class Change<T extends Bucket.Syncable> {
+import com.simperium.util.JSONDiff;
+import com.simperium.util.Logger;
+import static com.simperium.util.Uuid.uuid;
 
-    public interface OnRetryListener {
-        public void onRetryChange(Change change);
+
+public class Change<T extends Syncable> {
+
+    public interface OnRetryListener<T extends Syncable> {
+        public void onRetry(Change<T> change);
+    }
+
+    public interface OnAcknowledgedListener<T extends Syncable> {
+        public void onAcknowledged(Change<T> change);
+    }
+
+    public interface OnCompleteListener<T extends Syncable> {
+        public void onComplete(Change<T> change);
     }
 
     private String operation;
@@ -16,9 +29,10 @@ public class Change<T extends Bucket.Syncable> {
     private Map<String,Object> origin;
     private Map<String,Object> target;
     private String ccid;
-    private RetryTimer retryTimer;
-    private boolean pending = true;
-    private RemoteChange remoteChange;
+    private boolean pending = true, acknowledged = false;
+    private OnRetryListener<T> retryListener;
+    private OnCompleteListener<T> completeListener;
+    private OnAcknowledgedListener<T> acknowledgedListener;
     final private T object;
 
     public static final String OPERATION_MODIFY   = "M";
@@ -34,7 +48,7 @@ public class Change<T extends Bucket.Syncable> {
     /**
      * Constructs a change object from a map of values
      */
-    protected static <T extends Bucket.Syncable> Change<T> buildChange(T object, Map<String,Object> properties){
+    protected static <T extends Syncable> Change<T> buildChange(T object, Map<String,Object> properties){
         return new Change<T>(
             (String)  properties.get(OPERATION_KEY),
             object,
@@ -60,12 +74,11 @@ public class Change<T extends Bucket.Syncable> {
         this(operation, object, object.getUnmodifiedValue());
     }
 
-    public Change(String operation, T object, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
+    protected Change(String operation, T object, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
         super();
         this.operation = operation;
         this.object = object;
-        this.ccid = Simperium.uuid();
-        this.retryTimer = new RetryTimer();
+        this.ccid = uuid();
         this.key = object.getSimperiumKey();
         if (operation != OPERATION_REMOVE) {
             this.version = object.getVersion();
@@ -79,26 +92,30 @@ public class Change<T extends Bucket.Syncable> {
     }
 
     public boolean isPending(){
-        if (remoteChange == null) {
-            return true;
-        } else {
-            return !remoteChange.isApplied();
-        }
+        return pending;
     }
 
-    final protected void setRemoteChange(RemoteChange remoteChange){
-        Simperium.log(String.format("Change acknowledged: %s", ccid));
-        this.remoteChange = remoteChange;
+    public boolean isComplete(){
+        return !pending;
+    }
+
+    public boolean isAcknowledged(){
+        return acknowledged;
+    }
+    
+    protected void setAcknowledged(){
+        acknowledged = true;
         stopRetryTimer();
+        if (acknowledgedListener != null) {
+            acknowledgedListener.onAcknowledged(this);
+        }
     }
 
-    protected boolean acknowledges(RemoteChange remoteChange){
-        if(remoteChange.isAcknowledgedBy(this)){
-            setRemoteChange(remoteChange);
-            remoteChange.setChange(this);
-            return true;
+    protected void setComplete(){
+        pending = false;
+        if (completeListener != null) {
+            completeListener.onComplete(this);
         }
-        return false;
     }
 
     protected boolean keyMatches(Change otherChange){
@@ -146,15 +163,23 @@ public class Change<T extends Bucket.Syncable> {
         
     }
 
-    protected void setOnRetryListener(OnRetryListener listener){
-        retryTimer.setOnRetryListener(listener);
+    public void setOnAcknowledgedListener(OnAcknowledgedListener<T> listener){
+        acknowledgedListener = listener;
+    }
+
+    public void setOnCompleteListener(OnCompleteListener<T> listener){
+        
+    }
+
+    protected void setOnRetryListener(OnRetryListener<T> listener){
+        retryListener = listener;
     }
 
     protected void stopRetryTimer(){
         retryTimer.cancel();
     }
 
-    protected RetryTimer getRetryTimer(){
+    protected TimerTask getRetryTimer(){
         return retryTimer;
     }
 
@@ -172,27 +197,14 @@ public class Change<T extends Bucket.Syncable> {
         return new Change<T>(operation, object, origin);
     }
     
-    /**
-     * For attempting retries
-     */
-    private class RetryTimer extends TimerTask {
-        private OnRetryListener listener;
-        private Change change;
-
-        protected RetryTimer(){
-            super();
-        }
-        protected void setOnRetryListener(OnRetryListener listener){
-            this.listener = listener;
-        }
+    private TimerTask retryTimer = new TimerTask(){
+        @Override
         public void run(){
-            Simperium.log(String.format("Retry change: %s", Change.this.getChangeId()));
-            if (listener != null) {
-                listener.onRetryChange(Change.this);
+            Logger.log(String.format("Retry change: %s", Change.this.getChangeId()));
+            if (retryListener != null) {
+                retryListener.onRetry(Change.this);
             }
         }
-
-    }
-    
+    };
 
 }
