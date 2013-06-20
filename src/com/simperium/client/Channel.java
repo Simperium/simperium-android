@@ -1020,6 +1020,12 @@ public class Channel<T extends Syncable> {
                         }
                     }
                 }
+
+                if (change.isAcknowledged()) {
+                    change.setApplied();
+                    return;
+                }
+
                 handler.post(new Runnable(){
                     public void run(){
                         changeListener.onRemoveObject(change.getChangeVersion(), change.getKey());

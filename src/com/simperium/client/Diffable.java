@@ -1,4 +1,4 @@
-package com.simperium.client.bucket;
+package com.simperium.client;
 
 import java.util.Map;
 /**

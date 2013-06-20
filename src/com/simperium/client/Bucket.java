@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.simperium.client.cache.ObjectCacheProvider;
 import com.simperium.storage.StorageProvider;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
@@ -50,7 +49,7 @@ public class Bucket<T extends Syncable> {
     private StorageProvider storageProvider;
     private BucketSchema<T> schema;
     private GhostStore ghostStore;
-    private ObjectCacheProvider<T> cacheProvider;
+    private ObjectCache<T> cache;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
@@ -63,6 +62,7 @@ public class Bucket<T extends Syncable> {
         this.ghostStore = ghostStore;
         this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
+        cache = ObjectCache.buildCache(this);
     }
     /**
      * Bucket.Listener can be leveraged multiple ways if designed correctly
@@ -96,6 +96,8 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to remove the object
      */
     public Change remove(T object){
+        cache.remove(object.getSimperiumKey());
+        ghostStore.deleteGhost(this, object.getGhost());
         storageProvider.removeObject(this, object.getSimperiumKey());
         Change change = channel.queueLocalDeletion(object);
         Set<Listener<T>> notify;
@@ -125,10 +127,14 @@ public class Bucket<T extends Syncable> {
      * Given the key for an object in the bucket, remove it if it exists
      */
     protected void removeObjectWithKey(String key){
-        T object = get(key);
-        if (object != null) {
-            // this will call onObjectRemoved on the listener
-            remove(object);
+        try {
+            T object = get(key);
+            if (object != null) {
+                // this will call onObjectRemoved on the listener
+                remove(object);
+            }
+        } catch (BucketObjectMissingException e) {
+            // Don't need to do anything, we don't have the object
         }
     }
 
@@ -187,12 +193,7 @@ public class Bucket<T extends Syncable> {
     }
 
     protected T buildObject(String key, Map<String,java.lang.Object> properties){
-        T object = schema.build(key, properties);
-        // set the bucket that is managing this object
-        object.setBucket(this);
-        // set the diffable ghost object to determine local modifications
-        object.setGhost(new Ghost(key, 0, properties));
-        return object;
+        return buildObject(new Ghost(key, 0, properties));
     }
 
 
@@ -210,7 +211,7 @@ public class Bucket<T extends Syncable> {
      * Get an object by its key, should we throw an error if the object isn't
      * there?
      */
-    public T getObject(String uuid){
+    public T getObject(String uuid) throws BucketObjectMissingException {
         return get(uuid);
     }
     /**
@@ -229,7 +230,7 @@ public class Bucket<T extends Syncable> {
         Ghost ghost = new Ghost(uuid, 0, new HashMap<String, java.lang.Object>());
         object.setGhost(ghost);
         ghostStore.saveGhost(this, ghost);
-        log(String.format("Build new object %s with ghost %s", object, object.getGhost()));
+        cache.put(uuid, object);
         return object;
     }
     /**
@@ -264,7 +265,7 @@ public class Bucket<T extends Syncable> {
         ghostStore.saveGhost(this, ghost);
         Logger.log("Update the ghost!");
     }
-    protected Ghost getGhost(String key){
+    protected Ghost getGhost(String key) throws GhostMissingException {
         return ghostStore.getGhost(this, key);
     }
     /**
@@ -370,34 +371,49 @@ public class Bucket<T extends Syncable> {
     /**
      * Get a single object object that matches key
      */
-    public T get(String key){
+    public T get(String key) throws BucketObjectMissingException {
+        // If the cache has it, return the cached object
+        T object = cache.get(key);
+        if (object != null) {
+            return object;
+        }
         // Datastore constructs the object for us
+        Ghost ghost = null;
+        try {
+            ghost = ghostStore.getGhost(this, key);            
+        } catch (GhostMissingException e) {
+            throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
+        }
         Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
-        T object = schema.build(key, properties);
-        Ghost ghost = ghostStore.getGhost(this, key);
-        log(String.format("Fetched ghost for %s %s", key, ghost));
+        object = schema.build(key, properties);
+        Logger.log(String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
+        cache.put(key, object);
         return object;
     }
     /**
      * Does bucket have at least the requested version?
      */
     public Boolean containsKey(String key){
-        Ghost ghost = ghostStore.getGhost(this, key);
-        return ghost != null;
+        return ghostStore.hasGhost(this, key);
     }
     /**
      * Ask storage if it has at least the requested version or newer
      */
     public Boolean hasKeyVersion(String key, Integer version){
-        Ghost ghost = ghostStore.getGhost(this, key);
-        return ghost != null && ghost.getVersion().equals(version);
+        try {
+            Ghost ghost = ghostStore.getGhost(this, key);
+            return ghost.getVersion().equals(version);
+        } catch (GhostMissingException e) {
+            // we don't have the ghost
+            return false;
+        }
     }
     /**
      * Which version of the key do we have
      */
-    public Integer getKeyVersion(String key){
+    public Integer getKeyVersion(String key) throws GhostMissingException {
         Ghost ghost = ghostStore.getGhost(this, key);
         return ghost.getVersion();
     }

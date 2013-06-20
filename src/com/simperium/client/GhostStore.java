@@ -118,7 +118,7 @@ public class GhostStore {
 		cursor.close();
 	}
 
-	public Ghost getGhost(Bucket bucket, String key){
+	public Ghost getGhost(Bucket bucket, String key) throws GhostMissingException {
 		// public Cursor query (String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy)
 		String[] columns = { BUCKET_NAME_FIELD, OBJECT_KEY_FIELD, VERSION_FIELD, PAYLOAD_FIELD };
 		String where = "bucketName=? AND simperiumKey=?";
@@ -130,17 +130,26 @@ public class GhostStore {
 			ghost = new Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)));
 		}
 		cursor.close();
+        if (ghost == null) {
+            throw(new GhostMissingException(String.format("Ghost %s does not exist for bucket %s", bucket.getName(), key)));
+        }
 		return ghost;
 	}
 	
 	public Boolean hasGhost(Bucket bucket, String key){
-		Ghost ghost = getGhost(bucket, key);
-		return ghost != null;
+        try {
+    		Ghost ghost = getGhost(bucket, key);
+        } catch (GhostMissingException e) {
+            return false;
+        }
+        return true;
 	}
 
 	protected void deleteGhost(Bucket bucket, Ghost ghost){
 		// REMOVE
-		
+		String where = "bucketName=? AND simperiumKey=?";
+        String[] args = { bucket.getName(), ghost.getSimperiumKey() };
+        database.delete(GHOSTS_TABLE_NAME, where, args);
 	}
 	
 	private String serializeGhostData(Ghost ghost){

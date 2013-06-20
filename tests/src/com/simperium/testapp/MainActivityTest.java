@@ -10,6 +10,7 @@ import com.simperium.util.Logger;
 import com.simperium.storage.MemoryStore;
 import com.simperium.client.User;
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Change;
 
@@ -114,25 +115,14 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
                 fail("Interruped waiting for deletion");
             }
         }
-        assertNull(bucket1.getObject(farm.getSimperiumKey()));
-        // let's delete everything from the bucket
-        // List<Farm> farms = bucket1.allEntities();
-        // List<Change<Farm>> changes = new ArrayList<Change<Farm>>();
-        // Iterator<Farm> farmIterator = farms.iterator();
-        // while(farmIterator.hasNext()){
-        //     farm = farmIterator.next();
-        //     changes.add(farm.delete());
-        // }
-        // Iterator<Change<Farm>> changeIterator;
-        // while(changes.size() > 0){
-        //     changeIterator = changes.iterator();
-        //     while(changeIterator.hasNext()){
-        //         if(!changeIterator.next().isPending()){
-        //             changeIterator.remove();
-        //         }
-        //     }
-        // }
-        // assertSame(0, bucket1.allEntities().size());
+
+        try {
+            farm = bucket1.getObject(farm.getSimperiumKey());
+        } catch (BucketObjectMissingException e) {
+            farm = null;
+        } finally {
+            assertNull(farm);
+        }
     }
 
     public boolean connectClients(){
