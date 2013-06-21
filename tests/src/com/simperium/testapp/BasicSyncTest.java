@@ -5,7 +5,7 @@ import static android.test.MoreAsserts.*;
 
 import android.util.Log;
 
-import com.simperium.client.Simperium;
+import com.simperium.Simperium;
 import com.simperium.util.Logger;
 import com.simperium.storage.MemoryStore;
 import com.simperium.client.User;
@@ -13,6 +13,8 @@ import com.simperium.client.Bucket;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Change;
+
+import com.simperium.testapp.models.Farm;
 
 import java.util.Map;
 import java.util.List;
@@ -31,7 +33,7 @@ import java.lang.Thread;
  * -e class com.simperium.testapp.MainActivityTest \
  * com.simperium.testapp.tests/android.test.InstrumentationTestRunner
  */
-public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActivity> {
+public class BasicSyncTest extends ActivityInstrumentationTestCase2<MainActivity> {
     public static String TAG = MainActivity.TAG;
     private MainActivity mActivity;
 
@@ -41,7 +43,7 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
     private User mUser1;
     private User mUser2;
 
-    public MainActivityTest() {
+    public BasicSyncTest() {
         super("com.simperium.testapp", MainActivity.class);
     }
 
@@ -71,6 +73,13 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         mUser2.setAccessToken(userToken);
 
     }
+    
+    @Override
+    protected void tearDown() throws Exception {
+        mClient1.disconnect();
+        mClient2.disconnect();
+        super.tearDown();
+    }
 
     public void testSimperiumConfiguration(){
         // id and secret should be configured
@@ -89,7 +98,7 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
      * uses the live Simperium api
      */
     public void testObjectCreationAndDeletion(){
-        BucketSchema farmSchema = new Farm.Schema();
+        BucketSchema farmSchema = new Farm.Schema("basic");
         Bucket<Farm> bucket1 = mClient1.bucket(farmSchema);
         bucket1.reset();
         bucket1.start();
@@ -99,21 +108,12 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
         farm.getProperties().put("name", (String)"augusta");
         Change<Farm> change = farm.save();
         while(change.isPending()){
-            try {
-                Thread.sleep(100);
-            } catch (java.lang.InterruptedException e) {
-                fail("Interrupted with pending change");
-            }
+            waitFor(1);
         }
         assertFalse(String.format("Farm is new %s", farm), farm.isNew());
         change = farm.delete();
         while(change.isPending()){
-            try {
-                Thread.sleep(100);
-                Logger.log("Change is pending");
-            } catch (java.lang.InterruptedException e) {
-                fail("Interruped waiting for deletion");
-            }
+            waitFor(1);
         }
 
         try {
@@ -132,15 +132,20 @@ public class MainActivityTest extends ActivityInstrumentationTestCase2<MainActiv
                 mClient1.connect();
             if (!mClient2.isConnecting())
                 mClient2.connect();
-            try {
-                Thread.sleep(200);
-            } catch (java.lang.InterruptedException e) {
-                return false;
-            }
+            waitFor(1);
             Log.d(TAG, "Connecting ...");
         }
+        waitFor(2);
         Log.d(TAG, "Connected");
         return true;
+    }
+
+    protected void waitFor(int seconds){
+        try {
+            Thread.sleep(seconds * (long)1000);
+        } catch (InterruptedException e) {
+            Logger.log("Interupted");
+        }
     }
 
 }
