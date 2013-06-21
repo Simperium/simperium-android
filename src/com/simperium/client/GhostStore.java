@@ -73,7 +73,6 @@ public class GhostStore {
 	protected String getChangeVersion(Bucket bucket){
 		Cursor cursor = queryChangeVersion(bucket);
 		String storedVersion = null;
-		Logger.log(String.format("Column count %d Result count %d", cursor.getColumnCount(), cursor.getCount()));
 		if (cursor.getCount() > 0) {
 			cursor.moveToFirst();
 			storedVersion = cursor.getString(1);
@@ -147,10 +146,13 @@ public class GhostStore {
 
 	protected void deleteGhost(Bucket bucket, Ghost ghost){
 		// REMOVE
-		String where = "bucketName=? AND simperiumKey=?";
-        String[] args = { bucket.getName(), ghost.getSimperiumKey() };
-        database.delete(GHOSTS_TABLE_NAME, where, args);
+        deleteGhost(bucket, ghost.getSimperiumKey());
 	}
+    protected void deleteGhost(Bucket bucket, String key){
+		String where = "bucketName=? AND simperiumKey=?";
+        String[] args = { bucket.getName(), key };
+        database.delete(GHOSTS_TABLE_NAME, where, args);        
+    }
 	
 	private String serializeGhostData(Ghost ghost){
 		JSONObject json = serializeJSON(ghost.getDiffableValue());

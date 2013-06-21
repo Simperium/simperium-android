@@ -10,10 +10,7 @@ package com.simperium.client;
 
 import android.content.Context;
 
-import com.simperium.client.Bucket;
-import com.simperium.client.Syncable;
-import com.simperium.client.Channel;
-import com.simperium.client.User;
+import com.simperium.Simperium;
 import com.simperium.util.Logger;
 
 import java.net.URI;
@@ -35,7 +32,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         DISCONNECTED, CONNECTING, CONNECTED
     }
 
-    public static final String TAG = "SimpWS";
+    public static final String TAG = "Simperium.Websocket";
     private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/websocket";
     private static final String SOCKETIO_URL = "https://api.simperium.com/";
     private static final String USER_AGENT_HEADER = "User-Agent";
@@ -84,7 +81,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         return channel;
     }
 
-    protected void connect(){
+    public void connect(){
         // if we have channels, then connect, otherwise wait for a channel
         if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
             Logger.log(String.format("Connecting to %s", WEBSOCKET_URL));
@@ -94,7 +91,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         }
     }
 
-    protected void disconnect(){
+    public void disconnect(){
         // disconnect the channel
         reconnect = false;
         if (isConnected()) {

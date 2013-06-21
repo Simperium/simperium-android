@@ -2,11 +2,13 @@ package com.simperium.storage;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
+import com.simperium.util.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 
 /**
  * Naive implementation of a StorageProvider in memory.
@@ -35,6 +37,7 @@ public class MemoryStore implements StorageProvider {
     }
     @Override
     public void removeObject(Bucket<?> bucket, String key){
+        Logger.log(String.format("Being asked to remove key %s", key));
         getBucketList(bucket).remove(key);
     }
     @Override
@@ -49,7 +52,10 @@ public class MemoryStore implements StorageProvider {
         return getBucketList(bucket).get(key);
     }
     @Override
-    public List<Map<String,Object>> allObjects(Bucket<?> bucket){
-        return new ArrayList(getBucketList(bucket).values());
+    public List<String> allKeys(Bucket<?> bucket){
+        Set<String> keySet = getBucketList(bucket).keySet();
+        List<String> keys = new ArrayList<String>(keySet.size());
+        keys.addAll(keySet);
+        return keys;
     }
 }

@@ -1,6 +1,6 @@
 package com.simperium.client;
 
-import com.simperium.client.Simperium;
+import com.simperium.Simperium;
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 
@@ -34,6 +34,7 @@ class RemoteChange {
     private Integer errorCode;
     private boolean applied = false;
     private Change change;
+    private JSONDiff jsondiff = new JSONDiff();
     /**
      * All remote changes include clientid, key and ccids then these differences:
      * - errors have error key
@@ -58,6 +59,32 @@ class RemoteChange {
         this.errorCode = errorCode;
     }
 
+    protected Ghost apply(Syncable object) throws RemoteChangeInvalidException {
+        Ghost gost = apply(object.getGhost());
+        object.setGhost(gost);
+        return gost;
+    }
+
+    protected Ghost apply(Ghost ghost) throws RemoteChangeInvalidException {
+        // keys and versions must match otherwise throw an error
+        if (!ghost.getSimperiumKey().equals(getKey())) {
+            throw(new RemoteChangeInvalidException(
+                    String.format("Local instance key %s does not match change key %s",
+                        ghost.getSimperiumKey(), getKey())));
+        }
+        if (isModifyOperation() && !ghost.getVersion().equals(getSourceVersion())) {
+            throw(new RemoteChangeInvalidException(
+                    String.format("Local instance of %s has source version of %d and remote change has %d",
+                    getKey(), ghost.getVersion(), getSourceVersion())));
+        }
+        if (isAddOperation() && ghost.getVersion() != 0) {
+            throw(new RemoteChangeInvalidException(
+                    String.format("Local instance has version greater than 0 with remote add operation")));
+        }
+        Map<String,Object> properties = jsondiff.apply(ghost.getDiffableValue(), getPatch());
+        return new Ghost(getKey(), getObjectVersion(), properties);
+    }
+
     protected boolean isAcknowledged(){
         return change != null;
     }
@@ -69,7 +96,7 @@ class RemoteChange {
     protected void setApplied(){
         if (applied == false) {
             applied = true;
-            change.setComplete();
+            if(change != null) change.setComplete();
         }
     }
 
@@ -118,6 +145,9 @@ class RemoteChange {
     }
 
     protected Integer getSourceVersion(){
+        if (sourceVersion == null) {
+            return 0;
+        }
         return sourceVersion;
     }
 

@@ -18,5 +18,5 @@ public interface StorageProvider {
      * Retrieve entities and details
      */
     public Map<String,Object> getObject(Bucket<?> bucket, String key);
-	public List<Map<String,Object>> allObjects(Bucket<?> bucket);
+    public List<String> allKeys(Bucket<?> bucket);
 }

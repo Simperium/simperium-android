@@ -38,6 +38,7 @@ import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 
 public class Bucket<T extends Syncable> {
+    public static final String TAG="Simperium.Bucket";
     // The name used for the Simperium namespace
     private String name;
     // User provides the access token for authentication
@@ -63,6 +64,12 @@ public class Bucket<T extends Syncable> {
         this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
         cache = ObjectCache.buildCache(this);
+    }
+    /**
+     * If the channel is running or expecting to process changes
+     */
+    public boolean isIdle(){
+        return channel.isIdle();
     }
     /**
      * Bucket.Listener can be leveraged multiple ways if designed correctly
@@ -97,7 +104,6 @@ public class Bucket<T extends Syncable> {
      */
     public Change remove(T object){
         cache.remove(object.getSimperiumKey());
-        ghostStore.deleteGhost(this, object.getGhost());
         storageProvider.removeObject(this, object.getSimperiumKey());
         Change change = channel.queueLocalDeletion(object);
         Set<Listener<T>> notify;
@@ -111,7 +117,7 @@ public class Bucket<T extends Syncable> {
             try {
                 listener.onObjectRemoved(object.getSimperiumKey(),object);
             } catch (Exception e) {
-                Logger.log(String.format("Listener failed onObjectRemoved %s", listener));
+                Logger.log(TAG, String.format("Listener failed onObjectRemoved %s", listener));
             }
         }
         return change;
@@ -119,22 +125,20 @@ public class Bucket<T extends Syncable> {
     /**
      * Update the change version and remove the object with the given key
      */
-    protected void removeObjectWithKey(String changeVersion, String key){
+    protected void removeObjectWithKey(String changeVersion, String key)
+    throws BucketObjectMissingException {
         removeObjectWithKey(key);
         setChangeVersion(changeVersion);
     }
     /**
      * Given the key for an object in the bucket, remove it if it exists
      */
-    protected void removeObjectWithKey(String key){
-        try {
-            T object = get(key);
-            if (object != null) {
-                // this will call onObjectRemoved on the listener
-                remove(object);
-            }
-        } catch (BucketObjectMissingException e) {
-            // Don't need to do anything, we don't have the object
+    protected void removeObjectWithKey(String key)
+    throws BucketObjectMissingException {
+        T object = get(key);
+        if (object != null) {
+            // this will call onObjectRemoved on the listener
+            remove(object);
         }
     }
 
@@ -208,11 +212,53 @@ public class Bucket<T extends Syncable> {
         return object;
     }
     /**
+     * Get a single object object that matches key
+     */
+    public T get(String key) throws BucketObjectMissingException {
+        // If the cache has it, return the cached object
+        T object = cache.get(key);
+        if (object != null) {
+            return object;
+        }
+        // Datastore constructs the object for us
+        Ghost ghost = null;
+        try {
+            ghost = ghostStore.getGhost(this, key);            
+        } catch (GhostMissingException e) {
+            throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
+        }
+        Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
+        object = schema.build(key, properties);
+        Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
+        object.setBucket(this);
+        object.setGhost(ghost);
+        cache.put(key, object);
+        return object;
+    }
+    /**
      * Get an object by its key, should we throw an error if the object isn't
      * there?
      */
     public T getObject(String uuid) throws BucketObjectMissingException {
         return get(uuid);
+    }
+    /**
+     * Get all the objects
+     * TODO: memory efficiency
+     */
+    public List<T> getAllObjects(){
+        // ask the ghost storage for all keys?
+        List<String> keys = storageProvider.allKeys(this);
+        Iterator<String> iterator = keys.iterator();
+        List<T> objects = new ArrayList<T>(keys.size());
+        while(iterator.hasNext()){
+            try {
+                objects.add(getObject(iterator.next()));                
+            } catch (BucketObjectMissingException e) {
+                // For now we ignore, but strange
+            }
+        }
+        return objects;
     }
     /**
      * Returns a new objecty tracked by this bucket
@@ -224,13 +270,19 @@ public class Bucket<T extends Syncable> {
      * Returns a new object with the given uuid
      * return null if the uuid exists?
      */
-    protected T newObject(String uuid){
-        T object = buildObject(uuid, new HashMap<String,java.lang.Object>());
+    public T newObject(String key){
+        return insertObject(key, new HashMap<String,Object>());
+    }
+    /**
+     * 
+     */
+    public T insertObject(String key, Map<String,Object> properties){
+        T object = buildObject(key, properties);
         object.setBucket(this);
-        Ghost ghost = new Ghost(uuid, 0, new HashMap<String, java.lang.Object>());
+        Ghost ghost = new Ghost(key, 0, new HashMap<String,Object>());
         object.setGhost(ghost);
         ghostStore.saveGhost(this, ghost);
-        cache.put(uuid, object);
+        cache.put(key, object);
         return object;
     }
     /**
@@ -248,7 +300,7 @@ public class Bucket<T extends Syncable> {
     protected void addObjectWithGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Logger.log("Built object with ghost, add it");
+        Logger.log(TAG, "Built object with ghost, add it");
         addObject(object);
     }
     /**
@@ -258,12 +310,12 @@ public class Bucket<T extends Syncable> {
         setChangeVersion(changeVersion);
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Logger.log("Built object with ghost, updated it");
+        Logger.log(TAG, "Built object with ghost, updated it");
         updateObject(object);
     }
     protected void updateGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
-        Logger.log("Update the ghost!");
+        Logger.log(TAG, "Update the ghost!");
     }
     protected Ghost getGhost(String key) throws GhostMissingException {
         return ghostStore.getGhost(this, key);
@@ -287,7 +339,7 @@ public class Bucket<T extends Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        Logger.log(String.format("Added an object, let's tell the storage provider %s %s", object, object.getGhost()));
+        Logger.log(TAG, String.format("Added an object, let's tell the storage provider %s %s", object, object.getGhost()));
         storageProvider.addObject(this, object.getSimperiumKey(), object);
         // notify listeners that an object has been added
         if (notifyListeners) {
@@ -303,7 +355,7 @@ public class Bucket<T extends Syncable> {
                 try {
                     listener.onObjectAdded(object.getSimperiumKey(), object);
                 } catch(Exception e) {
-                    Logger.log(String.format("Listener failed onObjectAdded %s", listener), e);
+                    Logger.log(TAG, String.format("Listener failed onObjectAdded %s", listener), e);
                 }
             }
         }
@@ -325,7 +377,7 @@ public class Bucket<T extends Syncable> {
             try {
                 listener.onObjectUpdated(object.getSimperiumKey(), object);
             } catch(Exception e) {
-                Logger.log(String.format("Listener failed onObjectUpdated %s", listener));
+                Logger.log(TAG, String.format("Listener failed onObjectUpdated %s", listener));
             }
         }
     }
@@ -342,16 +394,6 @@ public class Bucket<T extends Syncable> {
         this.channel = channel;
     }
 
-    public Channel getChannel(){
-        return channel;
-    }
-
-    /**
-     * Tell the bucket that an object has local changes ready to sync.
-     * @param (Diffable) object
-     */
-    public void update(T object){
-    }
     /**
      * Initialize the bucket to start tracking changes. We can provide a way
      * for storage mechanisms to initialize here.
@@ -367,30 +409,6 @@ public class Bucket<T extends Syncable> {
         ghostStore.resetBucket(this);
         channel.reset();
         // Clear the ghost store
-    }
-    /**
-     * Get a single object object that matches key
-     */
-    public T get(String key) throws BucketObjectMissingException {
-        // If the cache has it, return the cached object
-        T object = cache.get(key);
-        if (object != null) {
-            return object;
-        }
-        // Datastore constructs the object for us
-        Ghost ghost = null;
-        try {
-            ghost = ghostStore.getGhost(this, key);            
-        } catch (GhostMissingException e) {
-            throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
-        }
-        Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
-        object = schema.build(key, properties);
-        Logger.log(String.format("Fetched ghost for %s %s", key, ghost));
-        object.setBucket(this);
-        object.setGhost(ghost);
-        cache.put(key, object);
-        return object;
     }
     /**
      * Does bucket have at least the requested version?
@@ -424,6 +442,67 @@ public class Bucket<T extends Syncable> {
             key = Uuid.uuid();
         } while(containsKey(key));
         return key;
+    }
+
+    protected Ghost acknowledgeChange(RemoteChange remoteChange, Change<T> change)
+    throws RemoteChangeInvalidException {
+        Ghost ghost = null;
+        if (!remoteChange.isRemoveOperation()) {
+            try {
+                T object = get(remoteChange.getKey());
+                // apply the diff to the underyling object
+                ghost = remoteChange.apply(object);
+                ghostStore.saveGhost(this, ghost);
+                // update the object's ghost
+                object.setGhost(ghost);
+            } catch (BucketObjectMissingException e) {
+                throw(new RemoteChangeInvalidException(e));
+            }
+        } else {
+            ghostStore.deleteGhost(this, remoteChange.getKey());
+        }
+        setChangeVersion(remoteChange.getChangeVersion());
+        remoteChange.setApplied();
+        // TODO: remove changes don't need ghosts, need to rethink this a bit
+        return ghost;
+    }
+
+    protected Ghost applyRemoteChange(RemoteChange change)
+    throws RemoteChangeInvalidException {
+        Ghost ghost = null;
+        if (change.isRemoveOperation()) {
+            try {
+                Logger.log(TAG, String.format("Removing object from remote change %s", change.getKey()));
+                removeObjectWithKey(change.getKey());
+                ghostStore.deleteGhost(this, change.getKey());
+            } catch (BucketObjectMissingException e) {
+                throw(new RemoteChangeInvalidException(e));
+            }
+        } else {
+            try {
+                T object = null;
+                Boolean isNew = false;
+                if (change.isAddOperation()) {
+                    object = newObject(change.getKey());
+                    isNew = true;
+                } else {
+                    object = getObject(change.getKey());
+                    isNew = false;
+                }
+                ghost = change.apply(object);
+                ghostStore.saveGhost(this, ghost);
+                if (isNew) {
+                    addObject(object);
+                } else {
+                    updateObject(object);
+                }
+            } catch(BucketObjectMissingException e) {
+                throw(new RemoteChangeInvalidException(e));
+            }
+        }
+        setChangeVersion(change.getChangeVersion());
+        change.setApplied();
+        return ghost;
     }
 
     /**

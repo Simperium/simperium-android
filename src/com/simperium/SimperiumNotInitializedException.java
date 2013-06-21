@@ -1,4 +1,4 @@
-package com.simperium.client;
+package com.simperium;
 
 public class SimperiumNotInitializedException extends Exception {
 

@@ -18,4 +18,8 @@ public class Logger {
         Log.e(TAG, msg, error);
     }
 
+    public static final void log(String tag, String msg, Throwable error){
+        Log.e(tag, msg, error);
+    }
+
 }

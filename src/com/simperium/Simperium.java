@@ -1,4 +1,4 @@
-package com.simperium.client;
+package com.simperium;
 
 import com.loopj.android.http.*;
 
@@ -13,6 +13,9 @@ import com.simperium.client.User;
 import com.simperium.client.User.AuthenticationListener;
 import com.simperium.client.User.AuthenticationStatus;
 import com.simperium.client.User.AuthResponseHandler;
+import com.simperium.client.AuthHttpClient;
+import com.simperium.client.WebSocketManager;
+
 import com.simperium.util.Logger;
 import static com.simperium.util.Uuid.uuid;
 
@@ -62,7 +65,7 @@ public class Simperium implements User.AuthenticationListener {
     }
     
     
-    protected static Simperium getInstance() throws SimperiumNotInitializedException{
+    public static Simperium getInstance() throws SimperiumNotInitializedException{
     	if(null == simperiumClient)
     		throw new SimperiumNotInitializedException("You must create an instance of Simperium before call this method.");
     	

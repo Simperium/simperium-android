@@ -22,6 +22,8 @@ import android.widget.TextView;
 
 import org.json.*;
 
+import com.simperium.Simperium;
+import com.simperium.SimperiumNotInitializedException;
 import com.simperium.util.AlertUtil;
 import com.simperium.client.User;
 import com.simperium.util.Logger;
