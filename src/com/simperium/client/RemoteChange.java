@@ -104,7 +104,7 @@ class RemoteChange {
         if (change == null) return false;
         // if we have a Change with the same change id from the same client id
         // then we were waiting for this change
-        if(hasChangeId(change) && getClientId().equals(Simperium.CLIENT_ID)){
+        if(hasChangeId(change)){
             this.change = change;
             change.setAcknowledged();
             return true;
@@ -169,6 +169,14 @@ class RemoteChange {
 
     protected boolean hasChangeId(Change change){
         return hasChangeId(change.getChangeId());
+    }
+
+    public String toString(){
+        if (!isError()) {
+            return String.format("RemoteChange %s %s %s %d-%d", getKey(), getChangeVersion(), operation, getSourceVersion(), getObjectVersion());
+        } else {
+            return String.format("RemoteChange %s Error %d", getKey(), getErrorCode());
+        }
     }
 
     protected static RemoteChange buildFromMap(Map<String,Object> changeData){

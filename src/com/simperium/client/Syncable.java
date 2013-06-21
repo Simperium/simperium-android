@@ -18,7 +18,10 @@ public abstract class Syncable implements Diffable {
         return ghost;
     }
     protected void setGhost(Ghost ghost){
-        this.ghost = ghost;
+        synchronized(this){
+            Logger.log("Simperium.Syncable", String.format("Setting ghost %s %s", getSimperiumKey(), ghost));
+            this.ghost = ghost;
+        }
     }
     /**
      * Has this ever been synced
@@ -57,7 +60,6 @@ public abstract class Syncable implements Diffable {
      * Sends a delete operation over the socket
      */
     public Change delete(){
-        Logger.log("*** Remove myself");
         return getBucket().remove(this);
     }
     /**

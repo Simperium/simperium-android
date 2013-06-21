@@ -87,7 +87,7 @@ public class Channel<T extends Syncable> {
     private boolean started = false, connected = false, startOnConnect = false;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
-    private String appId;
+    private String appId, sessionId;
     private JSONDiff jsondiff = new JSONDiff();
     private Context context;
 
@@ -95,9 +95,10 @@ public class Channel<T extends Syncable> {
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
 
-    public Channel(Context context, String appId, final Bucket<T> bucket, User user, OnMessageListener listener){
+    public Channel(Context context, String appId, String sessionId, final Bucket<T> bucket, User user, OnMessageListener listener){
         this.context = context;
         this.appId = appId;
+        this.sessionId = sessionId;
         this.bucket = bucket;
         this.user = user;
         this.listener = listener;
@@ -314,7 +315,7 @@ public class Channel<T extends Syncable> {
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(6);
         init.put(FIELD_API_VERSION, 1);
-        init.put(FIELD_CLIENT_ID, Simperium.CLIENT_ID);
+        init.put(FIELD_CLIENT_ID, sessionId);
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, user.getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
@@ -982,13 +983,16 @@ public class Channel<T extends Syncable> {
                             }
                         }
                     } else {
+                        if (remoteChange.isError()) {
+                            throw(new RuntimeException(String.format("Remote change %s was an error but not acknowledged", remoteChange)));
+                        }
                         try {
                             listener.onRemote(remoteChange);                            
                         } catch (RemoteChangeInvalidException e) {
                             Logger.log(TAG, "Remote change could not be applied", e);
                         }
                     }
-                    if (remoteChange.isRemoveOperation()) {
+                    if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
                         Iterator<Change> iterator = localQueue.iterator();
                         while(iterator.hasNext()){
                             Change queuedChange = iterator.next();
@@ -1069,6 +1073,7 @@ public class Channel<T extends Syncable> {
             JSONObject changeJSON = Channel.serializeJSON(map);
 
             sendMessage(String.format("c:%s", changeJSON.toString()));
+            change.setSent();
             return true;
         }
 

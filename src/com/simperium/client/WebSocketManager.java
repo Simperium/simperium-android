@@ -37,7 +37,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     private static final String SOCKETIO_URL = "https://api.simperium.com/";
     private static final String USER_AGENT_HEADER = "User-Agent";
     private static final String COMMAND_HEARTBEAT = "h";
-    private String appId;
+    private String appId, sessionId;
     private String clientId;
     private WebSocketClient socketClient;
     private boolean reconnect = true;
@@ -53,11 +53,11 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
 
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
 
-    public WebSocketManager(String appId){
+    public WebSocketManager(String appId, String sessionId){
         this.appId = appId;
-
+        this.sessionId = sessionId;
         List<BasicNameValuePair> headers = Arrays.asList(
-            new BasicNameValuePair(USER_AGENT_HEADER, Simperium.CLIENT_ID)
+            new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
         );
         socketClient = new WebSocketClient(URI.create(WEBSOCKET_URL), this, headers);
     }
@@ -67,7 +67,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      */
     public <T extends Syncable> Channel<T> createChannel(Context context, Bucket<T> bucket, User user){
         // create a channel
-        Channel<T> channel = new Channel<T>(context, appId, bucket, user, this);
+        Channel<T> channel = new Channel<T>(context, appId, sessionId, bucket, user, this);
         int channelId = channels.size();
         channelIndex.put(channel, channelId);
         channels.put(channelId, channel);

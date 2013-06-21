@@ -60,6 +60,14 @@ public class SimperiumTest extends ActivityInstrumentationTestCase2<MainActivity
         }
     }
 
+    protected void waitFor(float seconds){
+        try {
+            Thread.sleep((long)(seconds * (long)1000));
+        } catch (InterruptedException e) {
+            Logger.log("Interupted");
+        }
+    }
+
     protected boolean bucketsDone(List<Bucket> buckets){
         Iterator<Bucket> bucketIterator = buckets.iterator();
         while(bucketIterator.hasNext()){

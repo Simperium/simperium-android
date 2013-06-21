@@ -179,6 +179,7 @@ public class Bucket<T extends Syncable> {
     }
 
     public void setChangeVersion(String version){
+        Logger.log(TAG, String.format("Updating cv to %s", version));
         ghostStore.setChangeVersion(this, version);
     }
 
@@ -331,7 +332,9 @@ public class Bucket<T extends Syncable> {
      * Adds a new object to the bucket
      */
     protected void addObject(T object){
-        object.setGhost(new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>()));
+        if (object.getGhost() == null) {
+            object.setGhost(new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>()));
+        }
         
         // Allows the storage provider to persist the object
         Boolean notifyListeners = true;
@@ -339,7 +342,6 @@ public class Bucket<T extends Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        Logger.log(TAG, String.format("Added an object, let's tell the storage provider %s %s", object, object.getGhost()));
         storageProvider.addObject(this, object.getSimperiumKey(), object);
         // notify listeners that an object has been added
         if (notifyListeners) {
@@ -472,7 +474,6 @@ public class Bucket<T extends Syncable> {
         Ghost ghost = null;
         if (change.isRemoveOperation()) {
             try {
-                Logger.log(TAG, String.format("Removing object from remote change %s", change.getKey()));
                 removeObjectWithKey(change.getKey());
                 ghostStore.deleteGhost(this, change.getKey());
             } catch (BucketObjectMissingException e) {
@@ -497,6 +498,7 @@ public class Bucket<T extends Syncable> {
                     updateObject(object);
                 }
             } catch(BucketObjectMissingException e) {
+                Logger.log(TAG, "Unable to apply remote change", e);
                 throw(new RemoteChangeInvalidException(e));
             }
         }

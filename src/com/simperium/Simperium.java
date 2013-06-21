@@ -17,7 +17,7 @@ import com.simperium.client.AuthHttpClient;
 import com.simperium.client.WebSocketManager;
 
 import com.simperium.util.Logger;
-import static com.simperium.util.Uuid.uuid;
+import com.simperium.util.Uuid;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -55,7 +55,7 @@ public class Simperium implements User.AuthenticationListener {
         httpClient = new AsyncHttpClient();
         httpClient.setUserAgent(CLIENT_ID);
         authClient = new AuthHttpClient(appId, appSecret, httpClient);
-        socketManager = new WebSocketManager(appId);
+        socketManager = new WebSocketManager(appId, String.format("%s-%s", CLIENT_ID, Uuid.uuid().substring(0,6)));
         this.authenticationListener = authenticationListener;
         this.storageProvider = storageProvider;
 		ghostStore = new GhostStore(context);

@@ -29,7 +29,7 @@ public class Change<T extends Syncable> {
     private Map<String,Object> origin;
     private Map<String,Object> target;
     private String ccid;
-    private boolean pending = true, acknowledged = false;
+    private boolean pending = true, acknowledged = false, sent = false;
     private OnRetryListener<T> retryListener;
     private OnCompleteListener<T> completeListener;
     private OnAcknowledgedListener<T> acknowledgedListener;
@@ -95,6 +95,10 @@ public class Change<T extends Syncable> {
         return pending;
     }
 
+    public boolean isSent(){
+        return sent;
+    }
+
     public boolean isComplete(){
         return !pending;
     }
@@ -116,6 +120,10 @@ public class Change<T extends Syncable> {
         if (completeListener != null) {
             completeListener.onComplete(this);
         }
+    }
+
+    protected void setSent(){
+        sent = true;
     }
 
     protected boolean keyMatches(Change otherChange){
@@ -183,6 +191,9 @@ public class Change<T extends Syncable> {
         return retryTimer;
     }
 
+    public String toString(){
+        return String.format("Change %s %s", getChangeId(), getKey());
+    }
     /**
      * The change message requires a diff value in the JSON payload
      */

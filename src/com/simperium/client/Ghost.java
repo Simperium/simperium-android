@@ -33,4 +33,7 @@ public class Ghost implements Diffable {
     public String getVersionId(){
         return String.format("%s.%d", key, version);
     }
+    public String toString(){
+        return String.format("Ghost %s", getVersionId());
+    }
 }
