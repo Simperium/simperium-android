@@ -33,6 +33,7 @@ public class Change<T extends Syncable> {
     private OnRetryListener<T> retryListener;
     private OnCompleteListener<T> completeListener;
     private OnAcknowledgedListener<T> acknowledgedListener;
+    private Change<T> compressed;
     final private T object;
 
     public static final String OPERATION_MODIFY   = "M";
@@ -59,7 +60,7 @@ public class Change<T extends Syncable> {
         );
     }
     
-    protected Change(String operation, T object, Map<String,Object> origin){
+    private Change(String operation, T object, Map<String,Object> origin){
         this(
             operation,
             object,
@@ -68,6 +69,11 @@ public class Change<T extends Syncable> {
             object.getUnmodifiedValue(),
             object.getDiffableValue()
         );
+    }
+
+    private Change(String operation, T object, Map<String,Object> origin, Change<T> compressed){
+        this(operation, object, origin);
+        this.compressed = compressed;
     }
 
     protected Change(String operation, T object){
@@ -113,6 +119,9 @@ public class Change<T extends Syncable> {
         if (acknowledgedListener != null) {
             acknowledgedListener.onAcknowledged(this);
         }
+        if (compressed != null) {
+            compressed.setAcknowledged();
+        }
     }
 
     protected void setComplete(){
@@ -120,10 +129,16 @@ public class Change<T extends Syncable> {
         if (completeListener != null) {
             completeListener.onComplete(this);
         }
+        if (compressed != null) {
+            compressed.setComplete();
+        }
     }
 
     protected void setSent(){
         sent = true;
+        if (compressed != null) {
+            compressed.setSent();
+        }
     }
 
     protected boolean keyMatches(Change otherChange){
@@ -205,13 +220,13 @@ public class Change<T extends Syncable> {
      * Creates a new change with the given sourceVersion and origin
      */
     protected Change<T> reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
-        return new Change<T>(operation, object, origin);
+        return new Change<T>(operation, object, origin, this);
     }
     
     private TimerTask retryTimer = new TimerTask(){
         @Override
         public void run(){
-            Logger.log(String.format("Retry change: %s", Change.this.getChangeId()));
+            Logger.log("Simperium.Channel", String.format("Retry change: %s", Change.this));
             if (retryListener != null) {
                 retryListener.onRetry(Change.this);
             }
