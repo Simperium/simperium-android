@@ -115,9 +115,14 @@ public class BasicTest extends SimperiumTest {
     }
 
     protected void waitFor(Change change){
+        long timeout = 5000; // 5 second timeout
+        long start = System.currentTimeMillis();
         Logger.log(TAG, String.format("Waiting for change %s", change));
         while(change.isPending()){
             waitFor(1);
+            if (System.currentTimeMillis() - start > timeout) {
+                throw( new RuntimeException("Change timed out") );
+            }
         }
         Logger.log(TAG, String.format("Done waiting %s", change));
     }
