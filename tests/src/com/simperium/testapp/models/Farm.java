@@ -36,4 +36,8 @@ public class Farm extends BucketObject {
     public Map<String,Object> getProperties(){
         return properties;
     }
+
+    public void setLogCount(int i){
+        getProperties().put("logCount", i);
+    }
 }

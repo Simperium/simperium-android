@@ -110,6 +110,17 @@ public class BasicTest extends SimperiumTest {
         waitForBucketsToMatchChangeVersion(buckets, leader.getChangeVersion());
         assertBucketsEqualForKey(buckets, "config");
     }
+
+    public void testObjectVersions(){
+        Farm config = leader.newObject("config");
+        // make 11 discreet changes
+        for(int i=1;i<=10; i++){
+            config.setLogCount(i);
+            waitFor(config.save());
+        }
+        fail("need to implement requesting object versions");
+    }
+
     protected <T extends Syncable> void assertBucketsEqualForKey(List<Bucket<T>> buckets, String key){
         assertTrue(String.format("Buckets were not equal for key %s", key), bucketsEqualForKey(buckets, key));
     }
