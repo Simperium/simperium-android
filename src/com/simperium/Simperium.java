@@ -118,11 +118,15 @@ public class Simperium implements User.AuthenticationListener {
 
     /**
      * Creates a bucket and starts syncing data and uses the provided
-     * Class for to instantiate data
+     * Class to instantiate data.
+     * 
+     * Should only allow one instance of bucketName and the scheme should
+     * match the existing bucket.
      *
      * @param bucketName the namespace to store the data in simperium
      */
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
+        StorageProvider.BucketStore<T> storage = storageProvider.createStore();
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider, ghostStore);
         Channel<T> channel = socketManager.createChannel(context, bucket, user);
         bucket.setChannel(channel);
