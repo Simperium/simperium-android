@@ -6,7 +6,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
 
+import android.util.LruCache;
+
 class ObjectCache<T extends Syncable> {
+    private static final int MAX_ENTRIES=32;
     public static final String TAG="Simperium.Cache";
 
     public interface Provider<T extends Syncable> {
@@ -22,9 +25,8 @@ class ObjectCache<T extends Syncable> {
     }
 
     public static <T extends Syncable> ObjectCache<T> buildCache(Bucket<T> bucket){
-        // TODO: build on top of LRU cache
         return new ObjectCache<T>(new Provider<T>(){
-            final Map<String, T> cache = Collections.synchronizedMap(new HashMap<String, T>());
+            final LruCache<String, T> cache = new LruCache<String, T>(MAX_ENTRIES);
             @Override
             public T get(String key){
                 return cache.get(key);
