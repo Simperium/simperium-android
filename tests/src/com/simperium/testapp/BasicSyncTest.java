@@ -16,13 +16,6 @@ import com.simperium.client.Change;
 
 import com.simperium.testapp.models.Farm;
 
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
-
-import java.lang.Thread;
-
 /**
  * This is a simple framework for a test of an Application.  See
  * {@link android.test.ApplicationTestCase ApplicationTestCase} for more information on

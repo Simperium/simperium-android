@@ -40,4 +40,16 @@ public class Farm extends BucketObject {
     public void setLogCount(int i){
         getProperties().put("logCount", i);
     }
+
+    public void put(String key, int i){
+        getProperties().put(key, i);
+    }
+
+    public void put(String key, Object object){
+        getProperties().put(key, object);
+    }
+
+    public Object get(String key){
+        return getProperties().get(key);
+    }
 }

@@ -121,36 +121,4 @@ public class BasicTest extends SimperiumTest {
         fail("need to implement requesting object versions");
     }
 
-    protected <T extends Syncable> void assertBucketsEqualForKey(List<Bucket<T>> buckets, String key){
-        assertTrue(String.format("Buckets were not equal for key %s", key), bucketsEqualForKey(buckets, key));
-    }
-
-    protected void waitFor(Change change){
-        long timeout = 5000; // 5 second timeout
-        long start = System.currentTimeMillis();
-        Logger.log(TAG, String.format("Waiting for change %s", change));
-        while(change.isPending()){
-            waitFor(1);
-            if (System.currentTimeMillis() - start > timeout) {
-                throw( new RuntimeException("Change timed out") );
-            }
-        }
-        Logger.log(TAG, String.format("Done waiting %s", change));
-    }
-
-    protected <T extends Syncable> void waitForBucketsToMatchChangeVersion(List<Bucket<T>> buckets, String version){
-        Logger.log(TAG, String.format("Waiting for buckets to reach cv %s", version));
-        List<Bucket<T>> checking = new ArrayList<Bucket<T>>(buckets);
-        while(checking.size() > 0){
-            Logger.log(TAG, String.format("Waiting on %d buckets", checking.size()));
-            Iterator<Bucket<T>> iterator = checking.iterator();
-            while(iterator.hasNext()){
-                if (iterator.next().getChangeVersion().equals(version)) {
-                    iterator.remove();
-                }
-            }
-            waitFor(1);
-        }
-        Logger.log(TAG, "Buckets match");
-    }
 }
