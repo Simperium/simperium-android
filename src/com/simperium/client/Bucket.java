@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.simperium.storage.StorageProvider;
+import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 
@@ -47,7 +47,7 @@ public class Bucket<T extends Syncable> {
     private Channel channel;
     // For storing the bucket listeners
     private Set<Listener<T>> listeners;
-    private StorageProvider storageProvider;
+    private BucketStore<T> storage;
     private BucketSchema<T> schema;
     private GhostStore ghostStore;
     private ObjectCache<T> cache;
@@ -56,10 +56,10 @@ public class Bucket<T extends Syncable> {
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(String name, BucketSchema<T>schema, User user, StorageProvider storageProvider, GhostStore ghostStore){
+    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStore ghostStore){
         this.name = name;
         this.user = user;
-        this.storageProvider = storageProvider;
+        this.storage = storage;
         this.ghostStore = ghostStore;
         this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
@@ -88,11 +88,7 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public Change<T> sync(T object){
-        if (object.isNew() && !ghostStore.hasGhost(this, object.getSimperiumKey())) {
-            storageProvider.addObject(this, object.getSimperiumKey(), object);
-        } else {            
-            storageProvider.updateObject(this, object.getSimperiumKey(), object);
-        }
+        storage.save(object);
         
         if (object.isModified())
             return channel.queueLocalChange(object);
@@ -104,7 +100,7 @@ public class Bucket<T extends Syncable> {
      */
     public Change remove(T object){
         cache.remove(object.getSimperiumKey());
-        storageProvider.removeObject(this, object.getSimperiumKey());
+        storage.delete(object);
         Change change = channel.queueLocalDeletion(object);
         Set<Listener<T>> notify;
         synchronized(listeners){
@@ -228,8 +224,7 @@ public class Bucket<T extends Syncable> {
         } catch (GhostMissingException e) {
             throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
         }
-        Map<String,java.lang.Object> properties = storageProvider.getObject(this, key);
-        object = schema.build(key, properties);
+        object = storage.get(key);
         Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
@@ -242,24 +237,6 @@ public class Bucket<T extends Syncable> {
      */
     public T getObject(String uuid) throws BucketObjectMissingException {
         return get(uuid);
-    }
-    /**
-     * Get all the objects
-     * TODO: memory efficiency
-     */
-    public List<T> getAllObjects(){
-        // ask the ghost storage for all keys?
-        List<String> keys = storageProvider.allKeys(this);
-        Iterator<String> iterator = keys.iterator();
-        List<T> objects = new ArrayList<T>(keys.size());
-        while(iterator.hasNext()){
-            try {
-                objects.add(getObject(iterator.next()));                
-            } catch (BucketObjectMissingException e) {
-                // For now we ignore, but strange
-            }
-        }
-        return objects;
     }
     /**
      * Returns a new objecty tracked by this bucket
@@ -342,7 +319,7 @@ public class Bucket<T extends Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        storageProvider.addObject(this, object.getSimperiumKey(), object);
+        storage.save(object);
         // notify listeners that an object has been added
         if (notifyListeners) {
             Set<Listener<T>> notify;
@@ -367,7 +344,7 @@ public class Bucket<T extends Syncable> {
      */
     protected void updateObject(T object){
         object.setBucket(this);
-        storageProvider.updateObject(this, object.getSimperiumKey(), object);
+        storage.save(object);
         Set<Listener<T>> notify;
         synchronized(listeners){
             notify = new HashSet<Listener<T>>(listeners.size());
@@ -407,7 +384,7 @@ public class Bucket<T extends Syncable> {
      * Reset bucket what is on the server
      */
     public void reset(){
-        storageProvider.resetBucket(this);
+        storage.reset();
         ghostStore.resetBucket(this);
         channel.reset();
         // Clear the ghost store

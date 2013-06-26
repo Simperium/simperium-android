@@ -3,6 +3,7 @@ package com.simperium;
 import com.loopj.android.http.*;
 
 import com.simperium.storage.StorageProvider;
+import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
@@ -126,8 +127,8 @@ public class Simperium implements User.AuthenticationListener {
      * @param bucketName the namespace to store the data in simperium
      */
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
-        StorageProvider.BucketStore<T> storage = storageProvider.createStore();
-        Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storageProvider, ghostStore);
+        BucketStore<T> storage = storageProvider.createStore(schema);
+        Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
         Channel<T> channel = socketManager.createChannel(context, bucket, user);
         bucket.setChannel(channel);
         return bucket;

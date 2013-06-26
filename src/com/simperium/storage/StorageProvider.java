@@ -4,19 +4,30 @@ import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
 
+import android.database.Cursor;
+
 import java.util.List;
 import java.util.Map;
 
 public interface StorageProvider {
     /**
+     * Cursor for bucket data
+     */
+    public interface BucketCursor<T extends Syncable> extends Cursor {
+        /**
+         * Return the object for the current index in the cursor
+         */
+        public T getObject();
+    }
+    /**
      * Store and query bucket object data
      */
-    public static abstract BucketStore<T extends Syncable> {
+    public static abstract class BucketStore<T extends Syncable> {
         private BucketSchema<T> schema;
         public BucketStore(BucketSchema<T> schema){
             this.schema = schema;
         }
-        public getSchema(){
+        public BucketSchema<T> getSchema(){
             return schema;
         }
         /**
@@ -28,10 +39,6 @@ public interface StorageProvider {
          */
         abstract public void delete(T object);
         /**
-         * Remove the object identified by the given key from storage
-         */
-        abstract public void delete(String key);
-        /**
          * Delete all objects from storage
          */
         abstract public void reset();
@@ -39,12 +46,11 @@ public interface StorageProvider {
          * Get an object with the given key
          */
         abstract public T get(String key);
+        /**
+         * All objects, returns a cursor for the given bucket
+         */
+        abstract public BucketCursor<T> all();
     }
-    /**
-     * Retrieve entities and details
-     */
-    public Map<String,Object> getObject(Bucket<?> bucket, String key);
-    public List<String> allKeys(Bucket<?> bucket);
     /**
      * 
      */
