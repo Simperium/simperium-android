@@ -1,4 +1,4 @@
-package com.simperium.testapp;
+package com.simperium.tests;
 
 import android.app.Activity;
 import android.os.Bundle;

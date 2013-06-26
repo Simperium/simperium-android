@@ -1,4 +1,4 @@
-package com.simperium.testapp;
+package com.simperium.tests;
 
 import android.test.ActivityInstrumentationTestCase2;
 import static android.test.MoreAsserts.*;
@@ -14,7 +14,7 @@ import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Change;
 
-import com.simperium.testapp.models.Farm;
+import com.simperium.tests.models.Farm;
 
 import java.util.Map;
 import java.util.List;
@@ -34,7 +34,7 @@ public class SimperiumTest extends ActivityInstrumentationTestCase2<MainActivity
     protected String mAppId, mAppSecret, mUserToken;
 
     public SimperiumTest() {
-        super("com.simperium.testapp", MainActivity.class);
+        super("com.simperium.tests", MainActivity.class);
     }
 
     @Override

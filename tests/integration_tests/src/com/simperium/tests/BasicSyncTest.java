@@ -1,4 +1,4 @@
-package com.simperium.testapp;
+package com.simperium.tests;
 
 import android.test.ActivityInstrumentationTestCase2;
 import static android.test.MoreAsserts.*;
@@ -14,7 +14,7 @@ import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Change;
 
-import com.simperium.testapp.models.Farm;
+import com.simperium.tests.models.Farm;
 
 /**
  * This is a simple framework for a test of an Application.  See
@@ -23,8 +23,8 @@ import com.simperium.testapp.models.Farm;
  * <p/>
  * To run this test, you can type:
  * adb shell am instrument -w \
- * -e class com.simperium.testapp.MainActivityTest \
- * com.simperium.testapp.tests/android.test.InstrumentationTestRunner
+ * -e class com.simperium.tests.MainActivityTest \
+ * com.simperium.tests.tests/android.test.InstrumentationTestRunner
  */
 public class BasicSyncTest extends ActivityInstrumentationTestCase2<MainActivity> {
     public static String TAG = MainActivity.TAG;
@@ -37,7 +37,7 @@ public class BasicSyncTest extends ActivityInstrumentationTestCase2<MainActivity
     private User mUser2;
 
     public BasicSyncTest() {
-        super("com.simperium.testapp", MainActivity.class);
+        super("com.simperium.tests", MainActivity.class);
     }
 
     @Override

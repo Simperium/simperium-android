@@ -1,4 +1,4 @@
-package com.simperium.testapp.models;
+package com.simperium.tests.models;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
