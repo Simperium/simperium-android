@@ -10,7 +10,7 @@ public class BucketObject extends Syncable {
     /**
      * Basic implementation of BucketSchema for BucketObject
      */
-    public static class Schema extends BucketSchema<BucketObject>{
+    public static class Schema implements BucketSchema<BucketObject>{
         private String remoteName;
         public Schema(String remoteName){
             this.remoteName = remoteName;
