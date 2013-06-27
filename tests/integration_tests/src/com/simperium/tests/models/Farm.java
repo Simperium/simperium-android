@@ -9,7 +9,7 @@ import java.util.Map;
 public class Farm extends BucketObject {
     public static String BUCKET_NAME="farm";
 
-    public static class Schema extends BucketSchema<Farm> {
+    public static class Schema implements BucketSchema<Farm> {
         private String suffix = "";
         private String remoteName = Farm.BUCKET_NAME;
         public Schema(){
