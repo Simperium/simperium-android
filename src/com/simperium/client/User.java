@@ -69,6 +69,10 @@ public class User {
     private AuthenticationStatus authenticationStatus = AuthenticationStatus.UNKNOWN;
     private AuthenticationListener listener;
 
+    
+    public User(){
+        this(null, null, null);
+    }
     // a user that hasn't been logged in
     public User(AuthenticationListener listener){
         this(null, null, listener);
@@ -91,7 +95,9 @@ public class User {
     public void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
         if (this.authenticationStatus != authenticationStatus) {
             this.authenticationStatus = authenticationStatus;
-            listener.onAuthenticationStatusChange(this.authenticationStatus);
+            if (this.listener != null) {
+                listener.onAuthenticationStatusChange(this.authenticationStatus);                
+            }
         }
     }
 

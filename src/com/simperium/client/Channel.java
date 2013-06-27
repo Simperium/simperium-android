@@ -30,21 +30,16 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.Scanner;
 
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
-import java.io.BufferedInputStream;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import android.content.Context;
-
 import android.os.Handler;
 import android.os.HandlerThread;
 
 public class Channel<T extends Syncable> {
+
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
     static final String FIELD_CLIENT_ID   = "clientid";
@@ -55,12 +50,12 @@ public class Channel<T extends Syncable> {
     static final String FIELD_COMMAND     = "cmd";
 
     // commands sent over the socket
-    static final String COMMAND_INIT      = "init"; // init:{INIT_PROPERTIES}
-    static final String COMMAND_AUTH      = "auth"; // received after an init: auth:expired or auth:email@example.com
-    static final String COMMAND_INDEX     = "i"; // i:1:MARK:?:LIMIT
-    static final String COMMAND_CHANGE    = "c";
-    static final String COMMAND_VERSION   = "cv";
-    static final String COMMAND_ENTITY    = "e";
+    public static final String COMMAND_INIT      = "init"; // init:{INIT_PROPERTIES}
+    public static final String COMMAND_AUTH      = "auth"; // received after an init: auth:expired or auth:email@example.com
+    public static final String COMMAND_INDEX     = "i"; // i:1:MARK:?:LIMIT
+    public static final String COMMAND_CHANGE    = "c";
+    public static final String COMMAND_VERSION   = "cv";
+    public static final String COMMAND_ENTITY    = "e";
 
     static final String RESPONSE_UNKNOWN  = "?";
 
@@ -79,8 +74,6 @@ public class Channel<T extends Syncable> {
 
     // bucket determines which bucket we are using on this channel
     private Bucket<T> bucket;
-    // user's auth token is used to authenticate the channel
-    private User user;
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
@@ -88,19 +81,37 @@ public class Channel<T extends Syncable> {
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
-    private JSONDiff jsondiff = new JSONDiff();
-    private Context context;
+    private Serializer serializer;
 
     // for sending and receiving changes
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
+    
+    public interface Serializer {
+        public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data);
+        public <T extends Syncable> SerializedQueue<T> restore(Bucket<T> bucket);
+        public <T extends Syncable> void reset(Bucket<T> bucket);
+    }
 
-    public Channel(Context context, String appId, String sessionId, final Bucket<T> bucket, User user, OnMessageListener listener){
-        this.context = context;
+    public static class SerializedQueue<T extends Syncable> {
+        final public Map<String,Change<T>> pending;
+        final public List<Change<T>> queued;
+
+        public SerializedQueue(){
+            this(new HashMap<String, Change<T>>(), new ArrayList<Change<T>>());
+        }
+
+        public SerializedQueue(Map<String,Change<T>> pendingChanges, List<Change<T>> queuedChanges){
+            this.pending = pendingChanges;
+            this.queued = queuedChanges;
+        }
+    }
+
+    public Channel(String appId, String sessionId, final Bucket<T> bucket, Serializer serializer, OnMessageListener listener){
+        this.serializer = serializer;
         this.appId = appId;
         this.sessionId = sessionId;
         this.bucket = bucket;
-        this.user = user;
         this.listener = listener;
         // Receive auth: command
         command(COMMAND_AUTH, new Command(){
@@ -292,7 +303,11 @@ public class Channel<T extends Syncable> {
     }
 
     public User getUser(){
-        return user;
+        return bucket.getUser();
+    }
+
+    public String getSessionId(){
+        return sessionId;
     }
     /**
      * Send Bucket's init message to start syncing changes.
@@ -317,7 +332,7 @@ public class Channel<T extends Syncable> {
         init.put(FIELD_API_VERSION, 1);
         init.put(FIELD_CLIENT_ID, sessionId);
         init.put(FIELD_APP_ID, appId);
-        init.put(FIELD_AUTH_TOKEN, user.getAccessToken());
+        init.put(FIELD_AUTH_TOKEN, bucket.getUser().getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
         if (!hasChangeVersion()) {
             // the bucket has never gotten an index
@@ -696,16 +711,12 @@ public class Channel<T extends Syncable> {
 
 
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
-        public static final String PENDING_KEY = "pending";
-        public static final String QUEUED_KEY = "queued";
-
-        private JSONDiff diff = new JSONDiff();
         private ChangeProcessorListener listener;
         private Thread thread;
         // private ArrayBlockingQueue<Map<String,Object>> queue;
         private List<Map<String,Object>> remoteQueue;
-        private List<Change> localQueue;
-        private Map<String,Change> pendingChanges;
+        private List<Change<T>> localQueue;
+        private Map<String,Change<T>> pendingChanges;
         private Handler handler;
         private Change pendingChange;
         private Timer retryTimer;
@@ -715,8 +726,8 @@ public class Channel<T extends Syncable> {
         public ChangeProcessor(ChangeProcessorListener listener) {
             this.listener = listener;
             this.remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>());
-            this.localQueue = Collections.synchronizedList(new ArrayList<Change>());
-            this.pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
+            this.localQueue = Collections.synchronizedList(new ArrayList<Change<T>>());
+            this.pendingChanges = Collections.synchronizedMap(new HashMap<String,Change<T>>());
             String handlerThreadName = String.format("channel-handler-%s", bucket.getName());
             HandlerThread handlerThread = new HandlerThread(handlerThreadName);
             handlerThread.start();
@@ -737,115 +748,19 @@ public class Channel<T extends Syncable> {
         public boolean isRunning(){
             return thread != null && thread.isAlive();
         }
-        private String getFileName(){
-            return String.format("simperium-queue-%s-%s.json", bucket.getRemoteName(), user.getAccessToken());
-        }
+
         private void save(){
-            try {
-                saveToFile();
-            } catch (java.io.IOException e) {
-                Logger.log(TAG, String.format("Could not serialize change processor queue to file %s", getFileName()), e);
-            }
-        }
-        /**
-         * Save state of pending and locally queued items
-         */
-        private void saveToFile() throws java.io.IOException {
-            //  construct JSON string of pending and local queue
-            Logger.log(TAG, String.format("Saving to file %s", getFileName()));
             synchronized(lock){
-                FileOutputStream stream = null;
-                try {
-                    stream = context.openFileOutput(getFileName(), Context.MODE_PRIVATE);
-                    Map<String,Object> serialized = new HashMap<String,Object>(2);
-                    serialized.put(PENDING_KEY, pendingChanges);
-                    serialized.put(QUEUED_KEY, localQueue);
-                    JSONObject json = Channel.serializeJSON(serialized);
-                    String jsonString = json.toString();
-                    Logger.log(TAG, String.format("Saving: %s", jsonString));
-                    stream.write(jsonString.getBytes(), 0, jsonString.length());
-                } finally {
-                    if(stream !=null) stream.close();
-                }
+                serializer.save(bucket, new SerializedQueue(pendingChanges, localQueue));
             }
         }
         
         private void restore(){
-            // don't restore unless we have a user
-            if (user == null || !user.hasAccessToken()) return;
-            
-            try {
-                restoreFromFile();
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Could not restore from file: %s", getFileName()), e);
-            }
-            Logger.log(
-                TAG, 
-                String.format(
-                    "Restored change processwor with %d remote and %d local changes %d pending",
-                    remoteQueue.size(), localQueue.size(), pendingChanges.size()
-                )
-            );
-            
-        }
-        /**
-         * 
-         */
-        private void restoreFromFile() throws java.io.IOException, org.json.JSONException {
-            // read JSON string and reconstruct
             synchronized(lock){
-                BufferedInputStream stream = null;
-                try {
-                    stream = new BufferedInputStream(context.openFileInput(getFileName()));
-                    byte[] contents = new byte[1024];
-                    int bytesRead = 0;
-                    StringBuilder builder = new StringBuilder();
-                    while((bytesRead = stream.read(contents)) != -1){
-                        builder.append(new String(contents, 0, bytesRead));
-                    }
-                    JSONObject json = new JSONObject(builder.toString());
-                    Map<String,Object> changeData = Channel.convertJSON(json);
-                    Logger.log(TAG, String.format("We have changes from serialized file %s", changeData));
-                    
-                    if (changeData.containsKey(PENDING_KEY)) {
-                        Map<String,Map<String,Object>> pendingData = (Map<String,Map<String,Object>>)changeData.get(PENDING_KEY);
-                        Iterator<Map.Entry<String,Map<String,Object>>> pendingEntries = pendingData.entrySet().iterator();
-                        while(pendingEntries.hasNext()){
-                            Map.Entry<String, Map<String,Object>> entry = pendingEntries.next();
-                            try {
-                                T object = bucket.get(entry.getKey());                                
-                                Change<T> change = Change.buildChange(object, entry.getValue());
-                                pendingChanges.put(entry.getKey(), change);
-                            } catch (BucketObjectMissingException e) {
-                                Logger.log(TAG, String.format("Missing local object for change %s", entry.getKey()));
-                            }
-                        }
-                    }
-                    if (changeData.containsKey(QUEUED_KEY)) {
-                        List<Map<String,Object>> queuedData = (List<Map<String,Object>>)changeData.get(QUEUED_KEY);
-                        Iterator<Map<String,Object>> queuedItems = queuedData.iterator();
-                        while(queuedItems.hasNext()){
-                            Map<String,Object> queuedItem = queuedItems.next();
-                            String key = (String) queuedItem.get(Change.ID_KEY);
-                            try {
-                                T object = bucket.get(key);
-                                localQueue.add(Change.buildChange(object, queuedItem));                                
-                            } catch (BucketObjectMissingException e) {
-                                Logger.log(TAG, String.format("Missing local object for change %s", key));
-                            }
-                        }
-                    }
-                    
-                } finally {
-                    if(stream != null) stream.close();
-                }
+                SerializedQueue<T> serialized = serializer.restore(bucket);
+                localQueue.addAll(serialized.queued);
+                pendingChanges.putAll(serialized.pending);
             }
-        }
-        /**
-         * 
-         */
-        private void clearFile(){
-            context.deleteFile(getFileName());
         }
 
         public void addChanges(List<Object> changes){
@@ -870,9 +785,9 @@ public class Channel<T extends Syncable> {
         public void addChange(Change change){
             synchronized (lock){
                 // compress all changes for this same key
-                Iterator<Change> iterator = localQueue.iterator();
+                Iterator<Change<T>> iterator = localQueue.iterator();
                 while(iterator.hasNext()){
-                    Change queued = iterator.next();
+                    Change<T> queued = iterator.next();
                     if(queued.getKey().equals(change.getKey())){
                         iterator.remove();
                     }
@@ -920,7 +835,7 @@ public class Channel<T extends Syncable> {
 
         protected void reset(){
             pendingChanges.clear();
-            clearFile();
+            serializer.reset(bucket);
         }
 
         protected void abort(){
@@ -966,7 +881,7 @@ public class Channel<T extends Syncable> {
                             try {
                                 Ghost ghost = listener.onAcknowledged(remoteChange, change);                                
                                 Change compressed = null;
-                                Iterator<Change> queuedChanges = localQueue.iterator();
+                                Iterator<Change<T>> queuedChanges = localQueue.iterator();
                                 while(queuedChanges.hasNext()){
                                     Change queuedChange = queuedChanges.next();
                                     if (queuedChange.getKey().equals(change.getKey())) {
@@ -993,7 +908,7 @@ public class Channel<T extends Syncable> {
                         }
                     }
                     if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
-                        Iterator<Change> iterator = localQueue.iterator();
+                        Iterator<Change<T>> iterator = localQueue.iterator();
                         while(iterator.hasNext()){
                             Change queuedChange = iterator.next();
                             if (queuedChange.getKey().equals(remoteChange.getKey())) {
@@ -1006,7 +921,7 @@ public class Channel<T extends Syncable> {
         }
         
         public void processLocalChanges(){
-            final List<Change> sendLater = new ArrayList<Change>();
+            final List<Change<T>> sendLater = new ArrayList<Change<T>>();
             synchronized(lock){
                 // find the first local change whose key does not exist in the pendingChanges
                 while(localQueue.size() > 0 && !Thread.interrupted()){
@@ -1063,12 +978,11 @@ public class Channel<T extends Syncable> {
             }
 
             if (change.requiresDiff()) {
-                Map<String,Object> diff = jsondiff.diff(change.getOrigin(), change.getTarget());
+                Map<String,Object> diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
                 if (diff.isEmpty()) {
                     return false;
                 }
-                Map<String,Object> patch = (Map<String,Object>) diff.get(JSONDiff.DIFF_VALUE_KEY);
-                map.put(JSONDiff.DIFF_VALUE_KEY, patch);
+                map.putAll(diff);
             }
             JSONObject changeJSON = Channel.serializeJSON(map);
 
@@ -1076,95 +990,6 @@ public class Channel<T extends Syncable> {
             change.setSent();
             return true;
         }
-
-        // private void applyRemoteChange(final RemoteChange change){
-        //     final ChangeProcessorListener changeListener = listener;
-        //     if (change == null) return;
-        //     //TODO: error responses that can be retried should be retried here?
-        //     if (change.isError()) return;
-        //     if (change.isAcknowledged()){
-        //         
-        //     }
-        //     final T object;
-        //     if (change.isRemoveOperation()) {
-        //         // remove all queued changes that reference this same object
-        //         synchronized (lock){
-        //             Iterator<Change> iterator = localQueue.iterator();
-        //             while(iterator.hasNext()){
-        //                 Change queuedChange = iterator.next();
-        //                 if (queuedChange.getKey().equals(change.getKey())) {
-        //                     iterator.remove();
-        //                 }
-        //             }
-        //         }
-        // 
-        //         try {
-        //             object = bucket.getObject(change.getKey());                    
-        //         } catch (BucketObjectMissingException e) {
-        //             Logger.log(String.format("Local object missing, can't remove: %s", change.getKey()));
-        //             return;
-        //         }
-        //         handler.post(new Runnable(){
-        //             public void run(){
-        //                 changeListener.onRemoveObject(change, object);
-        //                 change.setApplied();
-        //             }
-        //         });
-        //         return;
-        //     }
-        //     if (change.isAddOperation() && !change.isAcknowledged()) {
-        //         object = bucket.buildObject(change.getKey());
-        //     } else {
-        //         try {
-        //             object = bucket.getObject(change.getKey());                    
-        //         } catch (BucketObjectMissingException e) {
-        //             Logger.log(String.format("Local object missing: %s", change.getKey()));
-        //             return;                    
-        //         }
-        //         // we need to check if we have the correct version
-        //         // TODO: handle how to sync if source version doesn't match local object
-        //         if (!object.isNew() && !change.getSourceVersion().equals(object.getVersion())) {
-        //             Logger.log(String.format("Local version %d of object does not match sv: %s %d", object.getVersion(), change.getKey(), change.getSourceVersion()));
-        //             return;
-        //         }
-        //     }
-        //     Ghost ghost = new Ghost(
-        //         object.getSimperiumKey(),
-        //         change.getObjectVersion(),
-        //         jsondiff.apply(object.getDiffableValue(), change.getPatch())
-        //     );
-        //     object.setGhost(ghost);
-        //     // Compress all queued changes for the same object into a single change
-        //     synchronized (lock){
-        //         Change compressed = null;
-        //         Iterator<Change> queuedChanges = localQueue.iterator();
-        //         while(queuedChanges.hasNext()){
-        //             Change queuedChange = queuedChanges.next();
-        //             if (queuedChange.getKey().equals(change.getKey())) {
-        //                 queuedChanges.remove();
-        //                 Logger.log(String.format("Compressed queued local change for %s", queuedChange.getKey()));
-        //                 compressed = queuedChange.reapplyOrigin(object.getVersion(), object.getUnmodifiedValue());
-        //             }
-        //         }
-        //         if (compressed != null) {
-        //             localQueue.add(compressed);
-        //         }
-        //     }
-        //     
-        //     // notify the listener
-        //     final boolean isNew = object.isNew() && !change.isAcknowledged();
-        //     this.handler.post(new Runnable(){
-        //         public void run(){
-        //             if(isNew){
-        //                 changeListener.onAddObject(change, object);
-        //             } else {
-        //                 changeListener.onUpdateObject(change, object);
-        //             }
-        //             change.setApplied();
-        //         }
-        //     });
-        // 
-        // }
 
     }
 

@@ -16,6 +16,7 @@ import com.simperium.client.User.AuthenticationStatus;
 import com.simperium.client.User.AuthResponseHandler;
 import com.simperium.client.AuthHttpClient;
 import com.simperium.client.WebSocketManager;
+import com.simperium.client.FileQueueSerializer;
 
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
@@ -44,6 +45,7 @@ public class Simperium implements User.AuthenticationListener {
     private StorageProvider storageProvider;
     private static Simperium simperiumClient = null;
 	private GhostStore ghostStore;
+    private Channel.Serializer channelSerializer;
         
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
         this(appId, appSecret, context, storageProvider, null);
@@ -57,6 +59,7 @@ public class Simperium implements User.AuthenticationListener {
         httpClient.setUserAgent(CLIENT_ID);
         authClient = new AuthHttpClient(appId, appSecret, httpClient);
         socketManager = new WebSocketManager(appId, String.format("%s-%s", CLIENT_ID, Uuid.uuid().substring(0,6)));
+        channelSerializer = new FileQueueSerializer(context);
         this.authenticationListener = authenticationListener;
         this.storageProvider = storageProvider;
 		ghostStore = new GhostStore(context);
@@ -129,7 +132,7 @@ public class Simperium implements User.AuthenticationListener {
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
         BucketStore<T> storage = storageProvider.createStore(schema);
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
-        Channel<T> channel = socketManager.createChannel(context, bucket, user);
+        Channel<T> channel = socketManager.createChannel(bucket, channelSerializer);
         bucket.setChannel(channel);
         return bucket;
     }

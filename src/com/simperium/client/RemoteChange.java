@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * Encapsulates parsing and logic for remote changes
  */
-class RemoteChange {
+public class RemoteChange {
     public static final String ID_KEY             = "id";
     public static final String CLIENT_KEY         = "clientid";
     public static final String ERROR_KEY          = "error";
@@ -41,7 +41,7 @@ class RemoteChange {
      * - changes with operation "-" do not have a value
      * - changes with operation "M" have a v (value), ev (entity version) and if not a new object an sv (source version)
      */
-    protected RemoteChange(String clientid, String key, List<String> ccids, String changeVersion, Integer sourceVersion, Integer entityVersion, String operation, Map<String,Object> value){
+    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion, Integer sourceVersion, Integer entityVersion, String operation, Map<String,Object> value){
         this.clientid = clientid;
         this.key = key;
         this.ccids = ccids;
@@ -52,7 +52,11 @@ class RemoteChange {
         this.changeVersion = changeVersion;
     }
 
-    protected RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
+    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion, Integer sourceVersion, Integer entityVersion, Map<String,Object> diff){
+        this(clientid, key, ccids, changeVersion, sourceVersion, entityVersion, (String) diff.get(JSONDiff.DIFF_OPERATION_KEY), (Map<String,Object>)diff.get(JSONDiff.DIFF_VALUE_KEY));
+    }
+
+    public RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
         this.clientid = clientid;
         this.key = key;
         this.ccids = ccids;
@@ -85,11 +89,11 @@ class RemoteChange {
         return new Ghost(getKey(), getObjectVersion(), properties);
     }
 
-    protected boolean isAcknowledged(){
+    public boolean isAcknowledged(){
         return change != null;
     }
 
-    protected boolean isApplied(){
+    public boolean isApplied(){
         return applied;
     }
 
@@ -112,63 +116,75 @@ class RemoteChange {
         return false;
     }
 
-    protected boolean isError(){
+    public boolean isError(){
         return errorCode != null;
     }
 
-    protected boolean isRemoveOperation(){
+    public String getOperation(){
+        return operation;
+    }
+
+    public boolean isRemoveOperation(){
         return operation.equals(OPERATION_REMOVE);
     }
 
-    protected boolean isModifyOperation(){
+    public boolean isModifyOperation(){
         return operation.equals(OPERATION_MODIFY);
     }
 
-    protected boolean isAddOperation(){
+    public boolean isAddOperation(){
         return isModifyOperation() && sourceVersion == null;
     }
 
-    protected Integer getErrorCode(){
+    public Integer getErrorCode(){
         return errorCode;
     }
 
-    protected boolean isNew(){
-        return !isError() && sourceVersion == null;
+    public boolean isNew(){
+        return !isError() && (!hasSourceVersion() || sourceVersion.equals(0));
     }
 
-    protected String getKey(){
+    public String getKey(){
         return key;
     }
 
-    protected String getClientId(){
+    public String getClientId(){
         return clientid;
     }
 
-    protected Integer getSourceVersion(){
+    public boolean hasSourceVersion(){
+        return sourceVersion != null;
+    }
+
+    public Integer getSourceVersion(){
         if (sourceVersion == null) {
             return 0;
         }
         return sourceVersion;
     }
 
-    protected Integer getObjectVersion(){
+    public Integer getObjectVersion(){
         return entityVersion;
     }
 
-    protected String getChangeVersion(){
+    public String getChangeVersion(){
         return changeVersion;
     }
 
-    protected Map<String,Object> getPatch(){
+    public Map<String,Object> getPatch(){
         return value;
     }
 
-    protected boolean hasChangeId(String ccid){
+    public boolean hasChangeId(String ccid){
         return ccids.contains(ccid);
     }
 
-    protected boolean hasChangeId(Change change){
+    public boolean hasChangeId(Change change){
         return hasChangeId(change.getChangeId());
+    }
+
+    public List<String> getChangeIds(){
+        return ccids;
     }
 
     public String toString(){
@@ -179,7 +195,7 @@ class RemoteChange {
         }
     }
 
-    protected static RemoteChange buildFromMap(Map<String,Object> changeData){
+    public static RemoteChange buildFromMap(Map<String,Object> changeData){
         // get the list of ccids that this applies to
         List<String> ccids = (List<String>)changeData.get(CHANGE_IDS_KEY);
         // get the client id

@@ -65,15 +65,15 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public <T extends Syncable> Channel<T> createChannel(Context context, Bucket<T> bucket, User user){
+    public <T extends Syncable> Channel<T> createChannel(Bucket<T> bucket, Channel.Serializer serializer){
         // create a channel
-        Channel<T> channel = new Channel<T>(context, appId, sessionId, bucket, user, this);
+        Channel<T> channel = new Channel<T>(appId, sessionId, bucket, serializer, this);
         int channelId = channels.size();
         channelIndex.put(channel, channelId);
         channels.put(channelId, channel);
         // If we're not connected then connect, if we don't have a user
         // access token we'll have to hold off until the user does have one
-        if (!isConnected() && user.hasAccessToken()) {
+        if (!isConnected() && bucket.getUser().hasAccessToken()) {
             connect();
         } else if (isConnected()){
             channel.onConnect();

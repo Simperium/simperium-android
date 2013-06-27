@@ -19,7 +19,7 @@ public class Note extends BucketObject {
 
         @Override
         public Note build(String key, Map<String,Object> properties){
-            return null;
+            return new Note(key, properties);
         }
     }
 
@@ -27,4 +27,19 @@ public class Note extends BucketObject {
         super(key, properties);
     }
 
+    public void setTitle(String title){
+        put("title", title);
+    }
+
+    public void put(String key, Object value){
+        getProperties().put(key, value);
+    }
+
+    public Object get(String key){
+        return getProperties().get(key);
+    }
+
+    public Map<String,Object> getProperties(){
+        return getDiffableValue();
+    }
 }

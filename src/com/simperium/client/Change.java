@@ -10,7 +10,6 @@ import static com.simperium.util.Uuid.uuid;
 
 
 public class Change<T extends Syncable> {
-
     public interface OnRetryListener<T extends Syncable> {
         public void onRetry(Change<T> change);
     }
@@ -34,6 +33,7 @@ public class Change<T extends Syncable> {
     private OnCompleteListener<T> completeListener;
     private OnAcknowledgedListener<T> acknowledgedListener;
     private Change<T> compressed;
+    private JSONDiff jsondiff = new JSONDiff();
     final private T object;
 
     public static final String OPERATION_MODIFY   = "M";
@@ -145,27 +145,27 @@ public class Change<T extends Syncable> {
         return otherChange.getKey().equals(getKey());
     }
 
-    protected String getKey(){
+    public String getKey(){
         return key;
     }
 
-    protected String getChangeId(){
+    public String getChangeId(){
         return this.ccid;
     }
 
-    protected Map<String,Object> getOrigin(){
+    public Map<String,Object> getOrigin(){
         return origin;
     }
 
-    protected Map<String,Object> getTarget(){
+    public Map<String,Object> getTarget(){
         return target;
     }
 
-    protected String getOperation(){
+    public String getOperation(){
         return operation;
     }
 
-    protected Integer getVersion(){
+    public Integer getVersion(){
         return version;
     }
 
@@ -212,8 +212,12 @@ public class Change<T extends Syncable> {
     /**
      * The change message requires a diff value in the JSON payload
      */
-    protected Boolean requiresDiff(){
+    public Boolean requiresDiff(){
         return operation.equals(OPERATION_MODIFY);
+    }
+
+    public Map<String,Object> getDiff(){
+        return jsondiff.diff(origin, target);
     }
 
     /**

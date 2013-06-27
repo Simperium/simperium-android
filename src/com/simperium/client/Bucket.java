@@ -66,6 +66,12 @@ public class Bucket<T extends Syncable> {
         cache = ObjectCache.buildCache(this);
     }
     /**
+     * Return the user for this bucket
+     */
+    public User getUser(){
+        return user;
+    }
+    /**
      * If the channel is running or expecting to process changes
      */
     public boolean isIdle(){
@@ -171,7 +177,11 @@ public class Bucket<T extends Syncable> {
     }
 
     public String getChangeVersion(){
-        return ghostStore.getChangeVersion(this);
+        String version = ghostStore.getChangeVersion(this);
+        if (version == null) {
+            version = "";
+        }
+        return version;
     }
 
     public void setChangeVersion(String version){
@@ -225,6 +235,9 @@ public class Bucket<T extends Syncable> {
             throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
         }
         object = storage.get(key);
+        if (object == null) {
+            throw(new BucketObjectMissingException(String.format("Storage provider for bucket:%s did not have object %s", getName(), key)));
+        }
         Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
