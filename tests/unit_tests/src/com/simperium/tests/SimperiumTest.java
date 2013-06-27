@@ -4,7 +4,7 @@ import static android.test.MoreAsserts.*;
 import junit.framework.TestCase;
 
 import com.simperium.client.Change;
-
+import com.simperium.client.User;
 import com.simperium.util.Logger;
 
 public class SimperiumTest extends TestCase {
@@ -37,5 +37,19 @@ public class SimperiumTest extends TestCase {
         waitFor(1);
     }
     
+    static protected User makeUser(String email, String token){
+        User user = new User();
+        user.setEmail(email);
+        user.setAccessToken(token);
+        return user;
+    }
+
+    static protected User makeUser(String email){
+        return makeUser("test@example.com");
+    }
+
+    static protected User makeUser(){
+        return makeUser("test@example.com", "fake-token");
+    }
 
 }

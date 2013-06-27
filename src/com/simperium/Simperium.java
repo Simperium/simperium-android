@@ -4,6 +4,8 @@ import com.loopj.android.http.*;
 
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
+import com.simperium.storage.PersistentStore;
+
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
@@ -22,6 +24,7 @@ import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 import android.content.SharedPreferences;
 import android.util.Log;
 
@@ -32,6 +35,8 @@ public class Simperium implements User.AuthenticationListener {
     public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     public static final int SIGNUP_SIGNIN_REQUEST = 1000;  // The request code
+    public static final String DEFAULT_DATABASE_NAME = "simperium-store";
+
     private String appId;
     private String appSecret;
 
@@ -46,7 +51,12 @@ public class Simperium implements User.AuthenticationListener {
     private static Simperium simperiumClient = null;
 	private GhostStore ghostStore;
     private Channel.Serializer channelSerializer;
-        
+    
+    public Simperium(String appId, String appSecret, Context context, AuthenticationListener listener){
+        this(appId, appSecret, context, new PersistentStore(context.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null)), null);
+        setAuthenticationListener(listener);
+    }
+
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
         this(appId, appSecret, context, storageProvider, null);
     }
@@ -67,8 +77,7 @@ public class Simperium implements User.AuthenticationListener {
         Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
         simperiumClient = this;
     }
-    
-    
+
     public static Simperium getInstance() throws SimperiumNotInitializedException{
     	if(null == simperiumClient)
     		throw new SimperiumNotInitializedException("You must create an instance of Simperium before call this method.");
@@ -130,7 +139,7 @@ public class Simperium implements User.AuthenticationListener {
      * @param bucketName the namespace to store the data in simperium
      */
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
-        BucketStore<T> storage = storageProvider.createStore(schema);
+        BucketStore<T> storage = storageProvider.createStore(bucketName, schema);
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
         Channel<T> channel = socketManager.createChannel(bucket, channelSerializer);
         bucket.setChannel(channel);
@@ -220,9 +229,7 @@ public class Simperium implements User.AuthenticationListener {
 		return authenticationListener;
 	}
 
-	public void setAuthenticationListener(
-			AuthenticationListener authenticationListener) {
-		this.authenticationListener = authenticationListener;
-	}
-
+    public void setAuthenticationListener(AuthenticationListener listener){
+        authenticationListener = listener;
+    }
 }

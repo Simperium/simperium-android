@@ -20,14 +20,11 @@ import java.util.Collections;
  */
 public class MemoryStore implements StorageProvider {
     
-    public <T extends Syncable> BucketStore<T> createStore(BucketSchema<T> schema){
-        return new Storage<T>(schema);
+    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> schema){
+        return new Storage<T>();
     }
     
-    class Storage<T extends Syncable> extends StorageProvider.BucketStore<T> {
-        public Storage(BucketSchema<T> schema){
-            super(schema);
-        }
+    class Storage<T extends Syncable> implements StorageProvider.BucketStore<T> {
         private Map<String, T> objects = Collections.synchronizedMap(new HashMap<String, T>(32));
         /**
          * Add/Update the given object

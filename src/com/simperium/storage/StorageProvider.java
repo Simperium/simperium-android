@@ -3,6 +3,7 @@ package com.simperium.storage;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
+import com.simperium.client.BucketObjectMissingException;
 
 import android.database.Cursor;
 
@@ -22,14 +23,7 @@ public interface StorageProvider {
     /**
      * Store and query bucket object data
      */
-    public static abstract class BucketStore<T extends Syncable> {
-        private BucketSchema<T> schema;
-        public BucketStore(BucketSchema<T> schema){
-            this.schema = schema;
-        }
-        public BucketSchema<T> getSchema(){
-            return schema;
-        }
+    public interface BucketStore<T extends Syncable> {
         /**
          * Add/Update the given object
          */
@@ -45,7 +39,7 @@ public interface StorageProvider {
         /**
          * Get an object with the given key
          */
-        abstract public T get(String key);
+        abstract public T get(String key) throws BucketObjectMissingException;
         /**
          * All objects, returns a cursor for the given bucket
          */
@@ -54,5 +48,5 @@ public interface StorageProvider {
     /**
      * 
      */
-    public <T extends Syncable> BucketStore<T> createStore(BucketSchema<T> bucket);
+    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> bucket);
 }

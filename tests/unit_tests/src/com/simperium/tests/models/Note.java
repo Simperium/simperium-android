@@ -31,6 +31,10 @@ public class Note extends BucketObject {
         put("title", title);
     }
 
+    public String getTitle(){
+        return (String) get("title");
+    }
+
     public void put(String key, Object value){
         getProperties().put(key, value);
     }

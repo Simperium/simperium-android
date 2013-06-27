@@ -63,7 +63,11 @@ public class GhostStore implements GhostStoreProvider {
 		Cursor cursor = queryChangeVersion(bucket);
 		int count = cursor.getCount();
 		cursor.close();
-		return count > 0;
+        if (count > 0) {
+            return !getChangeVersion(bucket).equals("");
+        } else {
+            return false;
+        }
 	}
 	
     @Override

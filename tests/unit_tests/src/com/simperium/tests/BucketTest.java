@@ -38,14 +38,12 @@ public class BucketTest extends SimperiumTest {
     protected void setUp() throws Exception {
         super.setUp();
 
-        mUser = new User();
-        mUser.setEmail("user@example.com");
-        mUser.setAccessToken("fake-token");
+        mUser = makeUser();
 
         mSchema = new Note.Schema();
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MemoryGhostStore();
-        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, storage.createStore(mSchema), mGhostStore);
+        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore);
         mOnMessageListener = new Channel.OnMessageListener(){
             @Override
             public void onMessage(MessageEvent event){
