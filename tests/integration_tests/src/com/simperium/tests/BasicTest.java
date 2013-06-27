@@ -1,6 +1,6 @@
-package com.simperium.testapp;
+package com.simperium.tests;
 
-import com.simperium.testapp.models.Farm;
+import com.simperium.tests.models.Farm;
 
 import com.simperium.Simperium;
 import com.simperium.client.Bucket;

@@ -17,6 +17,6 @@
     "adb shell am instrument -w com.simperium.testapp.tests/android.test.InstrumentationTestRunner"
     -->
     <instrumentation android:name="android.test.InstrumentationTestRunner"
-                     android:targetPackage="com.simperium.testapp"
-                     android:label="Tests for com.simperium.testapp"/>
+                     android:targetPackage="com.simperium.tests"
+                     android:label="Integration Tests for com.simperium.tests"/>
 </manifest>
