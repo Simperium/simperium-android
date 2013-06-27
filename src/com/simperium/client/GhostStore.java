@@ -14,7 +14,7 @@ import static com.simperium.client.Channel.serializeJSON;
 import static com.simperium.client.Channel.convertJSON;
 import com.simperium.util.Logger;
 
-public class GhostStore {
+public class GhostStore implements GhostStoreProvider {
     
 	private static final String DATABASE_NAME="simperium-ghost";
 	private static final String GHOSTS_TABLE_NAME="ghosts";
@@ -41,8 +41,9 @@ public class GhostStore {
 		database.delete(GHOSTS_TABLE_NAME, null, null);
 		database.delete(VERSIONS_TABLE_NAME, null, null);
 	}
-    
-    protected void resetBucket(Bucket bucket){
+
+    @Override
+    public void resetBucket(Bucket bucket){
 		String[] args = { bucket.getName() };
         String where = "bucketName=?";
         database.delete(GHOSTS_TABLE_NAME, where, args);
@@ -57,20 +58,23 @@ public class GhostStore {
 		return cursor;
 	}
 	
-	protected boolean hasChangeVersion(Bucket bucket){
+    @Override
+	public boolean hasChangeVersion(Bucket bucket){
 		Cursor cursor = queryChangeVersion(bucket);
 		int count = cursor.getCount();
 		cursor.close();
 		return count > 0;
 	}
 	
-	protected boolean hasChangeVersion(Bucket bucket, String cv){
+    @Override
+	public boolean hasChangeVersion(Bucket bucket, String cv){
 		// Logger.log(String.format("Do we have CV: %s", cv));
 		String storedVersion = getChangeVersion(bucket);
 		return storedVersion != null && storedVersion.equals(cv);
 	}
 	
-	protected String getChangeVersion(Bucket bucket){
+    @Override
+	public String getChangeVersion(Bucket bucket){
 		Cursor cursor = queryChangeVersion(bucket);
 		String storedVersion = null;
 		if (cursor.getCount() > 0) {
@@ -81,7 +85,8 @@ public class GhostStore {
 		return storedVersion;
 	}
 	
-	protected void setChangeVersion(Bucket bucket, String cv){
+    @Override
+	public void setChangeVersion(Bucket bucket, String cv){
 		ContentValues values = new ContentValues();
 		String where = "bucketName=?";
 		String[] args = { bucket.getName() };
@@ -95,7 +100,8 @@ public class GhostStore {
 		Logger.log(String.format("Set change version to: %s", cv));
 	}
 
-	protected void saveGhost(Bucket bucket, Ghost ghost){
+    @Override
+	public void saveGhost(Bucket bucket, Ghost ghost){
 		// CREATE/UPDATE
 		String where = "bucketName=? AND simperiumKey=?";
 		String[] args = { bucket.getName(), ghost.getSimperiumKey() };
@@ -117,6 +123,7 @@ public class GhostStore {
 		cursor.close();
 	}
 
+    @Override
 	public Ghost getGhost(Bucket bucket, String key) throws GhostMissingException {
 		// public Cursor query (String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy)
 		String[] columns = { BUCKET_NAME_FIELD, OBJECT_KEY_FIELD, VERSION_FIELD, PAYLOAD_FIELD };
@@ -135,7 +142,8 @@ public class GhostStore {
 		return ghost;
 	}
 	
-	public Boolean hasGhost(Bucket bucket, String key){
+    @Override
+	public boolean hasGhost(Bucket bucket, String key){
         try {
     		Ghost ghost = getGhost(bucket, key);
         } catch (GhostMissingException e) {
@@ -144,11 +152,8 @@ public class GhostStore {
         return true;
 	}
 
-	protected void deleteGhost(Bucket bucket, Ghost ghost){
-		// REMOVE
-        deleteGhost(bucket, ghost.getSimperiumKey());
-	}
-    protected void deleteGhost(Bucket bucket, String key){
+    @Override
+    public void deleteGhost(Bucket bucket, String key){
 		String where = "bucketName=? AND simperiumKey=?";
         String[] args = { bucket.getName(), key };
         database.delete(GHOSTS_TABLE_NAME, where, args);        

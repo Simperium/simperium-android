@@ -49,14 +49,14 @@ public class Bucket<T extends Syncable> {
     private Set<Listener<T>> listeners;
     private BucketStore<T> storage;
     private BucketSchema<T> schema;
-    private GhostStore ghostStore;
+    private GhostStoreProvider ghostStore;
     private ObjectCache<T> cache;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStore ghostStore){
+    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
         this.name = name;
         this.user = user;
         this.storage = storage;
