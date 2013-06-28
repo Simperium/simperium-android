@@ -982,7 +982,7 @@ public class Channel<T extends Syncable> {
                 if (diff.isEmpty()) {
                     return false;
                 }
-                map.putAll(diff);
+                map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
             }
             JSONObject changeJSON = Channel.serializeJSON(map);
 
