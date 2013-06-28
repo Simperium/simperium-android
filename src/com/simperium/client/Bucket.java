@@ -267,12 +267,28 @@ public class Bucket<T extends Syncable> {
         object.setBucket(this);
         return object;
     }
+
     /**
      * Find all objects
      */
     public ObjectCursor<T> allObjects(){
         return new BucketCursor(storage.all());
     }
+
+    /**
+     * Search using a query
+     */
+    public ObjectCursor<T> searchObjects(Query<T> query){
+        return new BucketCursor(storage.search(query));
+    }
+
+    /**
+     * Build a query for this object
+     */
+    public Query<T> query(){
+        return new Query<T>(this);
+    }
+
     /**
      * Get a single object object that matches key
      */

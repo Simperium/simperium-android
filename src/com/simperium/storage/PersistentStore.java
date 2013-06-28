@@ -16,9 +16,13 @@ import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 
 import org.json.JSONObject;
 import org.json.JSONException;
+
+import android.util.Log;
 
 public class PersistentStore implements StorageProvider {
     public static final String OBJECTS_TABLE="objects";
@@ -114,8 +118,42 @@ public class PersistentStore implements StorageProvider {
          * Search the datastore using the given Query
          */
         @Override
-        public Bucket.ObjectCursor<T> search(Query query){
-            return all();
+        public Bucket.ObjectCursor<T> search(Query<T> query){
+            // turn comparators into where statements, each comparator joins
+            Iterator<Query.Comparator> conditions = query.getConditions().iterator();
+            String selection = "SELECT DISTINCT objects.key, objects.data FROM objects";
+            String filters = "";
+            String where = "WHERE 1=1 ";
+            List<String> replacements = new ArrayList<String>();
+            List<String> names = new ArrayList<String>();
+            int i = 0;
+
+            while(conditions.hasNext()){
+                Query.Comparator condition = conditions.next();
+                names.add(condition.getKey());
+                String join_modifier = condition.includesNull() ? "LEFT" : "";
+                filters = String.format("%s %s JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", filters, join_modifier, i, i, i, i);
+                Object subject = condition.getSubject();
+                String null_condition = condition.includesNull() ? String.format(" i%d.value IS NULL OR", i) : "";
+                where = String.format("%s AND ( %s i%d.value %s ", where, null_condition, i, condition.getComparisonType());
+                if (subject instanceof Float) {
+                    where = String.format("%s %f)", where, (Float)subject);
+                } else if (subject instanceof Integer){
+                    where = String.format("%s %d)", where, (Integer)subject);
+                } else if (subject instanceof Boolean){
+                    where = String.format("%s %d)", where, ((Boolean)subject ? 1 : 0));
+                } else {
+                    where = String.format("%s ?)", where);
+                    replacements.add(subject.toString());
+                }
+                i++;
+            }
+
+            String statement = String.format("%s %s %s", selection, filters, where);
+            names.addAll(replacements);
+            String[] args = names.toArray(new String[names.size()]);
+            Log.d("Simperium.Store", String.format("Query: %s | %s", statement, args));
+            return buildCursor(schema, database.rawQuery(statement, args));
         }
         
         private void index(T object){

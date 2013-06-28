@@ -39,7 +39,7 @@ public interface StorageProvider {
         /**
          * 
          */
-        abstract public Bucket.ObjectCursor<T> search(Query query);
+        abstract public Bucket.ObjectCursor<T> search(Query<T> query);
     }
     /**
      * 
