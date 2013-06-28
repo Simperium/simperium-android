@@ -3,8 +3,8 @@ package com.simperium.storage;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
+import com.simperium.client.Query;
 import com.simperium.storage.StorageProvider.BucketStore;
-import com.simperium.storage.StorageProvider.BucketCursor;
 
 import com.simperium.util.Logger;
 
@@ -57,7 +57,13 @@ public class MemoryStore implements StorageProvider {
         /**
          * Get a cursor to all the objects
          */
-        public BucketCursor<T> all(){
+        public Bucket.ObjectCursor<T> all(){
+            return null;
+        }
+        /**
+         * Search
+         */
+        public Bucket.ObjectCursor<T> search(Query query){
             return null;
         }
 

@@ -37,6 +37,9 @@ import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 
+import android.database.Cursor;
+import android.database.CursorWrapper;
+
 public class Bucket<T extends Syncable> {
     public static final String TAG="Simperium.Bucket";
     // The name used for the Simperium namespace
@@ -89,7 +92,53 @@ public class Bucket<T extends Syncable> {
         public void onObjectUpdated(String key, T object);
         public void onObjectAdded(String key, T object);
     }
+    /**
+     * Cursor for bucket data
+     */
+    public interface ObjectCursor<T extends Syncable> extends Cursor {
+        /**
+         * Return the current item's siperium key
+         */
+        public String getSimperiumKey();
+        /**
+         * Return the object for the current index in the cursor
+         */
+        public T getObject();
+    }
 
+    private class BucketCursor extends CursorWrapper implements ObjectCursor<T> {
+
+        private ObjectCursor<T> cursor;
+
+        BucketCursor(ObjectCursor<T> cursor){
+            super(cursor);
+            this.cursor = cursor;
+        }
+
+        @Override
+        public String getSimperiumKey(){
+            return cursor.getSimperiumKey();
+        }
+
+        @Override
+        public T getObject(){
+            String key = getSimperiumKey();
+            T object = cache.get(key);
+            if (object != null) {
+                return object;
+            }
+            object = cursor.getObject();
+            try {
+                Ghost ghost = ghostStore.getGhost(Bucket.this, key);
+                object.setGhost(ghost);
+            } catch (GhostMissingException e) {
+                object.setGhost(new Ghost(key, 0, new HashMap<String,Object>()));
+            }
+            object.setBucket(Bucket.this);
+            cache.put(key, object);
+            return object;
+        }
+    }
     /**
      * Tell the bucket to sync changes.
      */
@@ -217,6 +266,12 @@ public class Bucket<T extends Syncable> {
         object.setGhost(ghost);
         object.setBucket(this);
         return object;
+    }
+    /**
+     * Find all objects
+     */
+    public ObjectCursor<T> allObjects(){
+        return new BucketCursor(storage.all());
     }
     /**
      * Get a single object object that matches key

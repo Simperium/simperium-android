@@ -1,23 +1,28 @@
 package com.simperium.storage;
 
-
+import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
 import com.simperium.client.Channel;
 import com.simperium.client.BucketObjectMissingException;
+import com.simperium.client.Query;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.content.ContentValues;
 
+import java.util.Map.Entry;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 
 import org.json.JSONObject;
 import org.json.JSONException;
 
 public class PersistentStore implements StorageProvider {
     public static final String OBJECTS_TABLE="objects";
+    public static final String INDEXES_TABLE="indexes";
 
     private SQLiteDatabase database;
 
@@ -61,6 +66,7 @@ public class PersistentStore implements StorageProvider {
             } else {
                 database.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{bucketName, key});
             }
+            index(object);
         }
 
         /**
@@ -70,6 +76,7 @@ public class PersistentStore implements StorageProvider {
         public void delete(T object){
             String key = object.getSimperiumKey();
             database.delete(OBJECTS_TABLE, "bucket=? AND key=?", new String[]{bucketName, key});
+            deleteIndexes(object);
         }
 
         /**
@@ -78,6 +85,7 @@ public class PersistentStore implements StorageProvider {
         @Override
         public void reset(){
             database.delete(OBJECTS_TABLE, "bucket=?", new String[]{bucketName});
+            deleteAllIndexes();
         }
 
         /**
@@ -85,7 +93,7 @@ public class PersistentStore implements StorageProvider {
          */
         @Override
         public T get(String key) throws BucketObjectMissingException {
-            BucketCursor<T> cursor = buildCursor(schema, queryObject(bucketName, key));
+            Bucket.ObjectCursor<T> cursor = buildCursor(schema, queryObject(bucketName, key));
             if (cursor.getCount() == 0) {
                 throw(new BucketObjectMissingException());
             } else {
@@ -98,13 +106,64 @@ public class PersistentStore implements StorageProvider {
          * All objects, returns a cursor for the given bucket
          */
         @Override
-        public BucketCursor<T> all(){
+        public Bucket.ObjectCursor<T> all(){
             return buildCursor(schema, database.query(OBJECTS_TABLE, null, "bucket=?", new String[]{bucketName}, null, null, null, null));
         }
 
+        /**
+         * Search the datastore using the given Query
+         */
+        @Override
+        public Bucket.ObjectCursor<T> search(Query query){
+            return all();
+        }
+        
+        private void index(T object){
+            Set<Entry<String,Object>> entries = object.getDiffableValue().entrySet();
+            Iterator<Entry<String,Object>> iterator = entries.iterator();
+            // delete all current idexes
+            deleteIndexes(object);
+            while(iterator.hasNext()){
+                Entry<String,Object> entry = iterator.next();
+                ContentValues values = new ContentValues(4);
+                values.put("bucket", bucketName);
+                values.put("key", object.getSimperiumKey());
+                values.put("name", entry.getKey());
+                indexCastValue(values, "value", entry.getValue());
+                database.insert(INDEXES_TABLE, null, values);
+            }
+        }
+
+        private void indexCastValue(ContentValues values, String key, Object value){
+            if (value instanceof Byte) {
+                values.put(key, (Byte) value);
+            } else if(value instanceof Integer){
+                values.put(key, (Integer) value);
+            } else if(value instanceof Float){
+                values.put(key, (Float) value);
+            } else if(value instanceof Short){
+                values.put(key, (Short) value);                    
+            } else if(value instanceof String){
+                values.put(key, (String) value);                    
+            } else if(value instanceof Double){
+                values.put(key, (Double) value);
+            } else if(value instanceof Long){
+                values.put(key, (Long) value);
+            } else if(value instanceof Boolean){
+                values.put(key, (Boolean) value);
+            }
+        }
+
+        private void deleteIndexes(T object){
+            database.delete(INDEXES_TABLE, "bucket=? AND key=?", new String[]{bucketName, object.getSimperiumKey()});
+        }
+
+        private void deleteAllIndexes(){
+            database.delete(INDEXES_TABLE, "bucket=?", new String[]{bucketName});
+        }
     }
 
-    private class ObjectCursor<T extends Syncable> extends CursorWrapper implements BucketCursor<T> {
+    private class ObjectCursor<T extends Syncable> extends CursorWrapper implements Bucket.ObjectCursor<T> {
         
         private BucketSchema<T> schema;
 
@@ -113,8 +172,12 @@ public class PersistentStore implements StorageProvider {
             this.schema = schema;
         }
 
+        public String getSimperiumKey(){
+            return getString(1);
+        }
+
         public T getObject(){
-            String key = getString(1);
+            String key = getSimperiumKey();
             try {
                 JSONObject data = new JSONObject(getString(2));
                 return schema.build(key, Channel.convertJSON(data));
@@ -124,27 +187,28 @@ public class PersistentStore implements StorageProvider {
         }
     }
 
-    private <T extends Syncable> BucketCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor){
+    private <T extends Syncable> Bucket.ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor){
         return new ObjectCursor<T>(schema, cursor);
     }
     
     private void configure(){
         // create and validate the tables we'll be using for the datastore
         configureObjects();
+        configureIndexes();
     }
         
     private void configureIndexes(){
-        Cursor tableInfo = tableInfo("indexes");
+        Cursor tableInfo = tableInfo(INDEXES_TABLE);
         if (tableInfo.getCount() == 0) {
             // create the table
-            database.execSQL("CREATE TABLE indexes (bucket, key, value)");
+            database.execSQL(String.format("CREATE TABLE %s (bucket, key, name, value)", INDEXES_TABLE));
         }
     }
 
     private void configureObjects(){
-        Cursor tableInfo = tableInfo("objects");
+        Cursor tableInfo = tableInfo(OBJECTS_TABLE);
         if (tableInfo.getCount() == 0) {
-            database.execSQL("CREATE TABLE objects (bucket, key, data)");
+            database.execSQL(String.format("CREATE TABLE %s (bucket, key, data)", OBJECTS_TABLE));
         }
     }
 

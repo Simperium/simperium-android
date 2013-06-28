@@ -4,6 +4,7 @@ import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
 import com.simperium.client.BucketObjectMissingException;
+import com.simperium.client.Query;
 
 import android.database.Cursor;
 
@@ -11,15 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 public interface StorageProvider {
-    /**
-     * Cursor for bucket data
-     */
-    public interface BucketCursor<T extends Syncable> extends Cursor {
-        /**
-         * Return the object for the current index in the cursor
-         */
-        public T getObject();
-    }
     /**
      * Store and query bucket object data
      */
@@ -43,10 +35,14 @@ public interface StorageProvider {
         /**
          * All objects, returns a cursor for the given bucket
          */
-        abstract public BucketCursor<T> all();
+        abstract public Bucket.ObjectCursor<T> all();
+        /**
+         * 
+         */
+        abstract public Bucket.ObjectCursor<T> search(Query query);
     }
     /**
      * 
      */
-    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> bucket);
+    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> bucketSchema);
 }

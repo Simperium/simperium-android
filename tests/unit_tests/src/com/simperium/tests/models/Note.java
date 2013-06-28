@@ -9,8 +9,12 @@ import java.util.Map;
 
 public class Note extends BucketObject {
     
-    public static class Schema implements BucketSchema<Note> {
+    public static class Schema extends BucketSchema<Note> {
         public static final String BUCKET_NAME="notes";
+
+        public Schema(){
+            addIndex("title");
+        }
 
         @Override
         public String getRemoteName(){

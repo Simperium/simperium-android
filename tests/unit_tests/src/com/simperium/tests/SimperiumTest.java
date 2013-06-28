@@ -12,7 +12,7 @@ public class SimperiumTest extends TestCase {
     public static final String TAG="SimperiumTest";
 
     static protected void waitFor(Change change){
-        long timeout = 100; // 100 ms timeout
+        long timeout = 200; // 100 ms timeout
         long start = System.currentTimeMillis();
         Logger.log(TAG, String.format("Waiting for change %s", change));
         tick();

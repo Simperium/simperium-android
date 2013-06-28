@@ -13,7 +13,6 @@ import com.simperium.client.Syncable;
 import com.simperium.client.BucketObjectMissingException;
 
 import com.simperium.storage.StorageProvider.BucketStore;
-import com.simperium.storage.StorageProvider.BucketCursor;
 
 import com.simperium.tests.models.Note;
 
@@ -58,6 +57,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
 
     public void testDatabaseTables(){
         assertTableExists(mDatabase, "objects");
+        assertTableExists(mDatabase, "indexes");
     }
 
     public void testSavingObject(){
@@ -124,7 +124,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         store.save(note);
         store.save(note2);
         
-        BucketCursor<Note> cursor = store.all();
+        Bucket.ObjectCursor<Note> cursor = store.all();
         assertEquals(2, cursor.getCount());
     }
 
@@ -137,15 +137,42 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         note.setTitle("Booh yah!");
         store.save(note);
 
-        BucketCursor<Note> cursor = store.all();
+        Bucket.ObjectCursor<Note> cursor = store.all();
         assertEquals(1, cursor.getCount());
 
         store.reset();
 
         cursor = store.all();
         assertEquals(0, cursor.getCount());
-        
+
     }
+
+    public void testIndexObject(){
+        String bucketName = "bucket";
+        Note.Schema schema = new Note.Schema();
+        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+
+        Note note = new Note("hola", new HashMap<String,Object>());
+        note.put("col1", "Hello");
+        note.put("col2", 237);
+        note.put("col3", 245.12);
+
+        store.save(note);
+
+        Cursor cursor = mDatabase.query(PersistentStore.INDEXES_TABLE, null, null, null, null, null, "name", null);
+        assertEquals(3, cursor.getCount());
+        cursor.moveToFirst();
+        assertEquals(bucketName, cursor.getString(0));
+        assertEquals(note.getSimperiumKey(), cursor.getString(1));
+        assertEquals("col1", cursor.getString(2));
+        assertEquals("Hello", cursor.getString(3));
+
+        cursor.moveToNext();
+        assertEquals("col2", cursor.getString(2));
+        assertEquals("237", cursor.getString(3));
+        assertEquals(237, cursor.getInt(3));
+    }
+
     public static void assertTableExists(SQLiteDatabase database, String tableName){
         Cursor cursor = database.query(MASTER_TABLE, new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
         assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());
