@@ -99,15 +99,9 @@ public class BasicSyncTest extends ActivityInstrumentationTestCase2<MainActivity
         // connectClients();
         Farm farm = bucket1.newObject();
         farm.getProperties().put("name", (String)"augusta");
-        Change<Farm> change = farm.save();
-        while(change.isPending()){
-            waitFor(1);
-        }
+        waitFor(farm.save());
         assertFalse(String.format("Farm is new %s", farm), farm.isNew());
-        change = farm.delete();
-        while(change.isPending()){
-            waitFor(1);
-        }
+        waitFor(farm.delete());
 
         try {
             farm = bucket1.getObject(farm.getSimperiumKey());
@@ -139,6 +133,19 @@ public class BasicSyncTest extends ActivityInstrumentationTestCase2<MainActivity
         } catch (InterruptedException e) {
             Logger.log("Interupted");
         }
+    }
+
+    protected void waitFor(Change change){
+        long timeout = 5000; // 5 second timeout
+        long start = System.currentTimeMillis();
+        Logger.log(TAG, String.format("Waiting for change %s", change));
+        while(change.isPending()){
+            waitFor(1);
+            if (System.currentTimeMillis() - start > timeout) {
+                throw( new RuntimeException("Change timed out") );
+            }
+        }
+        Logger.log(TAG, String.format("Done waiting %s", change));
     }
 
 }
