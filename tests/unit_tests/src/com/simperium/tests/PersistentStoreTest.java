@@ -222,6 +222,60 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         assertEquals(110, cursor.getCount());
     }
 
+    public void testObjectSorting(){
+        String bucketName = "notes";
+        Note.Schema schema = new Note.Schema();
+        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        Note first = new Note("first", new HashMap<String,Object>());
+        Note second = new Note("second", new HashMap<String,Object>());
+        Note third = new Note("third", new HashMap<String,Object>());
+
+        first.put("position", 1);
+        second.put("position", 2);
+        third.put("position", 3);
+
+        third.put("title", "zzz");
+        second.put("title", "aaa");
+        first.put("title", "aaa");
+
+        second.put("backwards", 1);
+        first.put("backwards", 2);
+
+        store.save(third);
+        store.save(second);
+        store.save(first);
+
+        Query<Note> query = new Query<Note>();
+        query.order("position");
+        Bucket.ObjectCursor<Note> cursor = store.search(query);
+        assertEquals(3, cursor.getCount());
+        cursor.moveToFirst();
+        Note note = cursor.getObject();
+        assertEquals(1, note.get("position"));
+        
+
+        query = new Query<Note>();
+        query.order("title", Query.SortType.DESCENDING);
+        query.order("backwards");
+        cursor = store.search(query);
+        assertEquals(3, cursor.getCount());
+        cursor.moveToFirst();
+        note = cursor.getObject();
+        assertEquals(3, note.get("position"));
+        cursor.moveToNext();
+        note = cursor.getObject();
+        assertEquals(2, note.get("position"));
+
+        query = new Query<Note>();
+        query.order("position");
+        query.where("position", Query.ComparisonType.GREATER_THAN, 1);
+        cursor = store.search(query);
+        assertEquals(2, cursor.getCount());
+        cursor.moveToFirst();
+        note = cursor.getObject();
+        assertEquals(2, note.get("position"));
+    }
+
     public static void assertTableExists(SQLiteDatabase database, String tableName){
         Cursor cursor = database.query(MASTER_TABLE, new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
         assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());

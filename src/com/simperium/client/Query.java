@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Query<T extends Syncable> {
-    
-    private List<Comparator> conditions = new ArrayList<Comparator>();
 
     public interface Comparator {
         public Object getSubject();
@@ -74,11 +72,48 @@ public class Query<T extends Syncable> {
         }
     }
 
-    public interface Sorter {
-        
+    public enum SortType {
+
+        ASCENDING("ASC"), DESCENDING("DESC");
+
+        private final String type;
+
+        private SortType(String type){
+            this.type = type;
+        }
+
+        public String getType(){
+            return type;
+        }
+
+        @Override
+        public String toString(){
+            return getType();
+        }
+    }
+
+    public static class Sorter {
+
+        private final String key;
+        private final SortType type;
+
+        public Sorter(String key, SortType type){
+            this.key = key;
+            this.type = type;
+        }
+
+        public String getKey(){
+            return key;
+        }
+
+        public SortType getType(){
+            return type;
+        }
     }
 
     private Bucket<T> bucket;
+    private List<Comparator> conditions = new ArrayList<Comparator>();
+    private List<Sorter> sorters = new ArrayList<Sorter>();
 
     public Query(Bucket<T> bucket){
         this.bucket = bucket;
@@ -102,10 +137,29 @@ public class Query<T extends Syncable> {
         return conditions;
     }
 
+    public List<Sorter> getSorters(){
+        return sorters;
+    }
+
     public Bucket.ObjectCursor<T> execute(){
         if (bucket == null) {
             return null;
         }
         return bucket.searchObjects(this);
+    }
+
+    public Query order(Sorter sort){
+        sorters.add(sort);
+        return this;
+    }
+
+    public Query order(String key){
+        order(key, SortType.ASCENDING);
+        return this;
+    }
+
+    public Query order(String key, SortType type){
+        order(new Sorter(key, type));
+        return this;
     }
 }

@@ -12,12 +12,13 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.content.ContentValues;
 
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -116,25 +117,38 @@ public class PersistentStore implements StorageProvider {
 
         /**
          * Search the datastore using the given Query
+         * 
+         * This is really ugly, please refactor and use StringBuilder too
          */
         @Override
         public Bucket.ObjectCursor<T> search(Query<T> query){
             // turn comparators into where statements, each comparator joins
             Iterator<Query.Comparator> conditions = query.getConditions().iterator();
-            String selection = "SELECT DISTINCT objects.key, objects.data FROM objects";
+            Iterator<Query.Sorter> sorters = query.getSorters().iterator();
+            String selection = "SELECT DISTINCT objects.bucket, objects.key, objects.data FROM objects";
             String filters = "";
-            String where = "WHERE 1=1 ";
+            String where = "WHERE objects.bucket = ?";
             List<String> replacements = new ArrayList<String>();
+            replacements.add(bucketName);
             List<String> names = new ArrayList<String>();
             int i = 0;
 
+            List<String> sortKeys = new ArrayList<String>();
+            Map<String,String> includedSorts = new HashMap<String,String>();
+            while(sorters.hasNext()){
+                sortKeys.add(sorters.next().getKey());
+            }
+            
             while(conditions.hasNext()){
                 Query.Comparator condition = conditions.next();
+                String key = condition.getKey();
+                if (sortKeys.contains(condition.getKey())) {
+                    includedSorts.put(key, String.format("i%d", i));
+                }
                 names.add(condition.getKey());
-                String join_modifier = condition.includesNull() ? "LEFT" : "";
-                filters = String.format("%s %s JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", filters, join_modifier, i, i, i, i);
+                filters = String.format("%s LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", filters, i, i, i, i);
                 Object subject = condition.getSubject();
-                String null_condition = condition.includesNull() ? String.format(" i%d.value IS NULL OR", i) : "";
+                String null_condition = condition.includesNull() ? String.format(" i%d.value IS NULL OR", i) : String.format(" i%d.value IS NOT NULL AND", i);
                 where = String.format("%s AND ( %s i%d.value %s ", where, null_condition, i, condition.getComparisonType());
                 if (subject instanceof Float) {
                     where = String.format("%s %f)", where, (Float)subject);
@@ -149,10 +163,32 @@ public class PersistentStore implements StorageProvider {
                 i++;
             }
 
-            String statement = String.format("%s %s %s", selection, filters, where);
+            String order = "ORDER BY";
+            if (query.getSorters().size() > 0){
+                sorters = query.getSorters().iterator();
+                while(sorters.hasNext()){
+                    if (!order.equals("ORDER BY")) {
+                        order = String.format("%s,", order);
+                    }
+                    Query.Sorter sorter = sorters.next();
+                    String sortKey = sorter.getKey();
+                    if (includedSorts.containsKey(sortKey)) {
+                        order = String.format("%s %s.value %s", order, includedSorts.get(sortKey), sorter.getType());
+                    } else {
+                        // join in the sorting field it wasn't used in a search
+                        filters = String.format("%s LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", filters, i, i, i, i);
+                        names.add(sorter.getKey());
+                        order = String.format("%s i%d.value %s", order, i, sorter.getType());                        
+                        i++;
+                    }
+                }
+            } else {
+                order = "";
+            }
+            String statement = String.format("%s %s %s %s", selection, filters, where, order);
             names.addAll(replacements);
             String[] args = names.toArray(new String[names.size()]);
-            Log.d("Simperium.Store", String.format("Query: %s | %s", statement, args));
+            Log.d("Simperium.Store", String.format("Query: %s | %s", statement, names));
             return buildCursor(schema, database.rawQuery(statement, args));
         }
         
