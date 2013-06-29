@@ -154,16 +154,21 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         String bucketName = "bucket";
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-  
+        List<String> list = new ArrayList<String>();
+        list.add("uno");
+        list.add("dos");
+        list.add("tres");
+
         Note note = new Note("hola", new HashMap<String,Object>());
         note.put("col1", "Hello");
         note.put("col2", 237);
         note.put("col3", 245.12);
+        note.put("col4", list);
   
         store.save(note);
   
         Cursor cursor = mDatabase.query(PersistentStore.INDEXES_TABLE, null, null, null, null, null, "name", null);
-        assertEquals(3, cursor.getCount());
+        assertEquals(6, cursor.getCount());
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(0));
         assertEquals(note.getSimperiumKey(), cursor.getString(1));
@@ -174,6 +179,15 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         assertEquals("col2", cursor.getString(2));
         assertEquals("237", cursor.getString(3));
         assertEquals(237, cursor.getInt(3));
+
+        cursor.moveToNext();
+        cursor.moveToNext();
+        assertEquals("col4", cursor.getString(2));
+        assertEquals("uno", cursor.getString(3));
+
+        cursor.moveToNext();
+        assertEquals("col4", cursor.getString(2));
+        assertEquals("dos", cursor.getString(3));
     }
 
     public void testObjectSearching(){
@@ -189,6 +203,16 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
             }
             if (i == 1) {
                 note.put("special", false);
+            }
+            if (i % 10 == 0) {
+                List<String> list = new ArrayList<String>();
+                list.add("uno");
+                list.add("dos");
+                list.add("tres");
+                if (i % 100 == 0) {
+                    list.add("cuatro");
+                }
+                note.put("spanish", list);
             }
             store.save(note);
         }
@@ -220,6 +244,11 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         query.where("title", Query.ComparisonType.LIKE, "Note 1%");
         cursor = store.search(query);
         assertEquals(110, cursor.getCount());
+
+        query = new Query<Note>();
+        query.where("spanish", Query.ComparisonType.EQUAL_TO, "cuatro");
+        cursor = store.search(query);
+        assertEquals(10, cursor.getCount());
     }
 
     public void testObjectSorting(){

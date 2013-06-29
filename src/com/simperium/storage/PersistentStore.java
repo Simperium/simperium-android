@@ -203,12 +203,15 @@ public class PersistentStore implements StorageProvider {
                 values.put("bucket", bucketName);
                 values.put("key", object.getSimperiumKey());
                 values.put("name", entry.getKey());
-                indexCastValue(values, "value", entry.getValue());
-                database.insert(INDEXES_TABLE, null, values);
+                insertCastedIndex(values, "value", entry.getValue());
             }
         }
+        
+        private void insertCastedIndex(ContentValues values, String key, Object value){
+            insertCastedIndex(values, key, value, false);
+        }
 
-        private void indexCastValue(ContentValues values, String key, Object value){
+        private void insertCastedIndex(ContentValues values, String key, Object value, boolean skipList){
             if (value instanceof Byte) {
                 values.put(key, (Byte) value);
             } else if(value instanceof Integer){
@@ -225,7 +228,17 @@ public class PersistentStore implements StorageProvider {
                 values.put(key, (Long) value);
             } else if(value instanceof Boolean){
                 values.put(key, (Boolean) value);
+            } else if(value instanceof List){
+                if (skipList) return;
+                List list = (List) value;
+                Iterator iterator = list.iterator();
+                while(iterator.hasNext()){
+                    Object listValue = iterator.next();
+                    insertCastedIndex(values, key, listValue, true);
+                }
+                return;
             }
+            database.insert(INDEXES_TABLE, null, values);
         }
 
         private void deleteIndexes(T object){
