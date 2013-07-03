@@ -26,6 +26,7 @@ import org.json.JSONException;
 import android.util.Log;
 
 public class PersistentStore implements StorageProvider {
+    public static final String TAG="Simperium.Store";
     public static final String OBJECTS_TABLE="objects";
     public static final String INDEXES_TABLE="indexes";
 
@@ -190,7 +191,7 @@ public class PersistentStore implements StorageProvider {
             String statement = String.format("%s %s %s %s", selection, filters, where, order);
             names.addAll(replacements);
             String[] args = names.toArray(new String[names.size()]);
-            Log.d("Simperium.Store", String.format("Query: %s | %s", statement, names));
+            Log.d(TAG, String.format("Query: %s | %s", statement, names));
             return buildCursor(schema, database.rawQuery(statement, args));
         }
         
