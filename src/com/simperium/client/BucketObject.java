@@ -51,6 +51,9 @@ public class BucketObject extends Syncable {
     }
 
     public String toString(){
+        if (getBucket() == null) {
+            return String.format("<no bucket> - %s", getVersionId());
+        }
         return String.format("%s - %s", getBucket().getName(), getVersionId());
     }
 

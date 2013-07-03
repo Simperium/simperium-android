@@ -66,6 +66,9 @@ public abstract class Syncable implements Diffable {
      * Key.VersionId
      */
     public String getVersionId(){
+        if (getGhost() == null) {
+            return String.format("%s.?", getSimperiumKey());
+        }
         return getGhost().getVersionId();
     }
 }
