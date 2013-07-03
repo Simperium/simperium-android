@@ -27,6 +27,9 @@ public class BucketObject extends Syncable {
         public BucketObject build(String key, Map<String,Object> properties){
             return new BucketObject(key, properties);
         }
+        public void update(BucketObject object, Map<String,Object> properties){
+            object.properties = properties;
+        }
     }
 
     private Bucket bucket;

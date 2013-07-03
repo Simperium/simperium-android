@@ -551,8 +551,13 @@ public class Bucket<T extends Syncable> {
                     object = getObject(change.getKey());
                     isNew = false;
                 }
+                // updates the ghost and sets it on the object
                 ghost = change.apply(object);
+                // persist the ghost to storage
                 ghostStore.saveGhost(this, ghost);
+                // allow the schema to update the object instance with the new
+                // data
+                schema.update(object, deepCopy(ghost.getDiffableValue()));
                 if (isNew) {
                     addObject(object);
                 } else {
