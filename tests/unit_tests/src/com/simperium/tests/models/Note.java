@@ -12,10 +12,6 @@ public class Note extends BucketObject {
     public static class Schema extends BucketSchema<Note> {
         public static final String BUCKET_NAME="notes";
 
-        public Schema(){
-            addIndex("title");
-        }
-
         @Override
         public String getRemoteName(){
             return BUCKET_NAME;
@@ -24,6 +20,11 @@ public class Note extends BucketObject {
         @Override
         public Note build(String key, Map<String,Object> properties){
             return new Note(key, properties);
+        }
+
+        @Override
+        public void update(Note note, Map<String,Object> properties){
+            note.setProperties(properties);
         }
     }
 
@@ -49,5 +50,9 @@ public class Note extends BucketObject {
 
     public Map<String,Object> getProperties(){
         return getDiffableValue();
+    }
+
+    protected void setProperties(Map<String,Object> properties){
+        this.properties = properties;
     }
 }
