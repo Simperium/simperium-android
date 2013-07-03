@@ -52,9 +52,8 @@ public class Simperium implements User.AuthenticationListener {
 	private GhostStore ghostStore;
     private Channel.Serializer channelSerializer;
     
-    public Simperium(String appId, String appSecret, Context context, AuthenticationListener listener){
+    public Simperium(String appId, String appSecret, Context context){
         this(appId, appSecret, context, new PersistentStore(context.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null)), null);
-        setAuthenticationListener(listener);
     }
 
     public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
