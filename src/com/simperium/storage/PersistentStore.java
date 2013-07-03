@@ -262,13 +262,13 @@ public class PersistentStore implements StorageProvider {
         }
 
         public String getSimperiumKey(){
-            return getString(1);
+            return getString(getColumnIndex("objects.key"));
         }
 
         public T getObject(){
             String key = getSimperiumKey();
             try {
-                JSONObject data = new JSONObject(getString(2));
+                JSONObject data = new JSONObject(getString(getColumnIndex("objects.data")));
                 return schema.build(key, Channel.convertJSON(data));
             } catch (org.json.JSONException e) {
                 return schema.build(key, new HashMap<String,Object>());
