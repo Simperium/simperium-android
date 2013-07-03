@@ -172,7 +172,9 @@ public class PersistentStore implements StorageProvider {
                     }
                     Query.Sorter sorter = sorters.next();
                     String sortKey = sorter.getKey();
-                    if (includedSorts.containsKey(sortKey)) {
+                    if (sorter instanceof Query.KeySorter) {
+                        order = String.format("%s objects.key %s", order, sorter.getType());
+                    } else if (includedSorts.containsKey(sortKey)) {
                         order = String.format("%s %s.value %s", order, includedSorts.get(sortKey), sorter.getType());
                     } else {
                         // join in the sorting field it wasn't used in a search

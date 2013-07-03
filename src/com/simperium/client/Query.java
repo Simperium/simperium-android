@@ -111,6 +111,12 @@ public class Query<T extends Syncable> {
         }
     }
 
+    public static class KeySorter extends Sorter {
+        public KeySorter(SortType type){
+            super(null, type);
+        }
+    }
+
     private Bucket<T> bucket;
     private List<Comparator> conditions = new ArrayList<Comparator>();
     private List<Sorter> sorters = new ArrayList<Sorter>();
@@ -146,6 +152,15 @@ public class Query<T extends Syncable> {
             return null;
         }
         return bucket.searchObjects(this);
+    }
+
+    public Query orderByKey(){
+        orderByKey(SortType.ASCENDING);
+        return this;
+    }
+    public Query orderByKey(SortType type){
+        order(new KeySorter(type));
+        return this;
     }
 
     public Query order(Sorter sort){
