@@ -76,7 +76,7 @@ public class Change<T extends Syncable> {
         this.compressed = compressed;
     }
 
-    protected Change(String operation, T object){
+    public Change(String operation, T object){
         this(operation, object, object.getUnmodifiedValue());
     }
 

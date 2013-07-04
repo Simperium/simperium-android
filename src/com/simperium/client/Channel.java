@@ -38,7 +38,7 @@ import org.json.JSONTokener;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-public class Channel<T extends Syncable> {
+public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
@@ -171,7 +171,7 @@ public class Channel<T extends Syncable> {
         return changeProcessor == null || changeProcessor.isIdle();
     }
 
-    protected void reset(){
+    public void reset(){
         changeProcessor.reset();
         if (started) {
             getLatestVersions();            
@@ -202,13 +202,13 @@ public class Channel<T extends Syncable> {
     /**
      * Diffs and object's local modifications and queues up the changes
      */
-    protected Change queueLocalChange(T object){
+    public Change<T> queueLocalChange(T object){
         Change<T> change = new Change<T>(Change.OPERATION_MODIFY, object);
         changeProcessor.addChange(change);
         return change;
     }
 
-    protected Change queueLocalDeletion(T object){
+    public Change<T> queueLocalDeletion(T object){
         Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
         changeProcessor.addChange(change);
         return change;
@@ -312,7 +312,7 @@ public class Channel<T extends Syncable> {
     /**
      * Send Bucket's init message to start syncing changes.
      */
-    protected void start(){
+    public void start(){
         if (started) {
             // we've already started
             return;

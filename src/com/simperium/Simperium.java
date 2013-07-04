@@ -140,7 +140,7 @@ public class Simperium implements User.AuthenticationListener {
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
         BucketStore<T> storage = storageProvider.createStore(bucketName, schema);
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
-        Channel<T> channel = socketManager.createChannel(bucket, channelSerializer);
+        Bucket.ChannelProvider<T> channel = socketManager.createChannel(bucket, channelSerializer);
         bucket.setChannel(channel);
         return bucket;
     }

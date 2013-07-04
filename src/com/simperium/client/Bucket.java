@@ -41,13 +41,22 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 
 public class Bucket<T extends Syncable> {
+    
+    public interface ChannelProvider<T extends Syncable> {
+        public Change<T> queueLocalChange(T object);
+        public Change<T> queueLocalDeletion(T object);
+        public boolean isIdle();
+        public void start();
+        public void reset();
+    }
+
     public static final String TAG="Simperium.Bucket";
     // The name used for the Simperium namespace
     private String name;
     // User provides the access token for authentication
     private User user;
     // The channel that provides networking and change processing.
-    private Channel channel;
+    private ChannelProvider<T> channel;
     // For storing the bucket listeners
     private Set<Listener<T>> listeners;
     private BucketStore<T> storage;
@@ -153,10 +162,10 @@ public class Bucket<T extends Syncable> {
     /**
      * Tell the bucket to remove the object
      */
-    public Change remove(T object){
+    public Change<T> remove(T object){
         cache.remove(object.getSimperiumKey());
         storage.delete(object);
-        Change change = channel.queueLocalDeletion(object);
+        Change<T> change = channel.queueLocalDeletion(object);
         Set<Listener<T>> notify;
         synchronized(listeners){
             notify = new HashSet<Listener<T>>(listeners.size());
@@ -451,9 +460,8 @@ public class Bucket<T extends Syncable> {
         updateObject(object);
         setChangeVersion(changeVersion);
     }
-    // TODO: remove the channel getter/setter, Channel will use a listening
-    // interface
-    public void setChannel(Channel channel){
+
+    public void setChannel(ChannelProvider channel){
         this.channel = channel;
     }
 
@@ -507,7 +515,7 @@ public class Bucket<T extends Syncable> {
         return key;
     }
 
-    protected Ghost acknowledgeChange(RemoteChange remoteChange, Change<T> change)
+    public Ghost acknowledgeChange(RemoteChange remoteChange, Change<T> change)
     throws RemoteChangeInvalidException {
         Ghost ghost = null;
         if (!remoteChange.isRemoveOperation()) {
