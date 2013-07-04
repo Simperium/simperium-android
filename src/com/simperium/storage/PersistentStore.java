@@ -114,7 +114,7 @@ public class PersistentStore implements StorageProvider {
         @Override
         public Bucket.ObjectCursor<T> all(){
             return buildCursor(schema, database.query(OBJECTS_TABLE,
-                    new String[]{"objects.bucket || '.' || objects.key AS _id", "objects.bucket", "objects.key","objects.data"},
+                    new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key","objects.data"},
                     "bucket=?", new String[]{bucketName}, null, null, null, null));
         }
 
@@ -128,7 +128,7 @@ public class PersistentStore implements StorageProvider {
             // turn comparators into where statements, each comparator joins
             Iterator<Query.Comparator> conditions = query.getConditions().iterator();
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
-            String selection = "SELECT DISTINCT objects.bucket || '.' || objects.key AS _id, objects.bucket, objects.key, objects.data FROM objects";
+            String selection = "SELECT DISTINCT objects.rowid AS _id, objects.bucket, objects.key, objects.data FROM objects";
             String filters = "";
             String where = "WHERE objects.bucket = ?";
             List<String> replacements = new ArrayList<String>();
