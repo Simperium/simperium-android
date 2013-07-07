@@ -127,7 +127,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         store.save(note);
         store.save(note2);
         
-        Bucket.ObjectCursor<Note> cursor = store.all();
+        Bucket.ObjectCursor<Note> cursor = store.all(null);
         assertEquals(2, cursor.getCount());
     }
   
@@ -140,12 +140,12 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         note.setTitle("Booh yah!");
         store.save(note);
   
-        Bucket.ObjectCursor<Note> cursor = store.all();
+        Bucket.ObjectCursor<Note> cursor = store.all(null);
         assertEquals(1, cursor.getCount());
   
         store.reset();
   
-        cursor = store.all();
+        cursor = store.all(null);
         assertEquals(0, cursor.getCount());
   
     }
@@ -191,63 +191,74 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     }
 
     public void testObjectSearching(){
+        // clear out the database
+        mActivity.deleteDatabase(mDatabaseName);
+        
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
+        // Copy the data from the asset database using the same database name
+        // it will get cleaned up by the tearDown method
+        DatabaseHelper helper = new DatabaseHelper(mDatabaseName);
+        mDatabaseName = helper.getDatabaseName();
+        helper.createDatabase();
+        mStore = new PersistentStore(helper.getWritableDatabase());
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
         // build a bunch of notes
-        for (int i=0; i<1000; i++) {
-            Note note = new Note(Uuid.uuid(), new HashMap<String,Object>());
-            note.put("title", String.format("Note %d", i));
-            if(i % 50 == 0){
-                note.put("special", true);
-            }
-            if (i == 1) {
-                note.put("special", false);
-            }
-            if (i % 10 == 0) {
-                List<String> list = new ArrayList<String>();
-                list.add("uno");
-                list.add("dos");
-                list.add("tres");
-                if (i % 100 == 0) {
-                    list.add("cuatro");
-                }
-                note.put("spanish", list);
-            }
-            store.save(note);
-        }
+        // for (int i=0; i<1000; i++) {
+        //     Note note = new Note(Uuid.uuid(), new HashMap<String,Object>());
+        //     note.put("title", String.format("Note %d", i));
+        //     if(i % 50 == 0){
+        //         note.put("special", true);
+        //     }
+        //     if (i == 1) {
+        //         note.put("special", false);
+        //     }
+        //     if (i % 10 == 0) {
+        //         List<String> list = new ArrayList<String>();
+        //         list.add("uno");
+        //         list.add("dos");
+        //         list.add("tres");
+        //         if (i % 100 == 0) {
+        //             list.add("cuatro");
+        //         }
+        //         note.put("spanish", list);
+        //     }
+        //     store.save(note);
+        // }
+        // 
+        // if(true) throw new RuntimeException("copy the db");
 
         Bucket.ObjectCursor<Note> cursor;
 
         Query<Note> query = new Query<Note>();
         query.where("special", Query.ComparisonType.EQUAL_TO, true);
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(20, cursor.getCount());
 
         query = new Query<Note>();
         query.where("title", Query.ComparisonType.LIKE, "Note 7%");
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(111, cursor.getCount());
         
         query = new Query<Note>();
         query.where("title", Query.ComparisonType.NOT_LIKE, "Note 7%");
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(889, cursor.getCount());
         
         query = new Query<Note>();
         query.where("special", Query.ComparisonType.NOT_EQUAL_TO, true);
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(980, cursor.getCount());
         
         query = new Query<Note>();
         query.where("special", Query.ComparisonType.NOT_EQUAL_TO, false);
         query.where("title", Query.ComparisonType.LIKE, "Note 1%");
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(110, cursor.getCount());
 
         query = new Query<Note>();
         query.where("spanish", Query.ComparisonType.EQUAL_TO, "cuatro");
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(10, cursor.getCount());
     }
 
@@ -276,7 +287,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
 
         Query<Note> query = new Query<Note>();
         query.order("position");
-        Bucket.ObjectCursor<Note> cursor = store.search(query);
+        Bucket.ObjectCursor<Note> cursor = store.search(query, null);
         assertEquals(3, cursor.getCount());
         cursor.moveToFirst();
         Note note = cursor.getObject();
@@ -286,7 +297,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         query = new Query<Note>();
         query.order("title", Query.SortType.DESCENDING);
         query.order("backwards");
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(3, cursor.getCount());
         cursor.moveToFirst();
         note = cursor.getObject();
@@ -298,7 +309,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         query = new Query<Note>();
         query.order("position");
         query.where("position", Query.ComparisonType.GREATER_THAN, 1);
-        cursor = store.search(query);
+        cursor = store.search(query, null);
         assertEquals(2, cursor.getCount());
         cursor.moveToFirst();
         note = cursor.getObject();

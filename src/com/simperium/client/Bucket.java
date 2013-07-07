@@ -39,6 +39,7 @@ import com.simperium.util.Uuid;
 
 import android.database.Cursor;
 import android.database.CursorWrapper;
+import android.os.CancellationSignal;
 
 public class Bucket<T extends Syncable> {
     
@@ -281,16 +282,33 @@ public class Bucket<T extends Syncable> {
      * Find all objects
      */
     public ObjectCursor<T> allObjects(){
-        return new BucketCursor(storage.all());
+        return allObjects(null);
+    }
+
+    /**
+     * Find all objects and provide a way to cancel query
+     */
+    public ObjectCursor<T> allObjects(CancellationSignal cancel){
+        return new BucketCursor(storage.all(cancel));
     }
 
     /**
      * Search using a query
      */
     public ObjectCursor<T> searchObjects(Query<T> query){
-        return new BucketCursor(storage.search(query));
+        return searchObjects(query, null);
     }
 
+    /**
+     * Search using a query and provide a way to cancel query
+     */
+    public ObjectCursor<T> searchObjects(Query<T> query, CancellationSignal cancel){
+        return new BucketCursor(storage.search(query, cancel));
+    }
+
+    /**
+     * Support cancelation
+     */
     /**
      * Build a query for this object
      */

@@ -8,6 +8,8 @@ import com.simperium.storage.StorageProvider.BucketStore;
 
 import com.simperium.util.Logger;
 
+import android.os.CancellationSignal;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -57,13 +59,13 @@ public class MemoryStore implements StorageProvider {
         /**
          * Get a cursor to all the objects
          */
-        public Bucket.ObjectCursor<T> all(){
+        public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
             return null;
         }
         /**
          * Search
          */
-        public Bucket.ObjectCursor<T> search(Query query){
+        public Bucket.ObjectCursor<T> search(Query query, CancellationSignal cancelSignal){
             return null;
         }
 

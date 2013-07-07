@@ -3,6 +3,8 @@ package com.simperium.client;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.os.CancellationSignal;
+
 public class Query<T extends Syncable> {
 
     public interface Comparator {
@@ -148,10 +150,14 @@ public class Query<T extends Syncable> {
     }
 
     public Bucket.ObjectCursor<T> execute(){
+        return execute(null);
+    }
+
+    public Bucket.ObjectCursor<T> execute(CancellationSignal cancelSignal){
         if (bucket == null) {
             return null;
         }
-        return bucket.searchObjects(this);
+        return bucket.searchObjects(this, cancelSignal);
     }
 
     public Query orderByKey(){

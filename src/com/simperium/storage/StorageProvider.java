@@ -7,6 +7,7 @@ import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.Query;
 
 import android.database.Cursor;
+import android.os.CancellationSignal;
 
 import java.util.List;
 import java.util.Map;
@@ -35,11 +36,11 @@ public interface StorageProvider {
         /**
          * All objects, returns a cursor for the given bucket
          */
-        abstract public Bucket.ObjectCursor<T> all();
+        abstract public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal);
         /**
          * 
          */
-        abstract public Bucket.ObjectCursor<T> search(Query<T> query);
+        abstract public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal);
     }
     /**
      * 

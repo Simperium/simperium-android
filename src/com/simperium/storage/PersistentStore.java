@@ -11,6 +11,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.content.ContentValues;
+import android.os.CancellationSignal;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -112,10 +113,10 @@ public class PersistentStore implements StorageProvider {
          * All objects, returns a cursor for the given bucket
          */
         @Override
-        public Bucket.ObjectCursor<T> all(){
-            return buildCursor(schema, database.query(OBJECTS_TABLE,
-                    new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key","objects.data"},
-                    "bucket=?", new String[]{bucketName}, null, null, null, null));
+        public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
+            return buildCursor(schema, database.query(false, OBJECTS_TABLE,
+                    new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key", "objects.data"},
+                    "bucket=?", new String[]{bucketName}, null, null, null, null, cancelSignal));
         }
 
         /**
@@ -124,7 +125,7 @@ public class PersistentStore implements StorageProvider {
          * This is really ugly, please refactor and use StringBuilder too
          */
         @Override
-        public Bucket.ObjectCursor<T> search(Query<T> query){
+        public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal){
             // turn comparators into where statements, each comparator joins
             Iterator<Query.Comparator> conditions = query.getConditions().iterator();
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
@@ -194,7 +195,7 @@ public class PersistentStore implements StorageProvider {
             names.addAll(replacements);
             String[] args = names.toArray(new String[names.size()]);
             Log.d(TAG, String.format("Query: %s | %s", statement, names));
-            return buildCursor(schema, database.rawQuery(statement, args));
+            return buildCursor(schema, database.rawQuery(statement, args, cancelSignal));
         }
         
         private void index(T object){
