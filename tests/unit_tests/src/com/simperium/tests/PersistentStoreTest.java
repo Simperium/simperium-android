@@ -4,6 +4,7 @@ import android.test.ActivityInstrumentationTestCase2;
 import static android.test.MoreAsserts.*;
 
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.database.Cursor;
 
 import com.simperium.storage.PersistentStore;
@@ -24,6 +25,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.io.IOException;
 
 public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainActivity> {
     public static final String TAG = MainActivity.TAG;
@@ -319,6 +326,49 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     public static void assertTableExists(SQLiteDatabase database, String tableName){
         Cursor cursor = database.query(MASTER_TABLE, new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
         assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());
+    }
+
+    private class DatabaseHelper extends SQLiteOpenHelper {
+
+        private static final String ASSET_NAME = "query-test-data";
+
+        public DatabaseHelper(String db_name){
+            super(mActivity, db_name, null, 1);
+        }
+
+        public void createDatabase() {
+            try {
+                copyDatabase();
+            } catch (IOException e) {
+                fail(String.format("Could not copy database %s", mActivity.getDatabasePath(getDatabaseName())));
+            }
+        }
+
+        @Override
+        public void onCreate(SQLiteDatabase db){
+            // do nothing
+        }
+
+        @Override
+        public void onUpgrade(SQLiteDatabase db, int from, int to){
+            // do nothing
+        }
+
+        private void copyDatabase() throws IOException {
+            InputStream input = mActivity.getAssets().open(ASSET_NAME);
+            File dbPath = mActivity.getDatabasePath(getDatabaseName());
+            OutputStream output = new FileOutputStream(dbPath);
+
+            byte[] buffer = new byte[1024];
+            int length;
+            while((length = input.read(buffer)) > 0){
+                output.write(buffer, 0, length);
+            }
+            output.flush();
+            output.close();
+            input.close();
+        }
+
     }
 
 }
