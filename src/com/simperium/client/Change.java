@@ -88,8 +88,8 @@ public class Change<T extends Syncable> {
         this.key = object.getSimperiumKey();
         if (operation != OPERATION_REMOVE) {
             this.version = object.getVersion();
-            this.origin = Bucket.deepCopy(origin);
-            this.target = Bucket.deepCopy(target);
+            this.origin = JSONDiff.deepCopy(origin);
+            this.target = JSONDiff.deepCopy(target);
         }
     }
 

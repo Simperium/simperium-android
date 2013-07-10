@@ -2,6 +2,9 @@ package com.simperium.client;
 
 import java.util.Map;
 import java.util.HashMap;
+
+import com.simperium.util.JSONDiff;
+
 /**
  *
  */
@@ -19,7 +22,7 @@ public class Ghost implements Diffable {
         this.key = key;
         this.version = version;
         // copy the properties
-        this.properties = Bucket.deepCopy(properties);
+        this.properties = JSONDiff.deepCopy(properties);
     }
     public String getSimperiumKey(){
         return key;

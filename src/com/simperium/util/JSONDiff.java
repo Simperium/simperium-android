@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Collections;
+import java.util.Iterator;
 
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
@@ -39,10 +40,19 @@ public class JSONDiff {
 		int size_b = b.size();
 
 		int prefix_length = commonPrefix(a, b);
+        // remove the prefixes
+        a = a.subList(prefix_length, size_a);
+        b = b.subList(prefix_length, size_b);
+        // recalculate the sizes
+        size_a = a.size();
+        size_b = b.size();
+
+
 		int suffix_length = commonSuffix(a, b);
 
-		List<Object> a_trimmed = a.subList(prefix_length, size_a-suffix_length);
-		List<Object> b_trimmed = b.subList(prefix_length, size_b-suffix_length);
+        
+		List<Object> a_trimmed = a.subList(0, size_a-suffix_length);
+		List<Object> b_trimmed = b.subList(0, size_b-suffix_length);
 
 		size_a = a_trimmed.size();
 		size_b = b_trimmed.size();
@@ -267,5 +277,51 @@ public class JSONDiff {
 		}
 		return min_length;
 	}
+
+    /**
+     * Copy a hash
+     */
+    public static Map<String, java.lang.Object> deepCopy(Map<String, java.lang.Object> map){
+        if (map == null) {
+            return null;
+        };
+        Map<String,java.lang.Object> copy = new HashMap<String,java.lang.Object>(map.size());
+        Iterator keys = map.keySet().iterator();
+        while(keys.hasNext()){
+            String key = (String)keys.next();
+            java.lang.Object val = map.get(key);
+            // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
+            if (val instanceof Map) {
+                copy.put(key, deepCopy((Map<String,java.lang.Object>) val));
+            } else if (val instanceof List) {
+                copy.put(key, deepCopy((List<java.lang.Object>) val));
+            } else {
+                copy.put(key, val);
+            }
+        }
+        return copy;
+    }
+
+    /**
+     * Copy a list
+     */
+    public static List<java.lang.Object>deepCopy(List<java.lang.Object> list){
+        if (list == null) {
+             return null;
+        };
+        List<java.lang.Object> copy = new ArrayList<java.lang.Object>(list.size());
+        for (int i=0; i<list.size(); i++) {
+            java.lang.Object val = list.get(i);
+            if (val instanceof Map) {
+                copy.add(deepCopy((Map<String,java.lang.Object>) val));
+            } else if (val instanceof List) {
+                copy.add(deepCopy((List<java.lang.Object>) val));
+            } else {
+                copy.add(val);
+            }
+        }
+        return copy;
+    }
+
 
 }

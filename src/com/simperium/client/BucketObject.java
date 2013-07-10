@@ -2,6 +2,9 @@ package com.simperium.client;
 
 import java.util.Map;
 import java.util.HashMap;
+
+import com.simperium.util.JSONDiff;
+
 /**
  * A generic object used to represent a single object from a bucket
  */
@@ -39,7 +42,7 @@ public class BucketObject extends Syncable {
 
     public BucketObject(String key, Map<String,Object> properties){
         this.simperiumKey = key;
-        this.properties = Bucket.deepCopy(properties);
+        this.properties = JSONDiff.deepCopy(properties);
     }
 
     public BucketObject(String key){

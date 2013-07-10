@@ -36,6 +36,7 @@ import java.util.Set;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
+import com.simperium.util.JSONDiff;
 
 import android.database.Cursor;
 import android.database.CursorWrapper;
@@ -272,7 +273,7 @@ public class Bucket<T extends Syncable> {
     }
     
     protected T buildObject(Ghost ghost){
-        T object = schema.build(ghost.getSimperiumKey(), Bucket.deepCopy(ghost.getDiffableValue()));
+        T object = schema.build(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
         object.setGhost(ghost);
         object.setBucket(this);
         return object;
@@ -583,7 +584,7 @@ public class Bucket<T extends Syncable> {
                 ghostStore.saveGhost(this, ghost);
                 // allow the schema to update the object instance with the new
                 // data
-                schema.update(object, deepCopy(ghost.getDiffableValue()));
+                schema.update(object, JSONDiff.deepCopy(ghost.getDiffableValue()));
                 if (isNew) {
                     addObject(object);
                 } else {
@@ -599,48 +600,5 @@ public class Bucket<T extends Syncable> {
         return ghost;
     }
 
-    /**
-     * Copy a hash
-     */
-    public static Map<String, java.lang.Object> deepCopy(Map<String, java.lang.Object> map){
-        if (map == null) {
-            return null;
-        };
-        Map<String,java.lang.Object> copy = new HashMap<String,java.lang.Object>(map.size());
-        Iterator keys = map.keySet().iterator();
-        while(keys.hasNext()){
-            String key = (String)keys.next();
-            java.lang.Object val = map.get(key);
-            // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
-            if (val instanceof Map) {
-                copy.put(key, deepCopy((Map<String,java.lang.Object>) val));
-            } else if (val instanceof List) {
-                copy.put(key, deepCopy((List<java.lang.Object>) val));
-            } else {
-                copy.put(key, val);
-            }
-        }
-        return copy;
-    }
-    /**
-     * Copy a list
-     */
-    public static List<java.lang.Object>deepCopy(List<java.lang.Object> list){
-        if (list == null) {
-             return null;
-        };
-        List<java.lang.Object> copy = new ArrayList<java.lang.Object>(list.size());
-        for (int i=0; i<list.size(); i++) {
-            java.lang.Object val = list.get(i);
-            if (val instanceof Map) {
-                copy.add(deepCopy((Map<String,java.lang.Object>) val));
-            } else if (val instanceof List) {
-                copy.add(deepCopy((List<java.lang.Object>) val));
-            } else {
-                copy.add(val);
-            }
-        }
-        return copy;
-    }
 
 }
