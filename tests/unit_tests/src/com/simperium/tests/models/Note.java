@@ -12,6 +12,10 @@ public class Note extends BucketObject {
     public static class Schema extends BucketSchema<Note> {
         public static final String BUCKET_NAME="notes";
 
+        public Schema(){
+            autoIndex();
+        }
+
         @Override
         public String getRemoteName(){
             return BUCKET_NAME;

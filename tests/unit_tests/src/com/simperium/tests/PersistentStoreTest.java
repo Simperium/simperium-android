@@ -2,6 +2,7 @@ package com.simperium.tests;
 
 import android.test.ActivityInstrumentationTestCase2;
 import static android.test.MoreAsserts.*;
+import static com.simperium.tests.TestHelpers.*;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -10,15 +11,22 @@ import android.database.Cursor;
 import com.simperium.storage.PersistentStore;
 
 import com.simperium.client.Bucket;
+import com.simperium.client.Bucket.ChannelProvider;
+import com.simperium.client.BucketSchema;
 import com.simperium.client.Query;
+import com.simperium.client.ObjectCache;
+import com.simperium.client.GhostStoreProvider;
 import com.simperium.client.Syncable;
+import com.simperium.client.User;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.storage.StorageProvider.BucketStore;
 
 import com.simperium.util.Uuid;
 
-
 import com.simperium.tests.models.Note;
+
+import com.simperium.tests.mock.MockCache;
+import com.simperium.tests.mock.MockChannel;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -35,14 +43,21 @@ import java.io.IOException;
 public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainActivity> {
     public static final String TAG = MainActivity.TAG;
     public static final String MASTER_TABLE = "sqlite_master";
+    public static final String BUCKET_NAME="bucket";
     
     private MainActivity mActivity;
     
     private PersistentStore mStore;
+    private BucketStore<Note> mNoteStore;
     private SQLiteDatabase mDatabase;
     private String mDatabaseName = "simperium-test-data";
     private String[] mTableNames = new String[]{"indexes", "objects", "value_caches"};
     private Bucket<Note> mBucket;
+    private User mUser;
+    private BucketSchema mSchema;
+    private ObjectCache<Note> mCache;
+    private GhostStoreProvider mGhostStore;
+
     public PersistentStoreTest() {
         super("com.simperium.tests", MainActivity.class);
     }
@@ -53,10 +68,17 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         super.setUp();
 
         setActivityInitialTouchMode(false);
+        mUser = makeUser();
         mActivity = getActivity();
         mDatabase = mActivity.openOrCreateDatabase(mDatabaseName, 0, null);
+        mGhostStore = new MemoryGhostStore();
+        mCache = new ObjectCache<Note>(new MockCache<Note>());
         mStore = new PersistentStore(mDatabase);
-
+        mSchema = new Note.Schema();
+        mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
+        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
+        ChannelProvider<Note> channel = new MockChannel<Note>(mBucket);
+        mBucket.setChannel(channel);
     }
 
     @Override
@@ -71,15 +93,13 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     }
   
     public void testSavingObject(){
-        String bucketName = "bucket";
+        String bucketName = BUCKET_NAME;
         String key = "test";
-        Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Note note = new Note(key, new HashMap<String,Object>());
+        Note note = mBucket.newObject(key);// new Note(key, new HashMap<String,Object>());
   
-        store.save(note);
+        note.save();
         note.setTitle("Hola Mundo!");
-        store.save(note);
+        note.save();
   
         Cursor cursor = mStore.queryObject(bucketName, key);
         assertEquals(1, cursor.getCount());
@@ -90,90 +110,81 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     }
   
     public void testDeletingObject(){
-        String bucketName = "bucket";
+        String bucketName = BUCKET_NAME;
         String key = "test";
-        Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Note note = new Note(key, new HashMap<String,Object>());
+        Note note = mBucket.newObject(key);
         
         note.setTitle("LOL!");
-        store.save(note);
-        store.delete(note);
+        note.save();
+        note.delete();
   
         Cursor cursor = mStore.queryObject(bucketName, key);
         assertEquals(0, cursor.getCount());
     }
   
     public void testGettingObject() throws BucketObjectMissingException {
-        String bucketName = "bucket";
+        String bucketName = BUCKET_NAME;
         String key = "test";
-        Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Note note = new Note(key, new HashMap<String,Object>());
+        
+        Note note = mBucket.newObject(key);
   
         note.setTitle("Booh yah!");
-        store.save(note);
+        note.save();
         
-        Note restored = store.get(key);
+        Note restored = mBucket.get(key);
   
         assertEquals(note.getSimperiumKey(), restored.getSimperiumKey());
         assertEquals(note.getTitle(), restored.getTitle());
     }
   
     public void testObjectCursor(){
-        String bucketName = "bucket";
-        Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        String bucketName = BUCKET_NAME;
   
-        Note note = new Note("note-1", new HashMap<String,Object>());
+        Note note = mBucket.newObject("note-1");
         note.setTitle("Booh yah!");
   
-        Note note2 = new Note("note-2", new HashMap<String,Object>());
+        Note note2 = mBucket.newObject("note-2");
         note2.setTitle("Other note");
         
-        store.save(note);
-        store.save(note2);
+        note.save();
+        note2.save();
         
-        Bucket.ObjectCursor<Note> cursor = store.all(null);
+        Bucket.ObjectCursor<Note> cursor = mNoteStore.all(null);
         assertEquals(2, cursor.getCount());
     }
   
     public void testResetData(){
-        String bucketName = "bucket";
-        Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        String bucketName = BUCKET_NAME;
   
-        Note note = new Note("note-1", new HashMap<String,Object>());
+        Note note = mBucket.newObject("note-1");
         note.setTitle("Booh yah!");
-        store.save(note);
+        note.save();
   
-        Bucket.ObjectCursor<Note> cursor = store.all(null);
+        Bucket.ObjectCursor<Note> cursor = mNoteStore.all(null);
         assertEquals(1, cursor.getCount());
   
-        store.reset();
+        mNoteStore.reset();
   
-        cursor = store.all(null);
+        cursor = mNoteStore.all(null);
         assertEquals(0, cursor.getCount());
   
     }
   
     public void testIndexObject(){
-        String bucketName = "bucket";
-        Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        String bucketName = BUCKET_NAME;
         List<String> list = new ArrayList<String>();
         list.add("uno");
         list.add("dos");
         list.add("tres");
 
-        Note note = new Note("hola", new HashMap<String,Object>());
+        Note note = mBucket.newObject("hola");
         note.put("col1", "Hello");
         note.put("col2", 237);
         note.put("col3", 245.12);
         note.put("col4", list);
-  
-        store.save(note);
-  
+
+        note.save();
+
         Cursor cursor = mDatabase.query(PersistentStore.INDEXES_TABLE, null, null, null, null, null, "name", null);
         assertEquals(6, cursor.getCount());
         cursor.moveToFirst();
@@ -210,30 +221,6 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        // build a bunch of notes
-        // for (int i=0; i<1000; i++) {
-        //     Note note = new Note(Uuid.uuid(), new HashMap<String,Object>());
-        //     note.put("title", String.format("Note %d", i));
-        //     if(i % 50 == 0){
-        //         note.put("special", true);
-        //     }
-        //     if (i == 1) {
-        //         note.put("special", false);
-        //     }
-        //     if (i % 10 == 0) {
-        //         List<String> list = new ArrayList<String>();
-        //         list.add("uno");
-        //         list.add("dos");
-        //         list.add("tres");
-        //         if (i % 100 == 0) {
-        //             list.add("cuatro");
-        //         }
-        //         note.put("spanish", list);
-        //     }
-        //     store.save(note);
-        // }
-        // 
-        // if(true) throw new RuntimeException("copy the db");
 
         Bucket.ObjectCursor<Note> cursor;
 
@@ -273,9 +260,12 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Note first = new Note("first", new HashMap<String,Object>());
-        Note second = new Note("second", new HashMap<String,Object>());
-        Note third = new Note("third", new HashMap<String,Object>());
+        Bucket<Note> bucket = new Bucket<Note>(bucketName, mSchema, mUser, store, mGhostStore, mCache);
+        bucket.setChannel(new MockChannel<Note>(bucket));
+        
+        Note first = bucket.newObject("first");
+        Note second = bucket.newObject("second");
+        Note third = bucket.newObject("third");
 
         first.put("position", 1);
         second.put("position", 2);
@@ -288,9 +278,9 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         second.put("backwards", 1);
         first.put("backwards", 2);
 
-        store.save(third);
-        store.save(second);
-        store.save(first);
+        third.save();
+        second.save();
+        first.save();
 
         Query<Note> query = new Query<Note>();
         query.order("position");

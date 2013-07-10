@@ -1,5 +1,6 @@
 package com.simperium.tests;
 import static android.test.MoreAsserts.*;
+import static com.simperium.tests.TestHelpers.*;
 
 import junit.framework.TestCase;
 
@@ -37,19 +38,5 @@ public class SimperiumTest extends TestCase {
         waitFor(1);
     }
     
-    static protected User makeUser(String email, String token){
-        User user = new User();
-        user.setEmail(email);
-        user.setAccessToken(token);
-        return user;
-    }
-
-    static protected User makeUser(String email){
-        return makeUser("test@example.com");
-    }
-
-    static protected User makeUser(){
-        return makeUser("test@example.com", "fake-token");
-    }
 
 }

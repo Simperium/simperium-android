@@ -1,9 +1,12 @@
 package com.simperium.tests;
 
+import static com.simperium.tests.TestHelpers.*;
+
 import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
+import com.simperium.client.ObjectCache;
 import com.simperium.client.GhostStoreProvider;
 import com.simperium.client.User;
 import com.simperium.storage.MemoryStore;
@@ -13,6 +16,7 @@ import com.simperium.util.Logger;
 
 import com.simperium.tests.models.Note;
 import com.simperium.tests.mock.MockChannel;
+import com.simperium.tests.mock.MockCache;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -22,6 +26,7 @@ import java.util.ArrayList;
 import org.json.JSONArray;
 
 public class BucketTest extends SimperiumTest {
+
     public static final String TAG="SimperiumTest";
     private Bucket<Note> mBucket;
     private BucketSchema<Note> mSchema;
@@ -39,7 +44,8 @@ public class BucketTest extends SimperiumTest {
         mSchema = new Note.Schema();
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MemoryGhostStore();
-        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore);
+        ObjectCache<Note> cache = new ObjectCache<Note>(new MockCache<Note>());
+        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);
         mBucket.start();

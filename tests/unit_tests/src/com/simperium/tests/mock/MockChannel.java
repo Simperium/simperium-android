@@ -24,7 +24,13 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
 
     @Override
     public Change<T> queueLocalDeletion(T object){
-        throw(new RuntimeException("MockChannel can't delete yet"));
+        Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
+        try {
+            acknowledge(change);
+        } catch (RemoteChangeInvalidException e) {
+            throw( new RuntimeException(e));
+        }
+        return change;
     }
 
     @Override
@@ -65,7 +71,12 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
         List<String> ccids = new ArrayList<String>(1);
         String cv = Uuid.uuid().substring(0, 0xF);
         ccids.add(change.getChangeId());
-        RemoteChange ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
+        RemoteChange ack;
+        if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
+        } else {
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
+        }
         mBucket.acknowledgeChange(ack, change);
     }
 }
