@@ -2,6 +2,7 @@ package com.simperium.storage;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
+import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Syncable;
 import com.simperium.client.Query;
 import com.simperium.storage.StorageProvider.BucketStore;
@@ -32,7 +33,7 @@ public class MemoryStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(T object){
+        public void save(T object, List<Index> indexes){
             objects.put(object.getSimperiumKey(), object);
         }
         /**
