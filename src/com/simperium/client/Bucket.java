@@ -159,7 +159,7 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public Change<T> sync(T object){
-        storage.save(object);
+        storage.save(object, schema.indexesFor(object));
         
         if (object.isModified())
             return channel.queueLocalChange(object);
@@ -436,7 +436,7 @@ public class Bucket<T extends Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        storage.save(object);
+        storage.save(object, schema.indexesFor(object));
         // notify listeners that an object has been added
         if (notifyListeners) {
             Set<Listener<T>> notify;
@@ -461,7 +461,7 @@ public class Bucket<T extends Syncable> {
      */
     protected void updateObject(T object){
         object.setBucket(this);
-        storage.save(object);
+        storage.save(object, schema.indexesFor(object));
         Set<Listener<T>> notify;
         synchronized(listeners){
             notify = new HashSet<Listener<T>>(listeners.size());

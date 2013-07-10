@@ -2,6 +2,7 @@ package com.simperium.storage;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
+import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Syncable;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.Query;
@@ -20,7 +21,7 @@ public interface StorageProvider {
         /**
          * Add/Update the given object
          */
-        abstract public void save(T object);
+        abstract public void save(T object, List<Index> indexes);
         /**
          * Remove the given object from the storage
          */
