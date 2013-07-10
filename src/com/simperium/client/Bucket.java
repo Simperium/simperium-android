@@ -71,13 +71,18 @@ public class Bucket<T extends Syncable> {
      * @param user provides a way to namespace data if a different user logs in
      */
     public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
+        this(name, schema, user, storage, ghostStore, null);
+        cache = ObjectCache.buildCache(this);
+    }
+
+    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore, ObjectCache cache){
         this.name = name;
         this.user = user;
         this.storage = storage;
         this.ghostStore = ghostStore;
         this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
-        cache = ObjectCache.buildCache(this);
+        this.cache = cache;
     }
     /**
      * Return the user for this bucket

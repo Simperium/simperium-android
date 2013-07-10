@@ -8,7 +8,7 @@ import java.util.Collections;
 
 import android.util.LruCache;
 
-class ObjectCache<T extends Syncable> {
+public class ObjectCache<T extends Syncable> {
     private static final int MAX_ENTRIES=32;
     public static final String TAG="Simperium.Cache";
 
