@@ -10,6 +10,9 @@ import static com.simperium.util.Uuid.uuid;
 
 
 public class Change<T extends Syncable> {
+
+    public static final String TAG="Simperium.Change";
+
     public interface OnRetryListener<T extends Syncable> {
         public void onRetry(Change<T> change);
     }
@@ -217,6 +220,7 @@ public class Change<T extends Syncable> {
     }
 
     public Map<String,Object> getDiff(){
+        Logger.log(TAG, String.format("Diffing %s and %s", origin, target));
         return jsondiff.diff(origin, target);
     }
 
