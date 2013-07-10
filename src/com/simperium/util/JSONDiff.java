@@ -24,11 +24,7 @@ public class JSONDiff {
 	public static final String OPERATION_REPLACE = "r";
 	public static final String OPERATION_DIFF    = "d";
 
-	private diff_match_patch dmp;
-
-	public JSONDiff(){
-		dmp = new diff_match_patch();
-	}
+	private diff_match_patch dmp = new diff_match_patch();
 
 	public Map<String,Object> diff(List<Object> a, List<Object> b){
 		HashMap<String,Object> list_diff = new HashMap<String,Object>();
