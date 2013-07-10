@@ -2,6 +2,7 @@ package com.simperium.storage;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
+import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Syncable;
 import com.simperium.client.Channel;
 import com.simperium.client.BucketObjectMissingException;
@@ -61,7 +62,7 @@ public class PersistentStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(T object){
+        public void save(T object, List<Index> indexes){
             String key = object.getSimperiumKey();
             ContentValues values = new ContentValues();
             values.put("bucket", bucketName);
@@ -73,7 +74,7 @@ public class PersistentStore implements StorageProvider {
             } else {
                 database.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{bucketName, key});
             }
-            index(object);
+            index(object, indexes);
         }
 
         /**
@@ -198,53 +199,41 @@ public class PersistentStore implements StorageProvider {
             return buildCursor(schema, database.rawQuery(statement, args, cancelSignal));
         }
         
-        private void index(T object){
-            Set<Entry<String,Object>> entries = object.getDiffableValue().entrySet();
-            Iterator<Entry<String,Object>> iterator = entries.iterator();
+        private void index(T object, List<Index> indexValues){
             // delete all current idexes
             deleteIndexes(object);
-            while(iterator.hasNext()){
-                Entry<String,Object> entry = iterator.next();
+            Log.d(TAG, String.format("Index %d values for %s", indexValues.size(), object.getSimperiumKey()));
+            Iterator<Index> indexes = indexValues.iterator();
+            while(indexes.hasNext()){
+                Index index = indexes.next();
                 ContentValues values = new ContentValues(4);
                 values.put("bucket", bucketName);
                 values.put("key", object.getSimperiumKey());
-                values.put("name", entry.getKey());
-                insertCastedIndex(values, "value", entry.getValue());
-            }
-        }
-        
-        private void insertCastedIndex(ContentValues values, String key, Object value){
-            insertCastedIndex(values, key, value, false);
-        }
-
-        private void insertCastedIndex(ContentValues values, String key, Object value, boolean skipList){
-            if (value instanceof Byte) {
-                values.put(key, (Byte) value);
-            } else if(value instanceof Integer){
-                values.put(key, (Integer) value);
-            } else if(value instanceof Float){
-                values.put(key, (Float) value);
-            } else if(value instanceof Short){
-                values.put(key, (Short) value);                    
-            } else if(value instanceof String){
-                values.put(key, (String) value);                    
-            } else if(value instanceof Double){
-                values.put(key, (Double) value);
-            } else if(value instanceof Long){
-                values.put(key, (Long) value);
-            } else if(value instanceof Boolean){
-                values.put(key, (Boolean) value);
-            } else if(value instanceof List){
-                if (skipList) return;
-                List list = (List) value;
-                Iterator iterator = list.iterator();
-                while(iterator.hasNext()){
-                    Object listValue = iterator.next();
-                    insertCastedIndex(values, key, listValue, true);
+                values.put("name", index.getName());
+                String key = "value";
+                // figure out the type of value
+                Object value = index.getValue();
+                if (value instanceof Byte) {
+                    values.put(key, (Byte) value);
+                } else if(value instanceof Integer){
+                    values.put(key, (Integer) value);
+                } else if(value instanceof Float){
+                    values.put(key, (Float) value);
+                } else if(value instanceof Short){
+                    values.put(key, (Short) value);
+                } else if(value instanceof String){
+                    values.put(key, (String) value);
+                } else if(value instanceof Double){
+                    values.put(key, (Double) value);
+                } else if(value instanceof Long){
+                    values.put(key, (Long) value);
+                } else if(value instanceof Boolean){
+                    values.put(key, (Boolean) value);
+                } else {
+                    values.put(key, value.toString());
                 }
-                return;
+                database.insertOrThrow(INDEXES_TABLE, null, values);
             }
-            database.insert(INDEXES_TABLE, null, values);
         }
 
         private void deleteIndexes(T object){
