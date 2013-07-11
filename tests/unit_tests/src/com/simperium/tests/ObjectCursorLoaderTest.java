@@ -19,6 +19,8 @@ import com.simperium.util.Uuid;
 
 import com.simperium.tests.models.Note;
 
+import com.simperium.tests.mock.MockGhostStore;
+
 import android.app.LoaderManager;
 import android.os.Bundle;
 import android.content.Loader;
@@ -48,7 +50,7 @@ public class ObjectCursorLoaderTest extends ActivityInstrumentationTestCase2<Lis
         PersistentStore db = new PersistentStore(mDatabase);
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = db.createStore("notes", schema);
-        mBucket = new Bucket("notes", schema, makeUser(), store, new MemoryGhostStore());
+        mBucket = new Bucket("notes", schema, makeUser(), store, new MockGhostStore());
 
     }
 

@@ -1,4 +1,4 @@
-package com.simperium.tests;
+package com.simperium.tests.mock;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Ghost;
@@ -8,7 +8,7 @@ import com.simperium.client.GhostMissingException;
 import java.util.Map;
 import java.util.HashMap;
 
-public class MemoryGhostStore implements GhostStoreProvider {
+public class MockGhostStore implements GhostStoreProvider {
     private Map<String,Map<String,Ghost>> data = new HashMap<String,Map<String,Ghost>>();
     private Map<String,String> versions = new HashMap<String,String>();
     /**

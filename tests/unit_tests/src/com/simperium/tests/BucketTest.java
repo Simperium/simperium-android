@@ -17,6 +17,7 @@ import com.simperium.util.Logger;
 import com.simperium.tests.models.Note;
 import com.simperium.tests.mock.MockChannel;
 import com.simperium.tests.mock.MockCache;
+import com.simperium.tests.mock.MockGhostStore;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class BucketTest extends SimperiumTest {
 
         mSchema = new Note.Schema();
         MemoryStore storage = new MemoryStore();
-        mGhostStore = new MemoryGhostStore();
+        mGhostStore = new MockGhostStore();
         ObjectCache<Note> cache = new ObjectCache<Note>(new MockCache<Note>());
         mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
         mChannel = new MockChannel(mBucket);

@@ -27,6 +27,7 @@ import com.simperium.tests.models.Note;
 
 import com.simperium.tests.mock.MockCache;
 import com.simperium.tests.mock.MockChannel;
+import com.simperium.tests.mock.MockGhostStore;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         mUser = makeUser();
         mActivity = getActivity();
         mDatabase = mActivity.openOrCreateDatabase(mDatabaseName, 0, null);
-        mGhostStore = new MemoryGhostStore();
+        mGhostStore = new MockGhostStore();
         mCache = new ObjectCache<Note>(new MockCache<Note>());
         mStore = new PersistentStore(mDatabase);
         mSchema = new Note.Schema();
