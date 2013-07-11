@@ -35,7 +35,6 @@ public class BucketObject extends Syncable {
         }
     }
 
-    private Bucket bucket;
     private String simperiumKey;
 
     protected Map<String,Object> properties;

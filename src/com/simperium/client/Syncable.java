@@ -9,7 +9,7 @@ import java.util.Map;
  */
 public abstract class Syncable implements Diffable {
     private Ghost ghost;
-    private Bucket bucket;
+    protected Bucket<? extends Syncable> bucket;
 
     public Integer getVersion(){
         return ghost.getVersion();
