@@ -60,7 +60,11 @@ public class Bucket<T extends Syncable> {
     // The channel that provides networking and change processing.
     private ChannelProvider<T> channel;
     // For storing the bucket listeners
-    private Set<Listener<T>> listeners;
+    private Set<OnSaveObjectListener<T>> onSaveListeners =
+                    Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
+    private Set<OnDeleteObjectListener<T>> onDeleteListeners = 
+                    Collections.synchronizedSet(new HashSet<OnDeleteObjectListener<T>>());
+
     private BucketStore<T> storage;
     private BucketSchema<T> schema;
     private GhostStoreProvider ghostStore;
@@ -80,7 +84,6 @@ public class Bucket<T extends Syncable> {
         this.user = user;
         this.storage = storage;
         this.ghostStore = ghostStore;
-        this.listeners = Collections.synchronizedSet(new HashSet<Listener<T>>());
         this.schema = schema;
         this.cache = cache;
     }
@@ -96,18 +99,15 @@ public class Bucket<T extends Syncable> {
     public boolean isIdle(){
         return channel.isIdle();
     }
-    /**
-     * Bucket.Listener can be leveraged multiple ways if designed correctly
-     *  - Channel's can listen for local changes to know when to send changes
-     *    to simperium
-     *  - Storage mechanisms can listen to all changes (local and remote) so they
-     *    can perform their necessary save operations
-     */
-    public interface Listener<T extends Syncable> {
-        public void onObjectRemoved(String key, T object);
-        public void onObjectUpdated(String key, T object);
-        public void onObjectAdded(String key, T object);
+
+    public interface OnSaveObjectListener<T extends Syncable> {
+        void onSaveObject(T object);
     }
+
+    public interface OnDeleteObjectListener<T extends Syncable> {
+        void onDeleteObject(T object);
+    }
+
     /**
      * Cursor for bucket data
      */
@@ -159,10 +159,16 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public Change<T> sync(T object){
+        Logger.log(TAG, String.format("Syncing object %s", object));
         storage.save(object, schema.indexesFor(object));
         
-        if (object.isModified())
-            return channel.queueLocalChange(object);
+        if (object.isModified()){
+            Change<T> change = channel.queueLocalChange(object);
+            // Notify listeners that an object has been saved, this was
+            // triggered locally
+            notifyOnSaveListeners(object);
+            return change;
+        }
         return null;
     }
 
@@ -173,22 +179,10 @@ public class Bucket<T extends Syncable> {
         cache.remove(object.getSimperiumKey());
         storage.delete(object);
         Change<T> change = channel.queueLocalDeletion(object);
-        Set<Listener<T>> notify;
-        synchronized(listeners){
-            notify = new HashSet<Listener<T>>(listeners.size());
-            notify.addAll(listeners);
-        }
-        Iterator<Listener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()){
-            Listener<T> listener = iterator.next();
-            try {
-                listener.onObjectRemoved(object.getSimperiumKey(),object);
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onObjectRemoved %s", listener));
-            }
-        }
+        notifyOnDeleteListeners(object);
         return change;
     }
+
     /**
      * Update the change version and remove the object with the given key
      */
@@ -209,18 +203,6 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    /**
-     * Add a listener to the bucket. A listener cannot be added more than once.
-     */
-    public void addListener(Listener<T> listener){
-        this.listeners.add(listener);
-    }
-    /**
-     * Remove the listener from the bucket
-     */
-    public void removeListener(Listener<T> listener){
-        this.listeners.remove(listener);
-    }
     /**
      * Get the bucket's namespace
      * @return (String) bucket's namespace
@@ -348,6 +330,7 @@ public class Bucket<T extends Syncable> {
         cache.put(key, object);
         return object;
     }
+
     /**
      * Get an object by its key, should we throw an error if the object isn't
      * there?
@@ -355,12 +338,14 @@ public class Bucket<T extends Syncable> {
     public T getObject(String uuid) throws BucketObjectMissingException {
         return get(uuid);
     }
+
     /**
      * Returns a new objecty tracked by this bucket
      */
     public T newObject(){
         return newObject(uuid());
     }
+
     /**
      * Returns a new object with the given uuid
      * return null if the uuid exists?
@@ -368,6 +353,7 @@ public class Bucket<T extends Syncable> {
     public T newObject(String key){
         return insertObject(key, new HashMap<String,Object>());
     }
+
     /**
      * 
      */
@@ -380,6 +366,7 @@ public class Bucket<T extends Syncable> {
         cache.put(key, object);
         return object;
     }
+
     /**
      * Save the ghost data and update the change version, tell the storage provider
      * that a new object has been added
@@ -388,6 +375,7 @@ public class Bucket<T extends Syncable> {
         setChangeVersion(changeVersion);
         addObjectWithGhost(ghost);
     }
+
     /**
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
@@ -438,23 +426,6 @@ public class Bucket<T extends Syncable> {
         object.setBucket(this);
         storage.save(object, schema.indexesFor(object));
         // notify listeners that an object has been added
-        if (notifyListeners) {
-            Set<Listener<T>> notify;
-            synchronized(listeners){
-                notify = new HashSet<Listener<T>>(listeners.size());
-                notify.addAll(listeners);
-            }
-
-            Iterator<Listener<T>> iterator = notify.iterator();
-            while(iterator.hasNext()) {
-                Listener<T> listener = iterator.next();
-                try {
-                    listener.onObjectAdded(object.getSimperiumKey(), object);
-                } catch(Exception e) {
-                    Logger.log(TAG, String.format("Listener failed onObjectAdded %s", listener), e);
-                }
-            }
-        }
     }
     /**
      * Updates an existing object
@@ -462,20 +433,6 @@ public class Bucket<T extends Syncable> {
     protected void updateObject(T object){
         object.setBucket(this);
         storage.save(object, schema.indexesFor(object));
-        Set<Listener<T>> notify;
-        synchronized(listeners){
-            notify = new HashSet<Listener<T>>(listeners.size());
-            notify.addAll(listeners);
-        }
-        Iterator<Listener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            Listener<T> listener = iterator.next();
-            try {
-                listener.onObjectUpdated(object.getSimperiumKey(), object);
-            } catch(Exception e) {
-                Logger.log(TAG, String.format("Listener failed onObjectUpdated %s", listener));
-            }
-        }
     }
     /**
      *
@@ -483,6 +440,52 @@ public class Bucket<T extends Syncable> {
     protected void updateObject(String changeVersion, T object){
         updateObject(object);
         setChangeVersion(changeVersion);
+    }
+
+    public void registerOnSaveObjectListener(OnSaveObjectListener<T> listener){
+        Logger.log(TAG, String.format("Registering OnSaveObjectListener %s", listener));
+        onSaveListeners.add(listener);
+    }
+
+    public void unregisterOnSaveObjectListener(OnSaveObjectListener<T> listener){
+        onSaveListeners.remove(listener);
+    }
+
+    public void registerOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
+        onDeleteListeners.add(listener);
+    }
+
+    public void unregisterOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
+        onDeleteListeners.remove(listener);
+    }
+
+    protected void notifyOnSaveListeners(T object){
+        Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
+        Logger.log(TAG, String.format("Notifying OnSaveObjectListener %d", notify.size()));
+
+        Iterator<OnSaveObjectListener<T>> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            OnSaveObjectListener<T> listener = iterator.next();
+            try {
+                listener.onSaveObject(object);
+            } catch(Exception e) {
+                Logger.log(TAG, String.format("Listener failed onSaveObject %s", listener), e);
+            }
+        }
+    }
+
+    protected void notifyOnDeleteListeners(T object){
+        Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
+
+        Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            OnDeleteObjectListener<T> listener = iterator.next();
+            try {
+                listener.onDeleteObject(object);
+            } catch(Exception e) {
+                Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
+            }
+        }
     }
 
     public void setChannel(ChannelProvider channel){
@@ -541,6 +544,7 @@ public class Bucket<T extends Syncable> {
 
     public Ghost acknowledgeChange(RemoteChange remoteChange, Change<T> change)
     throws RemoteChangeInvalidException {
+        Logger.log(TAG, String.format("Acknowleding change %s", change));
         Ghost ghost = null;
         if (!remoteChange.isRemoveOperation()) {
             try {
@@ -558,6 +562,7 @@ public class Bucket<T extends Syncable> {
         }
         setChangeVersion(remoteChange.getChangeVersion());
         remoteChange.setApplied();
+        Logger.log(TAG, String.format("Marking change applied %s %b", change, change.isComplete()));
         // TODO: remove changes don't need ghosts, need to rethink this a bit
         return ghost;
     }
@@ -604,6 +609,7 @@ public class Bucket<T extends Syncable> {
         change.setApplied();
         return ghost;
     }
+
 
 
 }
