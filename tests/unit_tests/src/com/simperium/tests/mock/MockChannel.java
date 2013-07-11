@@ -17,6 +17,7 @@ import java.util.ArrayList;
 public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
 
     private Bucket<T> mBucket;
+    private boolean started = false;
 
     public MockChannel(Bucket<T> bucket){
         mBucket = bucket;
@@ -26,7 +27,7 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
     public Change<T> queueLocalDeletion(T object){
         Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
         try {
-            acknowledge(change);
+            if(started) acknowledge(change);
         } catch (RemoteChangeInvalidException e) {
             throw( new RuntimeException(e));
         }
@@ -37,7 +38,7 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
     public Change<T> queueLocalChange(T object) {
         Change<T> change = new Change<T>(Change.OPERATION_MODIFY, object);
         try {
-            acknowledge(change);            
+            if(started) acknowledge(change);
         } catch (RemoteChangeInvalidException e) {
             throw(new RuntimeException(e));
         }
@@ -48,7 +49,9 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
     public void reset(){}
 
     @Override
-    public void start(){}
+    public void start(){
+        started = true;
+    }
 
     @Override
     public boolean isIdle(){
