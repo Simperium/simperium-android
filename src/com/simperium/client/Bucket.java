@@ -52,6 +52,22 @@ public class Bucket<T extends Syncable> {
         public void reset();
     }
 
+    public interface OnSaveObjectListener<T extends Syncable> {
+        void onSaveObject(T object);
+    }
+
+    public interface OnDeleteObjectListener<T extends Syncable> {
+        void onDeleteObject(T object);
+    }
+
+    public interface OnNetworkChangeListener {
+        void onChange(String key, ChangeType type);
+    }
+
+    public enum ChangeType {
+        REMOVE, MODIFY
+    }
+
     public static final String TAG="Simperium.Bucket";
     // The name used for the Simperium namespace
     private String name;
@@ -61,9 +77,11 @@ public class Bucket<T extends Syncable> {
     private ChannelProvider<T> channel;
     // For storing the bucket listeners
     private Set<OnSaveObjectListener<T>> onSaveListeners =
-                    Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
+        Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
     private Set<OnDeleteObjectListener<T>> onDeleteListeners = 
-                    Collections.synchronizedSet(new HashSet<OnDeleteObjectListener<T>>());
+        Collections.synchronizedSet(new HashSet<OnDeleteObjectListener<T>>());
+    private Set<OnNetworkChangeListener> onChangeListeners =
+        Collections.synchronizedSet(new HashSet<OnNetworkChangeListener>());
 
     private BucketStore<T> storage;
     private BucketSchema<T> schema;
@@ -98,14 +116,6 @@ public class Bucket<T extends Syncable> {
      */
     public boolean isIdle(){
         return channel.isIdle();
-    }
-
-    public interface OnSaveObjectListener<T extends Syncable> {
-        void onSaveObject(T object);
-    }
-
-    public interface OnDeleteObjectListener<T extends Syncable> {
-        void onDeleteObject(T object);
     }
 
     /**
@@ -459,6 +469,14 @@ public class Bucket<T extends Syncable> {
         onDeleteListeners.remove(listener);
     }
 
+    public void registerOnNetworkChangeListener(OnNetworkChangeListener listener){
+        onChangeListeners.add(listener);
+    }
+
+    public void unregisterOnNetworkChangeListener(OnNetworkChangeListener listener){
+        onChangeListeners.remove(listener);
+    }
+
     protected void notifyOnSaveListeners(T object){
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
         Logger.log(TAG, String.format("Notifying OnSaveObjectListener %d", notify.size()));
@@ -487,6 +505,22 @@ public class Bucket<T extends Syncable> {
             }
         }
     }
+
+    protected void notifyOnNetworkChangeListeners(String key, ChangeType type){
+        Set<OnNetworkChangeListener> notify =
+            new HashSet<OnNetworkChangeListener>(onChangeListeners);
+
+        Iterator<OnNetworkChangeListener> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            OnNetworkChangeListener listener = iterator.next();
+            try {
+                listener.onChange(key, type);
+            } catch(Exception e) {
+                Logger.log(TAG, String.format("Listener failed onChange %s", listener), e);
+            }
+        }
+    }
+
 
     public void setChannel(ChannelProvider channel){
         this.channel = channel;
@@ -567,7 +601,7 @@ public class Bucket<T extends Syncable> {
         return ghost;
     }
 
-    protected Ghost applyRemoteChange(RemoteChange change)
+    public Ghost applyRemoteChange(RemoteChange change)
     throws RemoteChangeInvalidException {
         Ghost ghost = null;
         if (change.isRemoveOperation()) {
@@ -607,6 +641,8 @@ public class Bucket<T extends Syncable> {
         }
         setChangeVersion(change.getChangeVersion());
         change.setApplied();
+        notifyOnNetworkChangeListeners(change.getKey(),
+            change.isRemoveOperation() ? ChangeType.REMOVE : ChangeType.MODIFY);
         return ghost;
     }
 
