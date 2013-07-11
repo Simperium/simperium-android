@@ -105,9 +105,9 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         Cursor cursor = mStore.queryObject(bucketName, key);
         assertEquals(1, cursor.getCount());
         cursor.moveToFirst();
-        assertEquals(bucketName, cursor.getString(0));
-        assertEquals(key, cursor.getString(1));
-        assertEquals("{\"title\":\"Hola Mundo!\"}", cursor.getString(2));
+        assertEquals(bucketName, cursor.getString(1));
+        assertEquals(key, cursor.getString(2));
+        assertEquals("{\"title\":\"Hola Mundo!\"}", cursor.getString(3));
     }
   
     public void testDeletingObject(){
