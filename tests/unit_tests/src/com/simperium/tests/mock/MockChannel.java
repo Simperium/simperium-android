@@ -77,6 +77,7 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
         } else {
             ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
         }
+        ack.isAcknowledgedBy(change);
         mBucket.acknowledgeChange(ack, change);
     }
 }

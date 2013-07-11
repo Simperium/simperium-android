@@ -104,7 +104,7 @@ public class RemoteChange {
         }
     }
 
-    protected boolean isAcknowledgedBy(Change change){
+    public boolean isAcknowledgedBy(Change change){
         if (change == null) return false;
         // if we have a Change with the same change id from the same client id
         // then we were waiting for this change
