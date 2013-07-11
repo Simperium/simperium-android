@@ -40,7 +40,7 @@ public class PersistentStore implements StorageProvider {
     }
 
     public Cursor queryObject(String bucketName, String key){
-        return database.query(OBJECTS_TABLE, null, "bucket=? AND key=?", new String[]{bucketName, key}, null, null, null, "1");
+        return database.query(OBJECTS_TABLE, new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"}, "bucket=? AND key=?", new String[]{bucketName, key}, null, null, null, "1");
     }
 
     @Override
@@ -116,7 +116,7 @@ public class PersistentStore implements StorageProvider {
         @Override
         public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
             return buildCursor(schema, database.query(false, OBJECTS_TABLE,
-                    new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key", "objects.data"},
+                    new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"},
                     "bucket=?", new String[]{bucketName}, null, null, null, null, cancelSignal));
         }
 
@@ -130,7 +130,7 @@ public class PersistentStore implements StorageProvider {
             // turn comparators into where statements, each comparator joins
             Iterator<Query.Comparator> conditions = query.getConditions().iterator();
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
-            String selection = "SELECT DISTINCT objects.rowid AS _id, objects.bucket, objects.key, objects.data FROM objects";
+            String selection = "SELECT DISTINCT objects.rowid AS _id, objects.bucket, objects.key as `object_key`, objects.data as `object_data` FROM objects";
             String filters = "";
             String where = "WHERE objects.bucket = ?";
             List<String> replacements = new ArrayList<String>();
@@ -255,13 +255,13 @@ public class PersistentStore implements StorageProvider {
         }
 
         public String getSimperiumKey(){
-            return getString(getColumnIndex("objects.key"));
+            return getString(getColumnIndexOrThrow("object_key"));
         }
 
         public T getObject(){
             String key = getSimperiumKey();
             try {
-                JSONObject data = new JSONObject(getString(getColumnIndex("objects.data")));
+                JSONObject data = new JSONObject(getString(getColumnIndex("object_data")));
                 return schema.build(key, Channel.convertJSON(data));
             } catch (org.json.JSONException e) {
                 return schema.build(key, new HashMap<String,Object>());
