@@ -103,10 +103,13 @@ public class PersistentStore implements StorageProvider {
         public T get(String key) throws BucketObjectMissingException {
             Bucket.ObjectCursor<T> cursor = buildCursor(schema, queryObject(bucketName, key));
             if (cursor.getCount() == 0) {
+                cursor.close();
                 throw(new BucketObjectMissingException());
             } else {
                 cursor.moveToFirst();                
-                return cursor.getObject();
+                T object = cursor.getObject();
+                cursor.close();
+                return object;
             }
         }
 
