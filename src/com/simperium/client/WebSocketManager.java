@@ -225,9 +225,13 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
             heartbeatCount = Integer.parseInt(parts[1]);
             return;
         }
-        int channelId = Integer.parseInt(parts[0]);
-        Channel channel = channels.get(channelId);
-        channel.receiveMessage(parts[1]);
+        try {
+            int channelId = Integer.parseInt(parts[0]);
+            Channel channel = channels.get(channelId);
+            channel.receiveMessage(parts[1]);
+        } catch (NumberFormatException e) {
+            Logger.log(TAG, String.format("Unhandled message %s", parts));
+        }
     }
     public void onMessage(byte[] data){
         Logger.log(String.format("From socket (data) %s", new String(data)));
