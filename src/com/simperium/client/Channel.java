@@ -669,7 +669,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         }
 
         private void notifyDone(){
-            bucket.setChangeVersion(cv);
+            bucket.indexComplete(cv);
             listener.onComplete(cv);
         }
 

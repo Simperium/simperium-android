@@ -118,7 +118,7 @@ public class BucketListenerTest extends TestCase {
         }
 
         @Override
-        public void onChange(String key, Bucket.ChangeType type){
+        public void onChange(Bucket.ChangeType type, String key){
             changed = true;
         }
 

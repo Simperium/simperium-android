@@ -61,11 +61,11 @@ public class Bucket<T extends Syncable> {
     }
 
     public interface OnNetworkChangeListener {
-        void onChange(String key, ChangeType type);
+        void onChange(ChangeType type, String key);
     }
 
     public enum ChangeType {
-        REMOVE, MODIFY
+        REMOVE, MODIFY, INDEX
     }
 
     public static final String TAG="Simperium.Bucket";
@@ -239,6 +239,11 @@ public class Bucket<T extends Syncable> {
             version = "";
         }
         return version;
+    }
+
+    public void indexComplete(String changeVersion){
+        setChangeVersion(changeVersion);
+        notifyOnNetworkChangeListeners(ChangeType.INDEX, null);
     }
 
     public void setChangeVersion(String version){
@@ -506,7 +511,7 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    protected void notifyOnNetworkChangeListeners(String key, ChangeType type){
+    protected void notifyOnNetworkChangeListeners(ChangeType type, String key){
         Set<OnNetworkChangeListener> notify =
             new HashSet<OnNetworkChangeListener>(onChangeListeners);
 
@@ -514,7 +519,7 @@ public class Bucket<T extends Syncable> {
         while(iterator.hasNext()) {
             OnNetworkChangeListener listener = iterator.next();
             try {
-                listener.onChange(key, type);
+                listener.onChange(type, key);
             } catch(Exception e) {
                 Logger.log(TAG, String.format("Listener failed onChange %s", listener), e);
             }
@@ -641,8 +646,8 @@ public class Bucket<T extends Syncable> {
         }
         setChangeVersion(change.getChangeVersion());
         change.setApplied();
-        notifyOnNetworkChangeListeners(change.getKey(),
-            change.isRemoveOperation() ? ChangeType.REMOVE : ChangeType.MODIFY);
+        ChangeType type = change.isRemoveOperation() ? ChangeType.REMOVE : ChangeType.MODIFY;
+        notifyOnNetworkChangeListeners(type, change.getKey());
         return ghost;
     }
 
