@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:background="#FFFFFF" >
@@ -24,14 +25,12 @@
             android:id="@+id/section1"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:layout_below="@id/simperium_logo"
-            android:paddingBottom="10dp" >
+            android:layout_below="@id/simperium_logo" >
 
             <EditText
                 android:id="@+id/email_address"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:layout_below="@id/section1"
                 android:hint="@string/email_hint"
                 android:inputType="textEmailAddress" />
 
@@ -84,35 +83,41 @@
                 android:text="@string/signin_label" />
         </RelativeLayout>
 
-        <TextView
-            android:id="@+id/l_dont_yet_have_an_account"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/section1"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="24dp"
-            android:shadowColor="#FFFFFF"
-            android:shadowDx="0"
-            android:shadowDy="1"
-            android:shadowRadius="1"
-            android:text="@string/dont_yet_have_an_account"
-            android:textColor="#444444"
-            android:textSize="16sp" />
+        <TextView android:id="@+id/or"
+                android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_below="@id/section1"
+                  android:layout_marginTop="8dp"
+                  android:layout_centerHorizontal="true"
+                  android:text="@string/or"
+                  android:fontFamily="sans-serif-light"
+                  android:textSize="18sp"
+                  android:paddingBottom="8dp"
+                  />
 
-        <TextView
-            android:id="@+id/l_already_have_an_account"
-            android:layout_width="wrap_content"
+        <Button
+            android:id="@+id/create_account_button"
+            android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/section1"
+            android:layout_below="@id/or"
             android:layout_centerHorizontal="true"
-            android:layout_marginTop="24dp"
             android:shadowColor="#FFFFFF"
             android:shadowDx="0"
             android:shadowDy="1"
             android:shadowRadius="1"
-            android:text="@string/already_have_an_account"
-            android:textColor="#444444"
-            android:textSize="16sp"
+            android:text="@string/create_account" />
+
+        <Button
+            android:id="@+id/have_account_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/or"
+            android:layout_centerHorizontal="true"
+            android:shadowColor="#FFFFFF"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="1"
+            android:text="@string/sign_in"
             android:visibility="gone" />
     </RelativeLayout>
 

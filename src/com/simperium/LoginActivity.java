@@ -16,6 +16,8 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.view.View;
 import android.util.Log;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -74,8 +76,8 @@ public class LoginActivity extends Activity {
 			emailTextField.setText(intent.getStringExtra(EMAIL_EXTRA));
 		}
 
-		final TextView l_already_have_an_account = (TextView) findViewById(R.id.l_already_have_an_account);
-		final TextView dont_yet_have_an_account = (TextView) findViewById(R.id.l_dont_yet_have_an_account);
+		final Button haveAccountButton = (Button) findViewById(R.id.have_account_button);
+		final Button createAccountButton = (Button) findViewById(R.id.create_account_button);
 		final TextView l_agree_terms_of_service = (TextView) findViewById(R.id.l_agree_terms_of_service);
 		
 		l_agree_terms_of_service.setClickable(true);
@@ -87,37 +89,35 @@ public class LoginActivity extends Activity {
 				startActivity(launchBrowser); 
 			}
 		});
-		
-		l_already_have_an_account.setClickable(true);
-		l_already_have_an_account.setOnClickListener(new View.OnClickListener() {
+
+        haveAccountButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				//reset the screen to signin
-				l_already_have_an_account.setVisibility(View.GONE);
+                haveAccountButton.setVisibility(View.GONE);
 				passwordTextField2.setVisibility(View.GONE);
 				l_agree_terms_of_service.setVisibility(View.GONE);
-				dont_yet_have_an_account.setVisibility(View.VISIBLE);
+                createAccountButton.setVisibility(View.VISIBLE);
 				signinButton.setVisibility(View.VISIBLE);
 				signupButton.setVisibility(View.GONE);
 			}
 		});
-		
-		dont_yet_have_an_account.setClickable(true);
-		dont_yet_have_an_account.setOnClickListener(new View.OnClickListener() {
+
+        createAccountButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				//reset the screen to signup
-				dont_yet_have_an_account.setVisibility(View.GONE);
+                createAccountButton.setVisibility(View.GONE);
 				signinButton.setVisibility(View.GONE);
 				l_agree_terms_of_service.setVisibility(View.VISIBLE);
-				l_already_have_an_account.setVisibility(View.VISIBLE);
+				haveAccountButton.setVisibility(View.VISIBLE);
 				passwordTextField2.setVisibility(View.VISIBLE);
 				signupButton.setVisibility(View.VISIBLE);
 			}
 		});
 	}
 
-	private void registerUser(User user) {
+    private void registerUser(User user) {
 		// TODO: finish activity
 		setResult(RESULT_OK);
 		finish();
