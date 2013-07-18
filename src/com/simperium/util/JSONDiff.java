@@ -277,20 +277,20 @@ public class JSONDiff {
     /**
      * Copy a hash
      */
-    public static Map<String, java.lang.Object> deepCopy(Map<String, java.lang.Object> map){
+    public static Map<String, Object> deepCopy(Map<String, Object> map){
         if (map == null) {
             return null;
         };
-        Map<String,java.lang.Object> copy = new HashMap<String,java.lang.Object>(map.size());
+        Map<String,Object> copy = new HashMap<String,Object>(map.size());
         Iterator keys = map.keySet().iterator();
         while(keys.hasNext()){
             String key = (String)keys.next();
-            java.lang.Object val = map.get(key);
+            Object val = map.get(key);
             // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
             if (val instanceof Map) {
-                copy.put(key, deepCopy((Map<String,java.lang.Object>) val));
+                copy.put(key, deepCopy((Map<String,Object>) val));
             } else if (val instanceof List) {
-                copy.put(key, deepCopy((List<java.lang.Object>) val));
+                copy.put(key, deepCopy((List<Object>) val));
             } else {
                 copy.put(key, val);
             }
@@ -301,17 +301,17 @@ public class JSONDiff {
     /**
      * Copy a list
      */
-    public static List<java.lang.Object>deepCopy(List<java.lang.Object> list){
+    public static List<Object>deepCopy(List<Object> list){
         if (list == null) {
              return null;
         };
-        List<java.lang.Object> copy = new ArrayList<java.lang.Object>(list.size());
+        List<Object> copy = new ArrayList<Object>(list.size());
         for (int i=0; i<list.size(); i++) {
-            java.lang.Object val = list.get(i);
+            Object val = list.get(i);
             if (val instanceof Map) {
-                copy.add(deepCopy((Map<String,java.lang.Object>) val));
+                copy.add(deepCopy((Map<String,Object>) val));
             } else if (val instanceof List) {
-                copy.add(deepCopy((List<java.lang.Object>) val));
+                copy.add(deepCopy((List<Object>) val));
             } else {
                 copy.add(val);
             }
@@ -319,5 +319,17 @@ public class JSONDiff {
         return copy;
     }
 
+    /**
+     * Copy an object if it is a list or map
+     */
+    public static Object deepCopy(Object object){
+        if (object instanceof Map) {
+            return deepCopy((Map<String,Object>)object);
+        } else if(object instanceof List){
+            return deepCopy((List<Object>)object);
+        } else {
+            return object;
+        }
+    }
 
 }

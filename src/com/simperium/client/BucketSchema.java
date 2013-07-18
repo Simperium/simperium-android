@@ -1,7 +1,10 @@
 package com.simperium.client;
 
+import com.simperium.util.JSONDiff;
+
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,6 +16,10 @@ import java.util.Set;
  * instatiate custom BucketObject instances
  */
 public abstract class BucketSchema<T extends Syncable> {
+
+    public abstract String getRemoteName();
+    public abstract T build(String key, Map<String,Object>properties);
+    public abstract void update(T object, Map<String,Object>properties);
 
     public interface Indexer<S extends Syncable> {
         public List<Index> index(S object);
@@ -41,10 +48,33 @@ public abstract class BucketSchema<T extends Syncable> {
     }
 
     private List<Indexer<T>> indexers = Collections.synchronizedList(new ArrayList<Indexer<T>>());
+    private Map<String,Object> defaultValues = new HashMap<String,Object>();
 
-    public abstract String getRemoteName();
-    public abstract T build(String key, Map<String,Object>properties);
-    public abstract void update(T object, Map<String,Object>properties);
+    public T buildWithDefaults(String key, Map<String,Object> properties) {
+        updateDefaultValues(properties);
+        return build(key, properties);
+    }
+
+    public void updateWithDefaults(T object, Map<String,Object> properties){
+        updateDefaultValues(properties);
+        update(object, properties);
+    }
+
+    protected void setDefault(String key, Object value){
+        defaultValues.put(key, value);
+    }
+
+    protected void updateDefaultValues(Map<String,Object> properties){
+        Set<Entry<String,Object>> defaults = defaultValues.entrySet();
+        Iterator<Entry<String,Object>> iterator = defaults.iterator();
+        while(iterator.hasNext()){
+            Entry<String,Object> entry = iterator.next();
+            String key = entry.getKey();
+            if (!properties.containsKey(key)) {
+                properties.put(key, JSONDiff.deepCopy(entry.getValue()));
+            }
+        }
+    }
 
     public List<Index> indexesFor(T object){
         // run all of the indexers

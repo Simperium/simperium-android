@@ -278,7 +278,7 @@ public class Bucket<T extends Syncable> {
     }
     
     protected T buildObject(Ghost ghost){
-        T object = schema.build(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
+        T object = schema.buildWithDefaults(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
         object.setGhost(ghost);
         object.setBucket(this);
         return object;
@@ -636,7 +636,7 @@ public class Bucket<T extends Syncable> {
                 ghostStore.saveGhost(this, ghost);
                 // allow the schema to update the object instance with the new
                 // data
-                schema.update(object, JSONDiff.deepCopy(ghost.getDiffableValue()));
+                schema.updateWithDefaults(object, JSONDiff.deepCopy(ghost.getDiffableValue()));
                 if (isNew) {
                     addObject(object);
                 } else {
