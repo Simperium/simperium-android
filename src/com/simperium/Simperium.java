@@ -142,6 +142,7 @@ public class Simperium implements User.AuthenticationListener {
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
         Bucket.ChannelProvider<T> channel = socketManager.createChannel(bucket, channelSerializer);
         bucket.setChannel(channel);
+        storage.prepare(bucket);
         return bucket;
     }
     /**
