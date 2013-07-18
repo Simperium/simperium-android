@@ -122,6 +122,7 @@ public class Bucket<T extends Syncable> {
      * Cursor for bucket data
      */
     public interface ObjectCursor<T extends Syncable> extends Cursor {
+
         /**
          * Return the current item's siperium key
          */
@@ -130,6 +131,7 @@ public class Bucket<T extends Syncable> {
          * Return the object for the current index in the cursor
          */
         public T getObject();
+
     }
 
     private class BucketCursor extends CursorWrapper implements ObjectCursor<T> {
@@ -164,6 +166,7 @@ public class Bucket<T extends Syncable> {
             cache.put(key, object);
             return object;
         }
+
     }
     /**
      * Tell the bucket to sync changes.

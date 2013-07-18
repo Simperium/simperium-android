@@ -119,10 +119,10 @@ public class GhostStore implements GhostStoreProvider {
 		values.put(PAYLOAD_FIELD, payload);
 		if (cursor.getCount() > 0) {
 			int count = database.update(GHOSTS_TABLE_NAME, values, where, args);
-			Logger.log(String.format("Updated ghost(%d): %s.%d %s", count, ghost.getSimperiumKey(), ghost.getVersion(), payload));
+			Logger.log(String.format("Updated ghost(%d): %s.%d", count, ghost.getSimperiumKey(), ghost.getVersion()));
 		} else {
 			long id = database.insertOrThrow(GHOSTS_TABLE_NAME, null, values);
-			Logger.log(String.format("Created ghost(id:%d): %s.%d %s", id, ghost.getSimperiumKey(), ghost.getVersion(), payload));
+			Logger.log(String.format("Created ghost(id:%d): %s.%d", id, ghost.getSimperiumKey(), ghost.getVersion()));
 		}
 		cursor.close();
 	}
