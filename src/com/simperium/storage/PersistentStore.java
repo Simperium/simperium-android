@@ -126,80 +126,12 @@ public class PersistentStore implements StorageProvider {
         /**
          * Search the datastore using the given Query
          * 
-         * This is really ugly, please refactor and use StringBuilder too
          */
         @Override
         public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal){
-            // turn comparators into where statements, each comparator joins
-            Iterator<Query.Comparator> conditions = query.getConditions().iterator();
-            Iterator<Query.Sorter> sorters = query.getSorters().iterator();
-            String selection = "SELECT DISTINCT objects.rowid AS _id, objects.bucket, objects.key as `object_key`, objects.data as `object_data` FROM objects";
-            String filters = "";
-            String where = "WHERE objects.bucket = ?";
-            List<String> replacements = new ArrayList<String>();
-            replacements.add(bucketName);
-            List<String> names = new ArrayList<String>();
-            int i = 0;
-
-            List<String> sortKeys = new ArrayList<String>();
-            Map<String,String> includedSorts = new HashMap<String,String>();
-            while(sorters.hasNext()){
-                sortKeys.add(sorters.next().getKey());
-            }
-            
-            while(conditions.hasNext()){
-                Query.Comparator condition = conditions.next();
-                String key = condition.getKey();
-                if (sortKeys.contains(condition.getKey())) {
-                    includedSorts.put(key, String.format("i%d", i));
-                }
-                names.add(condition.getKey());
-                filters = String.format("%s LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", filters, i, i, i, i);
-                Object subject = condition.getSubject();
-                String null_condition = condition.includesNull() ? String.format(" i%d.value IS NULL OR", i) : String.format(" i%d.value IS NOT NULL AND", i);
-                where = String.format("%s AND ( %s i%d.value %s ", where, null_condition, i, condition.getComparisonType());
-                if (subject instanceof Float) {
-                    where = String.format("%s %f)", where, (Float)subject);
-                } else if (subject instanceof Integer){
-                    where = String.format("%s %d)", where, (Integer)subject);
-                } else if (subject instanceof Boolean){
-                    where = String.format("%s %d)", where, ((Boolean)subject ? 1 : 0));
-                } else {
-                    where = String.format("%s ?)", where);
-                    replacements.add(subject.toString());
-                }
-                i++;
-            }
-
-            String order = "ORDER BY";
-            if (query.getSorters().size() > 0){
-                sorters = query.getSorters().iterator();
-                while(sorters.hasNext()){
-                    if (!order.equals("ORDER BY")) {
-                        order = String.format("%s,", order);
-                    }
-                    Query.Sorter sorter = sorters.next();
-                    String sortKey = sorter.getKey();
-                    if (sorter instanceof Query.KeySorter) {
-                        order = String.format("%s objects.key %s", order, sorter.getType());
-                    } else if (includedSorts.containsKey(sortKey)) {
-                        order = String.format("%s %s.value %s", order, includedSorts.get(sortKey), sorter.getType());
-                    } else {
-                        // join in the sorting field it wasn't used in a search
-                        filters = String.format("%s LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", filters, i, i, i, i);
-                        names.add(sorter.getKey());
-                        order = String.format("%s i%d.value %s", order, i, sorter.getType());                        
-                        i++;
-                    }
-                }
-            } else {
-                order = "";
-            }
-            String statement = String.format("%s %s %s %s", selection, filters, where, order);
-            names.addAll(replacements);
-            String[] args = names.toArray(new String[names.size()]);
-            Log.d(TAG, String.format("Query: %s | %s", statement, names));
-            return buildCursor(schema, database.rawQuery(statement, args, cancelSignal));
+            CursorBuilder builder = new CursorBuilder(bucketName, query);
+            Cursor cursor = builder.query(database, cancelSignal);
+            return buildCursor(schema, cursor);
         }
         
         private void index(T object, List<Index> indexValues){
@@ -270,6 +202,7 @@ public class PersistentStore implements StorageProvider {
                 return schema.build(key, new HashMap<String,Object>());
             }
         }
+
     }
 
     private <T extends Syncable> Bucket.ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor){
@@ -299,6 +232,113 @@ public class PersistentStore implements StorageProvider {
 
     private Cursor tableInfo(String tableName){
         return database.rawQuery(String.format("PRAGMA table_info(%s)", tableName), null);
+    }
+
+    private class CursorBuilder {
+
+        private Query query;
+        private String statement;
+        private String[] args;
+        private String bucketName;
+
+        CursorBuilder(String bucketName, Query query){
+            this.bucketName = bucketName;
+            this.query = query;
+            compileQuery();
+        }
+
+        public Cursor query(SQLiteDatabase database, CancellationSignal cancelSignal){
+            return database.rawQuery(statement.toString(), args, cancelSignal);
+        }
+
+        private void compileQuery(){
+            // turn comparators into where statements, each comparator joins
+            Iterator<Query.Comparator> conditions = query.getConditions().iterator();
+            Iterator<Query.Sorter> sorters = query.getSorters().iterator();
+            Iterator<String> keys = query.getKeys().iterator();
+
+            StringBuilder selection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data`");
+            StringBuilder filters = new StringBuilder();
+            StringBuilder where = new StringBuilder("WHERE objects.bucket = ?");
+
+            List<String> replacements = new ArrayList<String>(1);
+            replacements.add(bucketName);
+            List<String> names = new ArrayList<String>(1);
+            // table include index for alias
+            int i = 0;
+
+            List<String> sortKeys = new ArrayList<String>();
+            Map<String,String> includedKeys = new HashMap<String,String>();
+            while(sorters.hasNext()){
+                sortKeys.add(sorters.next().getKey());
+            }
+
+            while(conditions.hasNext()){
+                Query.Comparator condition = conditions.next();
+                String key = condition.getKey();
+                // store which keys have been joined in and which alias
+                includedKeys.put(key, String.format("i%d", i));
+                names.add(condition.getKey());
+                filters.append(String.format(" LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
+                Object subject = condition.getSubject();
+                String null_condition = condition.includesNull() ? String.format(" i%d.value IS NULL OR", i) : String.format(" i%d.value IS NOT NULL AND", i);
+                where.append(String.format(" AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
+                if (subject instanceof Float) {
+                    where.append(String.format(" %f)", (Float)subject));
+                } else if (subject instanceof Integer){
+                    where.append(String.format(" %d)", (Integer)subject));
+                } else if (subject instanceof Boolean){
+                    where.append(String.format(" %d)", ((Boolean)subject ? 1 : 0)));
+                } else {
+                    where.append(" ?)");
+                    replacements.add(subject.toString());
+                }
+                i++;
+            }
+
+            while(keys.hasNext()){
+                String key = keys.next();
+                if (!includedKeys.containsKey(key)) {
+                    includedKeys.put(key, String.format("i%d", i));
+                    names.add(key);
+                    filters.append(String.format(" LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
+                    i++;
+                }
+                selection.append(String.format(", %s.value AS `%s`", includedKeys.get(key), key));
+                
+            }
+
+            StringBuilder order = new StringBuilder("ORDER BY");
+            int orderLength = order.length();
+            if (query.getSorters().size() > 0){
+                sorters = query.getSorters().iterator();
+                while(sorters.hasNext()){
+                    if (order.length() != orderLength) {
+                        order.append(", ");
+                    }
+                    Query.Sorter sorter = sorters.next();
+                    String sortKey = sorter.getKey();
+                    if (sorter instanceof Query.KeySorter) {
+                        order.append(String.format(" objects.key %s", sorter.getType()));
+                    } else if (includedKeys.containsKey(sortKey)) {
+                        order.append(String.format(" %s.value %s", includedKeys.get(sortKey), sorter.getType()));
+                    } else {
+                        // join in the sorting field it wasn't used in a search
+                        filters.append(String.format(" LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
+                        names.add(sorter.getKey());
+                        order.append(String.format(" i%d.value %s", i, sorter.getType()));
+                        i++;
+                    }
+                }
+            } else {
+                order.delete(0, order.length());
+            }
+            statement = String.format("%s FROM `objects` %s %s %s", selection.toString(), filters.toString(), where.toString(), order.toString());
+            names.addAll(replacements);
+            args = names.toArray(new String[names.size()]);
+            Log.d(TAG, String.format("Query: %s | %s", statement, names));
+        }
+
     }
 
 }
