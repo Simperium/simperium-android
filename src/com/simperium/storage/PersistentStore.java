@@ -14,6 +14,7 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.content.ContentValues;
 import android.os.CancellationSignal;
+import android.os.Handler;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -60,28 +61,33 @@ public class PersistentStore implements StorageProvider {
         DataStore(String bucketName, BucketSchema<T> schema){
             this.schema = schema;
             this.bucketName = bucketName;
-            reindex();
         }
 
-        public void reindex(){
+        public void reindex(final Bucket<T> bucket){
             final CancellationSignal signal = new CancellationSignal();
             if (reindexThread != null && reindexThread.isAlive()) {
                 return;
             }
+            final Handler notifier = new Handler();
             reindexThread = new Thread(new Runnable(){
                 @Override
                 public void run(){
-                    Bucket.ObjectCursor<T> cursor = all(null);
+                    Bucket.ObjectCursor<T> cursor = bucket.allObjects(signal);
                     while(cursor.moveToNext()){
                         try {
-                            T object = cursor.getObject();
+                            final T object = cursor.getObject();
                             String key = cursor.getSimperiumKey();
                             if (skipIndexing.contains(key)) {
                                 Log.d(TAG, String.format("Skipped reindexing %s", key));
                                 continue;
                             }
                             index(object, schema.indexesFor(object));
-                            object.notifySaved();
+                            notifier.post(new Runnable(){
+                                @Override
+                                public void run(){
+                                    object.notifySaved();
+                                }
+                            });
                         } catch (SQLException e) {
                             Thread.currentThread().interrupt();
                             Log.d(TAG, "Reindexing canceled due to exception", e);
@@ -98,6 +104,11 @@ public class PersistentStore implements StorageProvider {
                 }
             });
             reindexThread.start();
+        }
+
+        @Override
+        public void prepare(Bucket<T> bucket){
+            reindex(bucket);
         }
 
         /**
