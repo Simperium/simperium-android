@@ -219,7 +219,8 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     }
     public void onMessage(String message){
         scheduleHeartbeat();
-        Logger.log(TAG, String.format("%s <= %s", Thread.currentThread().getName(), message));
+        int size = message.length();
+        Logger.log(TAG, String.format("%s <= %s", Thread.currentThread().getName(), message.substring(0, size > 60 ? 60 : size)));
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);

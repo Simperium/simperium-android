@@ -187,7 +187,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         note.save();
 
         Cursor cursor = mDatabase.query(PersistentStore.INDEXES_TABLE, null, null, null, null, null, "name", null);
-        assertEquals(6, cursor.getCount());
+        assertEquals(7, cursor.getCount());
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(0));
         assertEquals(note.getSimperiumKey(), cursor.getString(1));
@@ -312,6 +312,21 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         cursor.moveToFirst();
         note = cursor.getObject();
         assertEquals(2, note.get("position"));
+    }
+
+    /**
+     * Tests pulling indexed values from the cursor for performance.
+     */
+    public void testSelectIndexValues(){
+        Note note = mBucket.newObject("thing");
+        note.setContent("Lol");
+        note.save();
+
+        Query<Note> query = mBucket.query().include("preview");
+        Bucket.ObjectCursor<Note> cursor = query.execute();
+        cursor.moveToFirst();
+        assertEquals(5, cursor.getColumnCount());
+        assertEquals("Lol", cursor.getString(4));
     }
 
     public static void assertTableExists(SQLiteDatabase database, String tableName){

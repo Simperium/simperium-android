@@ -35,6 +35,9 @@ public abstract class BucketSchema<T extends Syncable> {
             return value;
         }
 
+        public String toString(){
+            return String.format("%s : %s", name, value);
+        }
     }
 
     private List<Indexer<T>> indexers = Collections.synchronizedList(new ArrayList<Indexer<T>>());
@@ -43,7 +46,7 @@ public abstract class BucketSchema<T extends Syncable> {
     public abstract T build(String key, Map<String,Object>properties);
     public abstract void update(T object, Map<String,Object>properties);
 
-    protected List<Index> indexesFor(T object){
+    public List<Index> indexesFor(T object){
         // run all of the indexers
         List<Index> indexes = new ArrayList<Index>();
         Iterator<Indexer<T>> indexerIterator = indexers.iterator();

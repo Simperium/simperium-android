@@ -122,6 +122,7 @@ public class Query<T extends Syncable> {
     private Bucket<T> bucket;
     private List<Comparator> conditions = new ArrayList<Comparator>();
     private List<Sorter> sorters = new ArrayList<Sorter>();
+    private List<String> keys = new ArrayList<String>();
 
     public Query(Bucket<T> bucket){
         this.bucket = bucket;
@@ -147,6 +148,10 @@ public class Query<T extends Syncable> {
 
     public List<Sorter> getSorters(){
         return sorters;
+    }
+
+    public List<String> getKeys(){
+        return keys;
     }
 
     public Bucket.ObjectCursor<T> execute(){
@@ -181,6 +186,24 @@ public class Query<T extends Syncable> {
 
     public Query order(String key, SortType type){
         order(new Sorter(key, type));
+        return this;
+    }
+
+    public Query reorder(){
+        sorters.clear();
+        return this;
+    }
+
+    public Query include(String key){
+        // we want to include some indexed values
+        keys.add(key);
+        return this;
+    }
+
+    public Query include(String ... keys){
+        for (String key : keys) {
+            this.keys.add(key);
+        }
         return this;
     }
 }
