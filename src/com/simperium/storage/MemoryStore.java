@@ -29,6 +29,12 @@ public class MemoryStore implements StorageProvider {
     
     class Storage<T extends Syncable> implements StorageProvider.BucketStore<T> {
         private Map<String, T> objects = Collections.synchronizedMap(new HashMap<String, T>(32));
+
+        @Override
+        public void prepare(Bucket<T> bucket){
+            // noop
+        }
+
         /**
          * Add/Update the given object
          */

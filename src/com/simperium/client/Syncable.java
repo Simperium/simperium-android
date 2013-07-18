@@ -9,7 +9,7 @@ import java.util.Map;
  */
 public abstract class Syncable implements Diffable {
     private Ghost ghost;
-    protected Bucket<? extends Syncable> bucket;
+    protected Bucket bucket;
 
     public Integer getVersion(){
         return ghost.getVersion();
@@ -70,5 +70,11 @@ public abstract class Syncable implements Diffable {
             return String.format("%s.?", getSimperiumKey());
         }
         return getGhost().getVersionId();
+    }
+
+    public void notifySaved(){
+        if (bucket != null) {
+            bucket.notifyOnSaveListeners(this);
+        }
     }
 }

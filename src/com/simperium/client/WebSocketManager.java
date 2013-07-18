@@ -231,7 +231,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
             Channel channel = channels.get(channelId);
             channel.receiveMessage(parts[1]);
         } catch (NumberFormatException e) {
-            Logger.log(TAG, String.format("Unhandled message %s", parts));
+            Logger.log(TAG, String.format("Unhandled message %s", parts[0]));
         }
     }
     public void onMessage(byte[] data){

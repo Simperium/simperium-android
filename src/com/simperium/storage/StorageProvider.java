@@ -18,31 +18,44 @@ public interface StorageProvider {
      * Store and query bucket object data
      */
     public interface BucketStore<T extends Syncable> {
+
+        /**
+         * For initializing and performaing any necessary setup for storing
+         * bucket data.
+         */
+        abstract public void prepare(Bucket<T> bucket);
+
         /**
          * Add/Update the given object
          */
         abstract public void save(T object, List<Index> indexes);
+
         /**
          * Remove the given object from the storage
          */
         abstract public void delete(T object);
+
         /**
          * Delete all objects from storage
          */
         abstract public void reset();
+
         /**
          * Get an object with the given key
          */
         abstract public T get(String key) throws BucketObjectMissingException;
+
         /**
          * All objects, returns a cursor for the given bucket
          */
         abstract public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal);
+
         /**
          * 
          */
         abstract public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal);
     }
+
     /**
      * 
      */
