@@ -9,6 +9,7 @@ import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.Query;
 
 import android.database.sqlite.SQLiteDatabase;
+import android.database.SQLException;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.content.ContentValues;
@@ -21,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.Collections;
 
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -33,6 +35,8 @@ public class PersistentStore implements StorageProvider {
     public static final String INDEXES_TABLE="indexes";
 
     private SQLiteDatabase database;
+    private Thread reindexThread;
+    private List<String> skipIndexing = Collections.synchronizedList(new ArrayList<String>());
 
     public PersistentStore(SQLiteDatabase database){
         this.database = database;
@@ -58,6 +62,43 @@ public class PersistentStore implements StorageProvider {
             this.bucketName = bucketName;
         }
 
+        public void reindex(){
+            final CancellationSignal signal = new CancellationSignal();
+            if (reindexThread != null && reindexThread.isAlive()) {
+                return;
+            }
+            reindexThread = new Thread(new Runnable(){
+                @Override
+                public void run(){
+                    Bucket.ObjectCursor<T> cursor = all(null);
+                    while(cursor.moveToNext()){
+                        try {
+                            T object = cursor.getObject();
+                            String key = cursor.getSimperiumKey();
+                            if (skipIndexing.contains(key)) {
+                                Log.d(TAG, String.format("Skipped reindexing %s", key));
+                                continue;
+                            }
+                            index(object, schema.indexesFor(object));
+                            object.notifySaved();
+                        } catch (SQLException e) {
+                            Thread.currentThread().interrupt();
+                            Log.d(TAG, "Reindexing canceled due to exception", e);
+                        }
+                        if (Thread.interrupted()) {
+                            signal.cancel();
+                            cursor.close();
+                            skipIndexing.clear();
+                            return;
+                        }
+                    }
+                    cursor.close();
+                    skipIndexing.clear();
+                }
+            });
+            reindexThread.start();
+        }
+
         /**
          * Add/Update the given object
          */
@@ -74,6 +115,7 @@ public class PersistentStore implements StorageProvider {
             } else {
                 database.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{bucketName, key});
             }
+            skipIndexing.add(key);
             index(object, indexes);
         }
 
@@ -83,6 +125,7 @@ public class PersistentStore implements StorageProvider {
         @Override
         public void delete(T object){
             String key = object.getSimperiumKey();
+            skipIndexing.add(key);
             database.delete(OBJECTS_TABLE, "bucket=? AND key=?", new String[]{bucketName, key});
             deleteIndexes(object);
         }
@@ -134,7 +177,7 @@ public class PersistentStore implements StorageProvider {
             return buildCursor(schema, cursor);
         }
         
-        private void index(T object, List<Index> indexValues){
+        protected void index(T object, List<Index> indexValues){
             // delete all current idexes
             deleteIndexes(object);
             Log.d(TAG, String.format("Index %d values for %s", indexValues.size(), object.getSimperiumKey()));
