@@ -21,6 +21,8 @@ public class Note extends BucketObject {
         public Schema(){
             autoIndex();
             addIndex(contentIndexer);
+            setDefault("tags", new ArrayList<Object>());
+            setDefault("deleted", false);
         }
 
         private Indexer<Note> contentIndexer = new Indexer<Note>(){

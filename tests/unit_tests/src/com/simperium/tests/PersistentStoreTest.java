@@ -107,7 +107,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(1));
         assertEquals(key, cursor.getString(2));
-        assertEquals("{\"title\":\"Hola Mundo!\"}", cursor.getString(3));
+        assertEquals("{\"tags\":[],\"deleted\":false,\"title\":\"Hola Mundo!\"}", cursor.getString(3));
     }
   
     public void testDeletingObject(){
@@ -187,7 +187,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         note.save();
 
         Cursor cursor = mDatabase.query(PersistentStore.INDEXES_TABLE, null, null, null, null, null, "name", null);
-        assertEquals(7, cursor.getCount());
+        assertEquals(8, cursor.getCount());
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(0));
         assertEquals(note.getSimperiumKey(), cursor.getString(1));
