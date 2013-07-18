@@ -60,6 +60,7 @@ public class PersistentStore implements StorageProvider {
         DataStore(String bucketName, BucketSchema<T> schema){
             this.schema = schema;
             this.bucketName = bucketName;
+            reindex();
         }
 
         public void reindex(){
