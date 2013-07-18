@@ -33,16 +33,16 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     }
 
     public static final String TAG = "Simperium.Websocket";
-    private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/websocket";
-    private static final String SOCKETIO_URL = "https://api.simperium.com/";
+    private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/1/%s/websocket";
     private static final String USER_AGENT_HEADER = "User-Agent";
     private static final String COMMAND_HEARTBEAT = "h";
     private String appId, sessionId;
     private String clientId;
     private WebSocketClient socketClient;
     private boolean reconnect = true;
-    private HashMap<Channel,Integer> channelIndex = new HashMap<Channel,Integer>();;
-    private HashMap<Integer,Channel> channels = new HashMap<Integer,Channel>();;
+    private HashMap<Channel,Integer> channelIndex = new HashMap<Channel,Integer>();
+    private HashMap<Integer,Channel> channels = new HashMap<Integer,Channel>();
+    private URI socketURI;
 
     static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
@@ -59,7 +59,8 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         List<BasicNameValuePair> headers = Arrays.asList(
             new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
         );
-        socketClient = new WebSocketClient(URI.create(WEBSOCKET_URL), this, headers);
+        socketURI = URI.create(String.format(WEBSOCKET_URL, appId));
+        socketClient = new WebSocketClient(socketURI, this, headers);
     }
     /**
      * Creates a channel for the bucket. Starts the websocket connection if not connected
@@ -84,7 +85,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
     public void connect(){
         // if we have channels, then connect, otherwise wait for a channel
         if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
-            Logger.log(String.format("Connecting to %s", WEBSOCKET_URL));
+            Logger.log(String.format("Connecting to %s", socketURI));
             setConnectionStatus(ConnectionStatus.CONNECTING);
             reconnect = true;
             socketClient.connect();
@@ -208,7 +209,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      *
      */
     public void onConnect(){
-        Logger.log(String.format("Connected %s", this));
+        Logger.log(String.format("Connected %s", socketURI));
         setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
         heartbeatCount = 0; // reset heartbeat count
@@ -224,9 +225,13 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
             heartbeatCount = Integer.parseInt(parts[1]);
             return;
         }
-        int channelId = Integer.parseInt(parts[0]);
-        Channel channel = channels.get(channelId);
-        channel.receiveMessage(parts[1]);
+        try {
+            int channelId = Integer.parseInt(parts[0]);
+            Channel channel = channels.get(channelId);
+            channel.receiveMessage(parts[1]);
+        } catch (NumberFormatException e) {
+            Logger.log(TAG, String.format("Unhandled message %s", parts));
+        }
     }
     public void onMessage(byte[] data){
         Logger.log(String.format("From socket (data) %s", new String(data)));
