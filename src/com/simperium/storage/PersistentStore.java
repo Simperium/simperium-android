@@ -36,7 +36,6 @@ public class PersistentStore implements StorageProvider {
     public static final String INDEXES_TABLE="indexes";
 
     private SQLiteDatabase database;
-    private Thread reindexThread;
     private List<String> skipIndexing = Collections.synchronizedList(new ArrayList<String>());
 
     public PersistentStore(SQLiteDatabase database){
@@ -57,6 +56,7 @@ public class PersistentStore implements StorageProvider {
 
         private BucketSchema<T> schema;
         private String bucketName;
+        private Thread reindexThread;
 
         DataStore(String bucketName, BucketSchema<T> schema){
             this.schema = schema;
@@ -72,6 +72,7 @@ public class PersistentStore implements StorageProvider {
             reindexThread = new Thread(new Runnable(){
                 @Override
                 public void run(){
+                    Log.d(TAG, String.format("Reindex %s", bucketName));
                     Bucket.ObjectCursor<T> cursor = bucket.allObjects(signal);
                     while(cursor.moveToNext()){
                         try {
