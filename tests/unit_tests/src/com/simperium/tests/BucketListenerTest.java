@@ -98,7 +98,7 @@ public class BucketListenerTest extends TestCase {
         assertTrue(mListener.changed);
     }
 
-    class BucketListener extends Bucket.Listener<Note> {
+    class BucketListener implements Bucket.Listener<Note> {
 
         public boolean deleted = false;
         public boolean saved = false;
