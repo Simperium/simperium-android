@@ -53,15 +53,21 @@ public class Bucket<T extends Syncable> {
     }
 
     public interface OnSaveObjectListener<T extends Syncable> {
-        void onSaveObject(T object);
+        void onSaveObject(Bucket<T> bucket, T object);
     }
 
     public interface OnDeleteObjectListener<T extends Syncable> {
-        void onDeleteObject(T object);
+        void onDeleteObject(Bucket<T> bucket, T object);
     }
 
-    public interface OnNetworkChangeListener {
-        void onChange(ChangeType type, String key);
+    public interface OnNetworkChangeListener<T extends Syncable> {
+        void onChange(Bucket<T> bucket, ChangeType type, String key);
+    }
+
+    public interface Listener<T extends Syncable> extends
+        OnSaveObjectListener<T>, OnDeleteObjectListener<T>,
+        OnNetworkChangeListener<T> {
+            // implements all listener methods
     }
 
     public enum ChangeType {
@@ -80,8 +86,8 @@ public class Bucket<T extends Syncable> {
         Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
     private Set<OnDeleteObjectListener<T>> onDeleteListeners = 
         Collections.synchronizedSet(new HashSet<OnDeleteObjectListener<T>>());
-    private Set<OnNetworkChangeListener> onChangeListeners =
-        Collections.synchronizedSet(new HashSet<OnNetworkChangeListener>());
+    private Set<OnNetworkChangeListener<T>> onChangeListeners =
+        Collections.synchronizedSet(new HashSet<OnNetworkChangeListener<T>>());
 
     private BucketStore<T> storage;
     private BucketSchema<T> schema;
@@ -460,28 +466,39 @@ public class Bucket<T extends Syncable> {
         setChangeVersion(changeVersion);
     }
 
-    public void registerOnSaveObjectListener(OnSaveObjectListener<T> listener){
-        Logger.log(TAG, String.format("Registering OnSaveObjectListener %s", listener));
+    public void addListener(Listener<T> listener){
+        addOnSaveObjectListener(listener);
+        addOnDeleteObjectListener(listener);
+        addOnNetworkChangeListener(listener);
+    }
+
+    public void removeListener(Listener<T> listener){
+        removeOnSaveObjectListener(listener);
+        removeOnDeleteObjectListener(listener);
+        removeOnNetworkChangeListener(listener);
+    }
+
+    public void addOnSaveObjectListener(OnSaveObjectListener<T> listener){
         onSaveListeners.add(listener);
     }
 
-    public void unregisterOnSaveObjectListener(OnSaveObjectListener<T> listener){
+    public void removeOnSaveObjectListener(OnSaveObjectListener<T> listener){
         onSaveListeners.remove(listener);
     }
 
-    public void registerOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
+    public void addOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
         onDeleteListeners.add(listener);
     }
 
-    public void unregisterOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
+    public void removeOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
         onDeleteListeners.remove(listener);
     }
 
-    public void registerOnNetworkChangeListener(OnNetworkChangeListener listener){
+    public void addOnNetworkChangeListener(OnNetworkChangeListener<T> listener){
         onChangeListeners.add(listener);
     }
 
-    public void unregisterOnNetworkChangeListener(OnNetworkChangeListener listener){
+    public void removeOnNetworkChangeListener(OnNetworkChangeListener<T> listener){
         onChangeListeners.remove(listener);
     }
 
@@ -493,7 +510,7 @@ public class Bucket<T extends Syncable> {
         while(iterator.hasNext()) {
             OnSaveObjectListener<T> listener = iterator.next();
             try {
-                listener.onSaveObject(object);
+                listener.onSaveObject(this, object);
             } catch(Exception e) {
                 Logger.log(TAG, String.format("Listener failed onSaveObject %s", listener), e);
             }
@@ -507,7 +524,7 @@ public class Bucket<T extends Syncable> {
         while(iterator.hasNext()) {
             OnDeleteObjectListener<T> listener = iterator.next();
             try {
-                listener.onDeleteObject(object);
+                listener.onDeleteObject(this, object);
             } catch(Exception e) {
                 Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
             }
@@ -522,7 +539,7 @@ public class Bucket<T extends Syncable> {
         while(iterator.hasNext()) {
             OnNetworkChangeListener listener = iterator.next();
             try {
-                listener.onChange(type, key);
+                listener.onChange(this, type, key);
             } catch(Exception e) {
                 Logger.log(TAG, String.format("Listener failed onChange %s", listener), e);
             }

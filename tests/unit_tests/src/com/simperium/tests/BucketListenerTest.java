@@ -23,17 +23,17 @@ import java.util.List;
 public class BucketListenerTest extends TestCase {
 
     private Bucket<Note> mBucket;
-    private BucketListener<Note> mListener;
+    private BucketListener mListener;
 
     public void setUp() throws Exception {
         super.setUp();
         mBucket = MockBucket.buildBucket(new Note.Schema());
 
-        mListener = new BucketListener<Note>();
+        mListener = new BucketListener();
     }
 
     public void testOnSaveListener(){
-        mBucket.registerOnSaveObjectListener(mListener);
+        mBucket.addOnSaveObjectListener(mListener);
         Note note = mBucket.newObject("listener-test");
         note.setTitle("Hola Mundo");
         note.save();
@@ -41,11 +41,11 @@ public class BucketListenerTest extends TestCase {
         assertTrue(mListener.saved);
     }
 
-    public void testUnregisterOnSaveListener(){
-        mBucket.registerOnSaveObjectListener(mListener);
+    public void testRemoveOnSaveListener(){
+        mBucket.addOnSaveObjectListener(mListener);
         Note note = mBucket.newObject("listener-test");
         note.setTitle("Hola Mundo");
-        mBucket.unregisterOnSaveObjectListener(mListener);
+        mBucket.removeOnSaveObjectListener(mListener);
         note.save();
 
         assertFalse(mListener.saved);
@@ -53,7 +53,7 @@ public class BucketListenerTest extends TestCase {
     }
 
     public void testOnDeleteListener(){
-        mBucket.registerOnDeleteObjectListener(mListener);
+        mBucket.addOnDeleteObjectListener(mListener);
         Note note = mBucket.newObject();
         note.setTitle("Hola Mundo");
         note.save();
@@ -67,12 +67,12 @@ public class BucketListenerTest extends TestCase {
     }
 
     public void testUnregsiterOnDeleteListener(){
-        mBucket.registerOnDeleteObjectListener(mListener);
+        mBucket.addOnDeleteObjectListener(mListener);
         Note note = mBucket.newObject();
         note.setTitle("Hola Mundo");
         note.save();
 
-        mBucket.unregisterOnDeleteObjectListener(mListener);
+        mBucket.removeOnDeleteObjectListener(mListener);
 
         note.delete();
 
@@ -81,7 +81,7 @@ public class BucketListenerTest extends TestCase {
 
     public void testOnNetworkChangeListener()
     throws RemoteChangeInvalidException {
-        mBucket.registerOnNetworkChangeListener(mListener);
+        mBucket.addOnNetworkChangeListener(mListener);
 
         // TODO create helper for generating remote changes
         Map<String,Object> diff = new HashMap<String,Object>();
@@ -98,27 +98,24 @@ public class BucketListenerTest extends TestCase {
         assertTrue(mListener.changed);
     }
 
-    class BucketListener<T extends Syncable>
-    implements OnDeleteObjectListener<T>,
-    OnSaveObjectListener<T>,
-    OnNetworkChangeListener {
+    class BucketListener extends Bucket.Listener<Note> {
 
         public boolean deleted = false;
         public boolean saved = false;
         public boolean changed = false;
 
         @Override
-        public void onDeleteObject(T object){
+        public void onDeleteObject(Bucket<Note> bucket, Note object){
             deleted = true;
         }
 
         @Override
-        public void onSaveObject(T object){
+        public void onSaveObject(Bucket<Note> bucket, Note object){
             saved = true;
         }
 
         @Override
-        public void onChange(Bucket.ChangeType type, String key){
+        public void onChange(Bucket<Note> bucket, Bucket.ChangeType type, String key){
             changed = true;
         }
 
