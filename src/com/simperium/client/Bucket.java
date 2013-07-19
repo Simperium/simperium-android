@@ -290,6 +290,14 @@ public class Bucket<T extends Syncable> {
         return object;
     }
 
+    public int count(){
+        return count(query(), null);
+    }
+
+    public int count(Query<T> query, CancellationSignal cancel){
+        return storage.count(query, cancel);
+    }
+
     /**
      * Find all objects
      */

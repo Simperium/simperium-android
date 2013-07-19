@@ -257,6 +257,32 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         assertEquals(10, cursor.getCount());
     }
 
+    public void testCounts(){
+        // clear out the database
+        mActivity.deleteDatabase(mDatabaseName);
+        
+        String bucketName = "notes";
+        Note.Schema schema = new Note.Schema();
+        // Copy the data from the asset database using the same database name
+        // it will get cleaned up by the tearDown method
+        DatabaseHelper helper = new DatabaseHelper(mDatabaseName);
+        mDatabaseName = helper.getDatabaseName();
+        helper.createDatabase();
+        mStore = new PersistentStore(helper.getWritableDatabase());
+        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+
+        int count;
+
+        count = store.count(new Query<Note>(), null);
+        assertEquals(1000, count);
+
+        Query<Note> query = new Query<Note>();
+        query.where("title", Query.ComparisonType.LIKE, "Note 7%");
+        count = store.count(query, null);
+        assertEquals(111, count);
+
+    }
+
     public void testObjectSorting(){
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
