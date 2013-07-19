@@ -179,12 +179,24 @@ public class PersistentStore implements StorageProvider {
         }
 
         /**
+         * Count for the given query
+         */
+        public int count(Query<T> query, CancellationSignal cancelSignal){
+            QueryBuilder builder = new QueryBuilder(bucketName, query);
+            Cursor cursor = builder.count(database, cancelSignal);
+            cursor.moveToFirst();
+            int count = cursor.getInt(0);
+            cursor.close();
+            return count;
+        }
+
+        /**
          * Search the datastore using the given Query
          * 
          */
         @Override
         public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal){
-            CursorBuilder builder = new CursorBuilder(bucketName, query);
+            QueryBuilder builder = new QueryBuilder(bucketName, query);
             Cursor cursor = builder.query(database, cancelSignal);
             return buildCursor(schema, cursor);
         }
@@ -289,21 +301,27 @@ public class PersistentStore implements StorageProvider {
         return database.rawQuery(String.format("PRAGMA table_info(%s)", tableName), null);
     }
 
-    private class CursorBuilder {
+    private class QueryBuilder {
 
         private Query query;
+        private StringBuilder selection;
         private String statement;
         private String[] args;
         private String bucketName;
 
-        CursorBuilder(String bucketName, Query query){
+        QueryBuilder(String bucketName, Query query){
             this.bucketName = bucketName;
             this.query = query;
             compileQuery();
         }
 
-        public Cursor query(SQLiteDatabase database, CancellationSignal cancelSignal){
-            return database.rawQuery(statement.toString(), args, cancelSignal);
+        protected Cursor query(SQLiteDatabase database, CancellationSignal cancelSignal){
+            return database.rawQuery(selection.append(statement).toString(), args, cancelSignal);
+        }
+
+        protected Cursor count(SQLiteDatabase database, CancellationSignal cancelSignal){
+            selection = new StringBuilder("SELECT count(objects.rowid) as `total` ");
+            return database.rawQuery(selection.append(statement).toString(), args, cancelSignal);
         }
 
         private void compileQuery(){
@@ -312,7 +330,7 @@ public class PersistentStore implements StorageProvider {
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
             Iterator<String> keys = query.getKeys().iterator();
 
-            StringBuilder selection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data`");
+            selection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
             StringBuilder filters = new StringBuilder();
             StringBuilder where = new StringBuilder("WHERE objects.bucket = ?");
 
@@ -388,7 +406,7 @@ public class PersistentStore implements StorageProvider {
             } else {
                 order.delete(0, order.length());
             }
-            statement = String.format("%s FROM `objects` %s %s %s", selection.toString(), filters.toString(), where.toString(), order.toString());
+            statement = String.format("FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
             names.addAll(replacements);
             args = names.toArray(new String[names.size()]);
             Log.d(TAG, String.format("Query: %s | %s", statement, names));

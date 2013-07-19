@@ -42,6 +42,7 @@ public class MemoryStore implements StorageProvider {
         public void save(T object, List<Index> indexes){
             objects.put(object.getSimperiumKey(), object);
         }
+
         /**
          * Remove the given object from the storage
          */
@@ -49,6 +50,7 @@ public class MemoryStore implements StorageProvider {
         public void delete(T object){
             objects.remove(object.getSimperiumKey());
         }
+
         /**
          * Delete all objects from storage
          */
@@ -56,6 +58,7 @@ public class MemoryStore implements StorageProvider {
         public void reset(){
             objects.clear();
         }
+
         /**
          * Get an object with the given key
          */
@@ -63,12 +66,14 @@ public class MemoryStore implements StorageProvider {
         public T get(String key){
             return objects.get(key);
         }
+
         /**
          * Get a cursor to all the objects
          */
         public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
             return null;
         }
+
         /**
          * Search
          */
@@ -76,6 +81,12 @@ public class MemoryStore implements StorageProvider {
             return null;
         }
 
+        /**
+         * Count
+         */
+        public int count(Query query, CancellationSignal cancelSignal){
+            return 0;
+        }
     }
 
 }
