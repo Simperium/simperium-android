@@ -43,6 +43,8 @@ public class LoginActivity extends Activity {
 	private EditText passwordTextField;
 	private EditText passwordTextField2;
 
+    private TextView haveAccountTextView;
+
 	private Simperium simperium;
 
 	@Override
@@ -70,14 +72,16 @@ public class LoginActivity extends Activity {
 		passwordTextField = (EditText) findViewById(R.id.password);
 		passwordTextField2 = (EditText) findViewById(R.id.password2);
 		passwordTextField2.setVisibility(View.GONE);
+
+        haveAccountTextView = (TextView) findViewById(R.id.no_account);
 		
 		Intent intent = getIntent();
 		if (intent.hasExtra(EMAIL_EXTRA)) {
 			emailTextField.setText(intent.getStringExtra(EMAIL_EXTRA));
 		}
 
-		final Button haveAccountButton = (Button) findViewById(R.id.have_account_button);
-		final Button createAccountButton = (Button) findViewById(R.id.create_account_button);
+		final TextView haveAccountButton = (TextView) findViewById(R.id.have_account_button);
+		final TextView createAccountButton = (TextView) findViewById(R.id.create_account_button);
 		final TextView l_agree_terms_of_service = (TextView) findViewById(R.id.l_agree_terms_of_service);
 		
 		l_agree_terms_of_service.setClickable(true);
@@ -100,6 +104,7 @@ public class LoginActivity extends Activity {
                 createAccountButton.setVisibility(View.VISIBLE);
 				signinButton.setVisibility(View.VISIBLE);
 				signupButton.setVisibility(View.GONE);
+                haveAccountTextView.setText(R.string.no_account);
 			}
 		});
 
@@ -113,6 +118,7 @@ public class LoginActivity extends Activity {
 				haveAccountButton.setVisibility(View.VISIBLE);
 				passwordTextField2.setVisibility(View.VISIBLE);
 				signupButton.setVisibility(View.VISIBLE);
+                haveAccountTextView.setText(getString(R.string.have_account));
 			}
 		});
 	}
