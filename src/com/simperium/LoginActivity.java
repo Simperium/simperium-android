@@ -193,7 +193,7 @@ public class LoginActivity extends Activity {
 		}
 
 		pd = ProgressDialog.show(LoginActivity.this,
-				getString(R.string.account_setup),
+				null,
 				getString(R.string.signing_up), true, false);
 		
 		simperium.createUser(email, password, new User.AuthResponseHandler() {
@@ -228,7 +228,7 @@ public class LoginActivity extends Activity {
 
 		
 		pd = ProgressDialog.show(LoginActivity.this,
-				getString(R.string.account_setup),
+				null,
 				getString(R.string.signing_in), true, false);
 		
 		simperium.authorizeUser(email, password,
