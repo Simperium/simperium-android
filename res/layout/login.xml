@@ -42,8 +42,7 @@
                 android:hint="@string/confirm_password_hint"
                 android:inputType="textPassword"
                 android:fontFamily="sans-serif-light"
-                android:textSize="20sp"
-                android:visibility="gone" />
+                android:textSize="20sp" />
 
             <TextView
                 android:id="@+id/l_agree_terms_of_service"
@@ -53,8 +52,7 @@
                 android:layout_centerHorizontal="true"
                 android:text="@string/agree_terms_of_service"
                 android:textColor="#777777"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/signup_button"
@@ -64,8 +62,7 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/signup_label"
                 android:fontFamily="sans-serif-light"
-                android:textSize="20sp"
-                android:visibility="gone" />
+                android:textSize="20sp" />
 
             <Button
                 android:id="@+id/signin_button"
@@ -75,7 +72,8 @@
                 android:layout_below="@id/password"
                 android:fontFamily="sans-serif-light"
                 android:textSize="20sp"
-                android:text="@string/signin_label" />
+                android:text="@string/signin_label"
+                android:visibility="gone" />
         </RelativeLayout>
 
         <TextView android:id="@+id/no_account"
@@ -84,7 +82,7 @@
                   android:layout_below="@id/section1"
                   android:layout_marginTop="16dp"
                   android:layout_centerHorizontal="true"
-                  android:text="@string/no_account"
+                  android:text="@string/have_account"
                   android:textColor="#777777"
                   android:textAppearance="?android:attr/textAppearanceSmall"
                   />
@@ -98,7 +96,8 @@
             android:textSize="16sp"
             android:textColor="#3489d6"
             android:gravity="center"
-            android:text="@string/sign_up" />
+            android:text="@string/sign_up"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/have_account_button"
@@ -110,8 +109,7 @@
             android:gravity="center"
             android:shadowRadius="1"
             android:textColor="#3489d6"
-            android:text="@string/signin_label"
-            android:visibility="gone" />
+            android:text="@string/signin_label" />
     </RelativeLayout>
 
 </ScrollView>

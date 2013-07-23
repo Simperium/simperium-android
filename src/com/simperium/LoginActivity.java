@@ -63,7 +63,6 @@ public class LoginActivity extends Activity {
 
 		final Button signupButton = (Button) findViewById(R.id.signup_button);
 		signupButton.setOnClickListener(signupClickListener);
-		signupButton.setVisibility(View.GONE);
 		
 		final Button signinButton = (Button) findViewById(R.id.signin_button);
 		signinButton.setOnClickListener(signinClickListener);
@@ -71,7 +70,6 @@ public class LoginActivity extends Activity {
 
 		passwordTextField = (EditText) findViewById(R.id.password);
 		passwordTextField2 = (EditText) findViewById(R.id.password2);
-		passwordTextField2.setVisibility(View.GONE);
 
         haveAccountTextView = (TextView) findViewById(R.id.no_account);
 		
