@@ -6,15 +6,14 @@ buildscript {
         classpath 'com.android.tools.build:gradle:0.5.+'
     }
 }
-apply plugin: 'android-library'
+apply plugin: 'android'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    compile files('libs/android-websockets.jar')
-    compile files('libs/android-async-http-1.4.3.jar')
+    compile project(":Simperium")
 }
 
 android {
