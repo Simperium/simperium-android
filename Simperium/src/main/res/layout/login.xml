@@ -9,30 +9,20 @@
         android:layout_width="-1dp"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp" >
-
-        <ImageView
-            android:id="@+id/simperium_logo"
-            android:layout_width="fill_parent"
-            android:layout_height="100dp"
-            android:layout_marginBottom="16dp"
-            android:layout_marginTop="16dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/login_logo" />
+        android:padding="16dp" >
 
         <RelativeLayout
             android:id="@+id/section1"
             android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:layout_below="@id/simperium_logo" >
-
+            android:layout_height="fill_parent" >
             <EditText
                 android:id="@+id/email_address"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/email_hint"
-                android:inputType="textEmailAddress" />
+                android:inputType="textEmailAddress"
+                android:fontFamily="sans-serif-light"
+                android:textSize="20sp" />
 
             <EditText
                 android:id="@+id/password"
@@ -40,7 +30,9 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/email_address"
                 android:hint="@string/password_hint"
-                android:inputType="textPassword" />
+                android:inputType="textPassword"
+                android:fontFamily="sans-serif-light"
+                android:textSize="20sp" />
 
             <EditText
                 android:id="@+id/password2"
@@ -49,7 +41,8 @@
                 android:layout_below="@id/password"
                 android:hint="@string/confirm_password_hint"
                 android:inputType="textPassword"
-                android:visibility="gone" />
+                android:fontFamily="sans-serif-light"
+                android:textSize="20sp" />
 
             <TextView
                 android:id="@+id/l_agree_terms_of_service"
@@ -57,68 +50,66 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/password2"
                 android:layout_centerHorizontal="true"
-                android:shadowColor="#FFFFFF"
-                android:shadowDx="0"
-                android:shadowDy="1"
-                android:shadowRadius="1"
                 android:text="@string/agree_terms_of_service"
-                android:textColor="#444444"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:textColor="#777777"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/signup_button"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/l_agree_terms_of_service"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="8dp"
                 android:text="@string/signup_label"
-                android:visibility="gone" />
+                android:fontFamily="sans-serif-light"
+                android:textSize="20sp" />
 
             <Button
                 android:id="@+id/signin_button"
+                android:layout_marginTop="8dp"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/password"
-                android:text="@string/signin_label" />
+                android:fontFamily="sans-serif-light"
+                android:textSize="20sp"
+                android:text="@string/signin_label"
+                android:visibility="gone" />
         </RelativeLayout>
 
-        <TextView android:id="@+id/or"
-                android:layout_width="wrap_content"
+        <TextView android:id="@+id/no_account"
+                  android:layout_width="wrap_content"
                   android:layout_height="wrap_content"
                   android:layout_below="@id/section1"
-                  android:layout_marginTop="8dp"
+                  android:layout_marginTop="16dp"
                   android:layout_centerHorizontal="true"
-                  android:text="@string/or"
-                  android:fontFamily="sans-serif-light"
-                  android:textSize="18sp"
-                  android:paddingBottom="8dp"
+                  android:text="@string/have_account"
+                  android:textColor="#777777"
+                  android:textAppearance="?android:attr/textAppearanceSmall"
                   />
 
-        <Button
+        <TextView
             android:id="@+id/create_account_button"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/or"
+            android:layout_below="@id/no_account"
             android:layout_centerHorizontal="true"
-            android:shadowColor="#FFFFFF"
-            android:shadowDx="0"
-            android:shadowDy="1"
-            android:shadowRadius="1"
-            android:text="@string/create_account" />
+            android:textSize="16sp"
+            android:textColor="#3489d6"
+            android:gravity="center"
+            android:text="@string/sign_up"
+            android:visibility="gone" />
 
-        <Button
+        <TextView
             android:id="@+id/have_account_button"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/or"
+            android:layout_below="@id/no_account"
             android:layout_centerHorizontal="true"
-            android:shadowColor="#FFFFFF"
-            android:shadowDx="0"
-            android:shadowDy="1"
+            android:textSize="16sp"
+            android:gravity="center"
             android:shadowRadius="1"
-            android:text="@string/sign_in"
-            android:visibility="gone" />
+            android:textColor="#3489d6"
+            android:text="@string/signin_label" />
     </RelativeLayout>
 
 </ScrollView>
