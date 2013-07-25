@@ -618,9 +618,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                         ObjectVersion objectVersion = new ObjectVersion(key, versionNumber);
                         if (!bucket.hasKeyVersion(key, versionNumber)) {
                             // we need to get the remote object
-                            synchronized(index){
-                                index.add(objectVersion.toString());
-                            }
+                            index.add(objectVersion.toString());
                             sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
                         } else {
                             Logger.log(TAG, String.format("Object is up to date: %s", version));
