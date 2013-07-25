@@ -1,6 +1,7 @@
 package com.simperium.storage;
 
 import com.simperium.client.Bucket;
+import com.simperium.client.Bucket.ChangeType;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Syncable;
@@ -83,12 +84,6 @@ public class PersistentStore implements StorageProvider {
                                 continue;
                             }
                             index(object, schema.indexesFor(object));
-                            notifier.post(new Runnable(){
-                                @Override
-                                public void run(){
-                                    object.notifySaved();
-                                }
-                            });
                         } catch (SQLException e) {
                             Thread.currentThread().interrupt();
                             Log.d(TAG, "Reindexing canceled due to exception", e);
@@ -102,6 +97,13 @@ public class PersistentStore implements StorageProvider {
                     }
                     cursor.close();
                     skipIndexing.clear();
+                    notifier.post(new Runnable(){
+                        @Override
+                        public void run(){
+                            bucket.notifyOnNetworkChangeListeners(ChangeType.INDEX);
+                        }
+                    });
+                    
                 }
             });
             reindexThread.start();

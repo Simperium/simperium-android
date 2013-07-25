@@ -510,7 +510,7 @@ public class Bucket<T extends Syncable> {
         onChangeListeners.remove(listener);
     }
 
-    protected void notifyOnSaveListeners(T object){
+    public void notifyOnSaveListeners(T object){
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
         Logger.log(TAG, String.format("Notifying OnSaveObjectListener %d", notify.size()));
 
@@ -525,7 +525,7 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    protected void notifyOnDeleteListeners(T object){
+    public void notifyOnDeleteListeners(T object){
         Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
 
         Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
@@ -539,7 +539,11 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    protected void notifyOnNetworkChangeListeners(ChangeType type, String key){
+    public void notifyOnNetworkChangeListeners(ChangeType type){
+        notifyOnNetworkChangeListeners(type, null);
+    }
+
+    public void notifyOnNetworkChangeListeners(ChangeType type, String key){
         Set<OnNetworkChangeListener> notify =
             new HashSet<OnNetworkChangeListener>(onChangeListeners);
 
