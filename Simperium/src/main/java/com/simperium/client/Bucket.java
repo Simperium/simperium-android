@@ -252,7 +252,7 @@ public class Bucket<T extends Syncable> {
 
     public void indexComplete(String changeVersion){
         setChangeVersion(changeVersion);
-        notifyOnNetworkChangeListeners(ChangeType.INDEX, null);
+        notifyOnNetworkChangeListeners(ChangeType.INDEX);
     }
 
     public void setChangeVersion(String version){
