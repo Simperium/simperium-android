@@ -31,3 +31,5 @@ proguard/
 simperium.properties
 
 *.swp
+
+.gradle
