@@ -524,6 +524,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         private boolean complete = false;
         private Handler handler;
         final private IndexProcessorListener listener;
+        int indexedCount = 0;
 
         public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener){
             Logger.log(TAG, String.format("Starting index processor with version: %s for bucket %s", cv, bucket));
@@ -572,9 +573,11 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             Map<String,Object> properties = Channel.convertJSON(data);
             Ghost ghost = new Ghost(key, remoteVersion, properties);
             bucket.addObjectWithGhost(ghost);
-
+            indexedCount ++;
             if (complete && index.size() == 0) {
                 notifyDone();
+            } else if(indexedCount % 10 == 0) {
+                notifyProgress();
             }
 
             return true;
@@ -673,6 +676,10 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             listener.onComplete(cv);
         }
 
+
+        private void notifyProgress(){
+            bucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
+        }
     }
 
     private interface ChangeProcessorListener<T extends Syncable> {
