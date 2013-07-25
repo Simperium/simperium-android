@@ -1,0 +1,3 @@
+include ':Simperium'
+include ':SimperiumUnitTests'
+include ':SimperiumIntegrationTests'
