@@ -21,9 +21,12 @@ import com.simperium.client.User;
 import com.simperium.util.Logger;
 
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.message.BasicHeader;
 
 import com.loopj.android.http.*;
+
+import java.io.UnsupportedEncodingException;
 
 public class AuthHttpClient {
 
@@ -34,6 +37,7 @@ public class AuthHttpClient {
     private AsyncHttpClient httpClient;
     private String appSecret;
     private String appId;
+    private String mAuthProvider;
 
 
     public AuthHttpClient(String appId, String appSecret, AsyncHttpClient httpClient){
@@ -52,19 +56,24 @@ public class AuthHttpClient {
 
     public User createUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("create/");
-        Logger.log(String.format("Requesting: %s", url));
-        httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getCreateResponseHandler(handler));
+        try {
+            httpClient.post(null, url, authHeaders(), user.toHttpEntity(mAuthProvider), JSON_CONTENT_TYPE, user.getCreateResponseHandler(handler));
+        } catch (UnsupportedEncodingException e){
+            handler.onFailure(user, e, e.getMessage());
+        }
         return user;
     }
 
     public User authorizeUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("authorize/");
-        Logger.log(String.format("Requesting: %s", url));
-        httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
+        try {
+            httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
+        } catch (UnsupportedEncodingException e){
+            handler.onFailure(user, e, e.getMessage());
+        }
         return user;
     }
-    
-    
+
     private Header[] authHeaders(){
         Header[] headers = new Header[1];
         headers[0] = new BasicHeader(API_KEY_HEADER_NAME, appSecret);
@@ -75,6 +84,8 @@ public class AuthHttpClient {
         return String.format("%s/%s/%s", AUTH_URL, appId, path);
     }
 
-
+    public void setAuthProvider(String authProvider) {
+        mAuthProvider = authProvider;
+    }
 }
 

@@ -13,11 +13,17 @@ package com.simperium.client;
 import com.simperium.util.Logger;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -61,6 +67,7 @@ public class User {
     public static final String ACCESS_TOKEN_KEY = "access_token";
     public static final String PASSWORD_KEY = "password";
     public static final String USERID_KEY = "userid";
+    public static final String PROVIDER_KEY = "provider";
 
     private String email;
     private String password;
@@ -69,7 +76,6 @@ public class User {
     private AuthenticationStatus authenticationStatus = AuthenticationStatus.UNKNOWN;
     private AuthenticationListener listener;
 
-    
     public User(){
         this(null, null, null);
     }
@@ -154,16 +160,21 @@ public class User {
         return fields;
     }
 
-    public HttpEntity toHttpEntity(){
-        StringEntity entity;
+    public HttpEntity toHttpEntity() throws UnsupportedEncodingException {
         JSONObject json = new JSONObject(toMap());
-        try{
-            entity = new StringEntity(json.toString());
-        } catch(UnsupportedEncodingException e){
-            entity = null;
-        }
-        return entity;
+        return new StringEntity(json.toString());
 
+    }
+
+    public HttpEntity toHttpEntity(String authProvider) throws UnsupportedEncodingException {
+        if (authProvider == null){
+            return toHttpEntity();
+        }
+        List<NameValuePair> parameters = new ArrayList<NameValuePair>(3);
+        parameters.add(new BasicNameValuePair(USERNAME_KEY, email));
+        parameters.add(new BasicNameValuePair(PASSWORD_KEY, password));
+        parameters.add(new BasicNameValuePair(PROVIDER_KEY, authProvider));
+        return new UrlEncodedFormEntity(parameters, HTTP.UTF_8);
     }
 
     public AsyncHttpResponseHandler getCreateResponseHandler(final User.AuthResponseHandler handler){

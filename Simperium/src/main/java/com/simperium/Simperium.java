@@ -161,6 +161,10 @@ public class Simperium implements User.AuthenticationListener {
         return bucket(schema.getRemoteName(), schema);
     }
 
+    public void setAuthProvider(String providerString){
+        authClient.setAuthProvider(providerString);
+    }
+
     public User createUser(String email, String password, AuthResponseHandler handler){
         user.setCredentials(email, password);
         return authClient.createUser(user, handler);
@@ -221,8 +225,7 @@ public class Simperium implements User.AuthenticationListener {
 
     private String getUserAccessToken(){
         SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        String token = preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
-        return token;
+        return preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
     }
 
 	public AuthenticationListener getAuthenticationListener() {
