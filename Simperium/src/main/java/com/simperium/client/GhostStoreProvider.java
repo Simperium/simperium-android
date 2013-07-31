@@ -25,6 +25,11 @@ public interface GhostStoreProvider {
      * Builds a ghost from the provided bucket and key
      */
     public Ghost getGhost(Bucket bucket, String key) throws GhostMissingException;
+
+    /**
+     * Get the currently stored version number for the key in the bucket
+     */
+    public int getGhostVersion(Bucket bucket, String key) throws GhostMissingException;
     /**
      * Saves the provided ghost to the bucket
      */

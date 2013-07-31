@@ -11,7 +11,7 @@ import android.database.Cursor;
 import com.simperium.storage.PersistentStore;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.ChannelProvider;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Query;
 import com.simperium.client.ObjectCache;

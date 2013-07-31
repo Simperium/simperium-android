@@ -9,6 +9,7 @@ import com.simperium.storage.PersistentStore;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.Channel;
 import com.simperium.client.GhostStore;
 import com.simperium.client.Syncable;
@@ -140,7 +141,7 @@ public class Simperium implements User.AuthenticationListener {
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
         BucketStore<T> storage = storageProvider.createStore(bucketName, schema);
         Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
-        Bucket.ChannelProvider<T> channel = socketManager.createChannel(bucket, channelSerializer);
+        ChannelProvider<T> channel = socketManager.createChannel(bucket, channelSerializer);
         bucket.setChannel(channel);
         storage.prepare(bucket);
         return bucket;

@@ -44,13 +44,6 @@ import android.os.CancellationSignal;
 
 public class Bucket<T extends Syncable> {
     
-    public interface ChannelProvider<T extends Syncable> {
-        public Change<T> queueLocalChange(T object);
-        public Change<T> queueLocalDeletion(T object);
-        public boolean isIdle();
-        public void start();
-        public void reset();
-    }
 
     public interface OnSaveObjectListener<T extends Syncable> {
         void onSaveObject(Bucket<T> bucket, T object);
@@ -68,6 +61,11 @@ public class Bucket<T extends Syncable> {
         OnSaveObjectListener<T>, OnDeleteObjectListener<T>,
         OnNetworkChangeListener<T> {
             // implements all listener methods
+    }
+    
+    public interface RevisionsRequestCallbacks<T extends Syncable> {
+        public void onComplete();
+        public void onRevision(String key, int version, T object);
     }
 
     public enum ChangeType {
@@ -484,6 +482,32 @@ public class Bucket<T extends Syncable> {
         removeOnSaveObjectListener(listener);
         removeOnDeleteObjectListener(listener);
         removeOnNetworkChangeListener(listener);
+    }
+    
+    /**
+     * Request revision history for object with the given key
+     */
+    public Channel.RevisionsRequest getRevisions(String key, final RevisionsRequestCallbacks<T> callbacks){
+        int version = 0;
+        try {
+            version = ghostStore.getGhostVersion(this, key);            
+        } catch (GhostMissingException e) {
+            // if we don't have a ghost then there's no history
+            // TODO: bypass the channel?
+        }
+        return channel.getRevisions(key, version, new ChannelProvider.RevisionsRequestCallbacks(){
+            @Override
+            public void onRevision(String key, int version, Map<String,Object> properties){
+                // build the object, set the read only ghost and call the callback
+                T object = schema.build(key, properties);
+                // TODO: object needs a ghost that prevents saving
+                callbacks.onRevision(key, version, object);
+            }
+            @Override
+            public void onComplete(){
+                callbacks.onComplete();
+            }
+        });
     }
 
     public void addOnSaveObjectListener(OnSaveObjectListener<T> listener){

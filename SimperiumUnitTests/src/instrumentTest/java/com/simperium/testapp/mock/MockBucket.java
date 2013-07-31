@@ -1,7 +1,7 @@
 package com.simperium.testapp.mock;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.ChannelProvider;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStoreProvider;
 import com.simperium.client.ObjectCache;

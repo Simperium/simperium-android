@@ -38,7 +38,7 @@ import org.json.JSONTokener;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
+public class Channel<T extends Syncable> implements ChannelProvider<T> {
 
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
@@ -167,10 +167,12 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         });
     }
 
+    @Override
     public boolean isIdle(){
         return changeProcessor == null || changeProcessor.isIdle();
     }
 
+    @Override
     public void reset(){
         changeProcessor.reset();
         if (started) {
@@ -202,16 +204,23 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     /**
      * Diffs and object's local modifications and queues up the changes
      */
+    @Override
     public Change<T> queueLocalChange(T object){
         Change<T> change = new Change<T>(Change.OPERATION_MODIFY, object);
         changeProcessor.addChange(change);
         return change;
     }
 
+    @Override
     public Change<T> queueLocalDeletion(T object){
         Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
         changeProcessor.addChange(change);
         return change;
+    }
+
+    @Override
+    public ChannelProvider.RevisionsRequest getRevisions(String key, int sinceVersion, ChannelProvider.RevisionsRequestCallbacks callbacks){
+        return null;
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -312,6 +321,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     /**
      * Send Bucket's init message to start syncing changes.
      */
+    @Override
     public void start(){
         if (started) {
             // we've already started
