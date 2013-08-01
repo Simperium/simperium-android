@@ -13,8 +13,7 @@ repositories {
 }
 
 dependencies {
-    compile files('libs/android-websockets.jar')
-    compile files('libs/android-async-http-1.4.3.jar')
+    compile fileTree(dir: 'libs', include:'*.jar')
 }
 
 android {
