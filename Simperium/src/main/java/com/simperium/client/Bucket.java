@@ -411,10 +411,9 @@ public class Bucket<T extends Syncable> {
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
      */
-    protected void addObjectWithGhost(Ghost ghost){
+    public void addObjectWithGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Logger.log(TAG, "Built object with ghost, add it");
         addObject(object);
     }
     /**
@@ -485,10 +484,14 @@ public class Bucket<T extends Syncable> {
         removeOnNetworkChangeListener(listener);
     }
     
+    public Channel.RevisionsRequest getRevisions(T object, RevisionsRequestCallbacks<T> callbacks){
+        return getRevisions(object.getSimperiumKey(), object.getVersion(), callbacks);
+    }
+
     /**
      * Request revision history for object with the given key
      */
-    public Channel.RevisionsRequest getRevisions(String key, final RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
+    public Channel.RevisionsRequest getRevisions(String key, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
         int version = 0;
         try {
             version = ghostStore.getGhostVersion(this, key);            
@@ -496,6 +499,10 @@ public class Bucket<T extends Syncable> {
             callbacks.onError(e);
             throw e;
         }
+        return getRevisions(key, version, callbacks);
+    }
+
+    public Channel.RevisionsRequest getRevisions(String key, int version, final RevisionsRequestCallbacks<T> callbacks){
         return channel.getRevisions(key, version, new ChannelProvider.RevisionsRequestCallbacks(){
 
             @Override
