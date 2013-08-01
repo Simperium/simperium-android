@@ -29,7 +29,13 @@ import android.database.sqlite.SQLiteDatabase;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import org.json.JSONObject;
+
 public class Simperium implements User.AuthenticationListener {
+
+    public interface OnUserCreatedListener {
+        void onUserCreated(User user);
+    }
 
     public static final String VERSION = "duo-beta";
     public static final String CLIENT_ID = String.format("android-%s", VERSION);
@@ -52,6 +58,7 @@ public class Simperium implements User.AuthenticationListener {
     private static Simperium simperiumClient = null;
 	private GhostStore ghostStore;
     private Channel.Serializer channelSerializer;
+    private OnUserCreatedListener onUserCreatedListener;
     
     public Simperium(String appId, String appSecret, Context context){
         this(appId, appSecret, context, new PersistentStore(context.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null)), null);
@@ -166,9 +173,25 @@ public class Simperium implements User.AuthenticationListener {
         authClient.setAuthProvider(providerString);
     }
 
-    public User createUser(String email, String password, AuthResponseHandler handler){
+    protected void setOnUserCreatedListener(OnUserCreatedListener listener){
+        onUserCreatedListener = listener;
+    }
+
+    protected void notifyOnUserCreatedListener(User user){
+        if (onUserCreatedListener != null){
+            onUserCreatedListener.onUserCreated(user);
+        }
+    }
+
+    public User createUser(String email, String password, final AuthResponseHandler handler){
         user.setCredentials(email, password);
-        return authClient.createUser(user, handler);
+        AuthResponseHandler wrapper = new AuthResponseHandlerWrapper(handler){
+            @Override
+            public void onSuccess(User user){
+                notifyOnUserCreatedListener(user);
+            }
+        };
+        return authClient.createUser(user, wrapper);
     }
 
     public User authorizeUser(String email, String password, AuthResponseHandler handler){
@@ -235,5 +258,29 @@ public class Simperium implements User.AuthenticationListener {
 
     public void setAuthenticationListener(AuthenticationListener listener){
         authenticationListener = listener;
+    }
+
+    private class AuthResponseHandlerWrapper implements AuthResponseHandler {
+
+        final private AuthResponseHandler handler;
+
+        public AuthResponseHandlerWrapper(final AuthResponseHandler handler){
+            this.handler = handler;
+        }
+
+        @Override
+        public void onSuccess(User user) {
+            handler.onSuccess(user);
+        }
+
+        @Override
+        public void onInvalid(User user, Throwable error, JSONObject validationErrors) {
+            handler.onInvalid(user, error, validationErrors);
+        }
+
+        @Override
+        public void onFailure(User user, Throwable error, String message) {
+            handler.onFailure(user, error, message);
+        }
     }
 }
