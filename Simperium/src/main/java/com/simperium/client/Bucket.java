@@ -66,6 +66,7 @@ public class Bucket<T extends Syncable> {
     public interface RevisionsRequestCallbacks<T extends Syncable> {
         public void onComplete();
         public void onRevision(String key, int version, T object);
+        public void onError(Throwable exception);
     }
 
     public enum ChangeType {
@@ -487,15 +488,16 @@ public class Bucket<T extends Syncable> {
     /**
      * Request revision history for object with the given key
      */
-    public Channel.RevisionsRequest getRevisions(String key, final RevisionsRequestCallbacks<T> callbacks){
+    public Channel.RevisionsRequest getRevisions(String key, final RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
         int version = 0;
         try {
             version = ghostStore.getGhostVersion(this, key);            
         } catch (GhostMissingException e) {
-            // if we don't have a ghost then there's no history
-            // TODO: bypass the channel?
+            callbacks.onError(e);
+            throw e;
         }
         return channel.getRevisions(key, version, new ChannelProvider.RevisionsRequestCallbacks(){
+
             @Override
             public void onRevision(String key, int version, Map<String,Object> properties){
                 // build the object, set the read only ghost and call the callback
@@ -503,10 +505,17 @@ public class Bucket<T extends Syncable> {
                 // TODO: object needs a ghost that prevents saving
                 callbacks.onRevision(key, version, object);
             }
+
             @Override
             public void onComplete(){
                 callbacks.onComplete();
             }
+
+            @Override
+            public void onError(Throwable exception){
+                callbacks.onError(exception);
+            }
+
         });
     }
 

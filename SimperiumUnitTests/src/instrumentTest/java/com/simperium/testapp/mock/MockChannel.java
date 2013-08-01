@@ -103,4 +103,5 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
         ack.isAcknowledgedBy(change);
         mBucket.acknowledgeChange(ack, change);
     }
+
 }

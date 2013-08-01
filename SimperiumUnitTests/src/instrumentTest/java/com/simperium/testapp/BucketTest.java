@@ -71,7 +71,7 @@ public class BucketTest extends SimperiumTest {
         assertFalse(note.isNew());
     }
     
-    public void testObjectHistory(){
+    public void testObjectHistory() throws Exception {
         String key = "fake-history";
         // put a fake ghost in the ghost store
         Map<String,Object> properties = new HashMap<String,Object>(2);
@@ -84,22 +84,29 @@ public class BucketTest extends SimperiumTest {
         
         assertEquals(2, history.receivedRevisions);
         assertEquals("Title 1", history.notes[0].getTitle());
+        assertTrue(history.complete);
     }
     
     class RevisionsReceiver implements Bucket.RevisionsRequestCallbacks<Note> {
 
         public int receivedRevisions = 0;
         public Note[] notes = new Note[2];
+        public boolean complete = false;
 
         @Override
         public void onComplete(){
-            
+            complete = true;
         }
 
         @Override
         public void onRevision(String key, int version, Note note){
             notes[version-1] = note;
             receivedRevisions ++;
+        }
+
+        @Override
+        public void onError(Throwable error){
+            
         }
     }
 }

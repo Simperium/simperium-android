@@ -20,6 +20,15 @@ public class MockBucket {
      * interface with a bucket.
      */
     public static <T extends Syncable> Bucket<T> buildBucket(BucketSchema<T> schema){
+        return buildBucket(schema, new ChannelFactory(){
+            @Override
+            public <T extends Syncable> ChannelProvider<T> buildChannel(Bucket<T> bucket){
+                return new MockChannel(bucket);
+            }
+        });
+    }
+
+    public static <T extends Syncable> Bucket<T> buildBucket(BucketSchema<T> schema, ChannelFactory factory){
         User user = MockUser.buildUser();
         StorageProvider storage = new MemoryStore();
         BucketStore<T> store = storage.createStore(schema.getRemoteName(), schema);
@@ -27,10 +36,14 @@ public class MockBucket {
         ObjectCache<T> cache = new ObjectCache<T>(new MockCache<T>());
         
         Bucket<T> bucket = new Bucket<T>(schema.getRemoteName(), schema, user, store, ghosts, cache);
-        ChannelProvider<T> channel = new MockChannel<T>(bucket);
+        ChannelProvider<T> channel = factory.buildChannel(bucket);
         bucket.setChannel(channel);
         bucket.start();
         return bucket;
+    }
+
+    public interface ChannelFactory {
+        public <T extends Syncable> ChannelProvider<T> buildChannel(Bucket<T> bucket);
     }
 
 }
