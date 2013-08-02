@@ -93,24 +93,25 @@ public class Bucket<T extends Syncable> {
     private BucketSchema<T> schema;
     private GhostStoreProvider ghostStore;
     private ObjectCache<T> cache;
+    final private SyncService syncService;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
-        this(name, schema, user, storage, ghostStore, null);
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
+        this(syncService, name, schema, user, storage, ghostStore, null);
         cache = ObjectCache.buildCache(this);
     }
 
-    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore, ObjectCache cache){
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore, ObjectCache cache){
+        this.syncService = syncService;
         this.name = name;
         this.user = user;
         this.storage = storage;
         this.ghostStore = ghostStore;
         this.schema = schema;
         this.cache = cache;
-        // naively, each bucket will have it's own syncing handler
     }
     /**
      * Return the user for this bucket
@@ -180,10 +181,8 @@ public class Bucket<T extends Syncable> {
      */
     public Change<T> sync(final T object){
         Logger.log(TAG, String.format("Syncing object %s", object));
-        Change<T> change = channel.queueLocalChange(object);
-
         // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
-        Thread syncThread = new Thread(new Runnable(){
+        syncService.submit(new Runnable(){
             @Override
             public void run(){
                 storage.save(object, schema.indexesFor(object));
@@ -195,7 +194,8 @@ public class Bucket<T extends Syncable> {
                 }
             }
         });
-        syncThread.start();
+        Change<T> change = channel.queueLocalChange(object);
+
         return change;
     }
 
