@@ -520,7 +520,7 @@ public class Bucket<T extends Syncable> {
 
     public void notifyOnSaveListeners(T object){
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
-        Logger.log(TAG, String.format("Notifying OnSaveObjectListener %d", notify.size()));
+        Logger.log(TAG, String.format("%s - Notifying %s OnSaveObjectListener %d", Thread.currentThread().getName(), getName(), notify.size()));
 
         Iterator<OnSaveObjectListener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
@@ -535,7 +535,8 @@ public class Bucket<T extends Syncable> {
 
     public void notifyOnDeleteListeners(T object){
         Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
-
+        Logger.log(TAG, String.format("%s - Notifying %s OnDeleteObjectListeners %d", Thread.currentThread().getName(), getName(), notify.size()));
+        
         Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
             OnDeleteObjectListener<T> listener = iterator.next();
