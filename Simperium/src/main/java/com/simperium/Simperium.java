@@ -172,7 +172,7 @@ public class Simperium implements User.AuthenticationListener {
         authClient.setAuthProvider(providerString);
     }
 
-    protected void setOnUserCreatedListener(OnUserCreatedListener listener){
+    public void setOnUserCreatedListener(OnUserCreatedListener listener){
         onUserCreatedListener = listener;
     }
 
@@ -187,6 +187,7 @@ public class Simperium implements User.AuthenticationListener {
         AuthResponseHandler wrapper = new AuthResponseHandlerWrapper(handler){
             @Override
             public void onSuccess(User user){
+                super.onSuccess(user);
                 notifyOnUserCreatedListener(user);
             }
         };
