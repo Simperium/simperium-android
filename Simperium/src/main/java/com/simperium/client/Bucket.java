@@ -110,6 +110,7 @@ public class Bucket<T extends Syncable> {
         this.ghostStore = ghostStore;
         this.schema = schema;
         this.cache = cache;
+        // naively, each bucket will have it's own syncing handler
     }
     /**
      * Return the user for this bucket
@@ -177,18 +178,25 @@ public class Bucket<T extends Syncable> {
     /**
      * Tell the bucket to sync changes.
      */
-    public Change<T> sync(T object){
+    public Change<T> sync(final T object){
         Logger.log(TAG, String.format("Syncing object %s", object));
-        storage.save(object, schema.indexesFor(object));
+        Change<T> change = channel.queueLocalChange(object);
+
+        // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
+        Thread syncThread = new Thread(new Runnable(){
+            @Override
+            public void run(){
+                storage.save(object, schema.indexesFor(object));
         
-        if (object.isModified()){
-            Change<T> change = channel.queueLocalChange(object);
-            // Notify listeners that an object has been saved, this was
-            // triggered locally
-            notifyOnSaveListeners(object);
-            return change;
-        }
-        return null;
+                if (object.isModified()){
+                    // Notify listeners that an object has been saved, this was
+                    // triggered locally
+                    notifyOnSaveListeners(object);
+                }
+            }
+        });
+        syncThread.start();
+        return change;
     }
 
     /**
