@@ -20,6 +20,8 @@ import com.simperium.Simperium;
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 
+import com.simperium.client.ChannelProvider.RevisionsRequest;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EventObject;
@@ -30,6 +32,8 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.Scanner;
 
+import java.text.ParseException;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,7 +42,7 @@ import org.json.JSONTokener;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
+public class Channel<T extends Syncable> implements ChannelProvider<T> {
 
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
@@ -49,6 +53,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     static final String FIELD_BUCKET_NAME = "name";
     static final String FIELD_COMMAND     = "cmd";
 
+    public static final String NEW_LINE   = "\n";
+
     // commands sent over the socket
     public static final String COMMAND_INIT      = "init"; // init:{INIT_PROPERTIES}
     public static final String COMMAND_AUTH      = "auth"; // received after an init: auth:expired or auth:email@example.com
@@ -56,6 +62,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     public static final String COMMAND_CHANGE    = "c";
     public static final String COMMAND_VERSION   = "cv";
     public static final String COMMAND_ENTITY    = "e";
+
+    public static final String ENTITY_DATA_KEY = "data";
 
     static final String RESPONSE_UNKNOWN  = "?";
 
@@ -106,6 +114,61 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             this.queued = queuedChanges;
         }
     }
+
+    private class RevisionsCollector implements ChannelProvider.RevisionsRequest {
+
+        final private String key, prefix;
+        final private int sinceVersion;
+        final private ChannelProvider.RevisionsRequestCallbacks callbacks;
+        private boolean completed = true;
+        private boolean sent = false;
+        private List<Integer> versions = Collections.synchronizedList(new ArrayList<Integer>());
+
+        RevisionsCollector(String key, int sinceVersion, ChannelProvider.RevisionsRequestCallbacks callbacks){
+            this.key = key;
+            this.prefix = String.format("%s.", key);
+            this.sinceVersion = sinceVersion;
+            this.callbacks = callbacks;
+        }
+
+        private void send(){
+            if (!sent) {
+                sent = true;
+                // for each version send an e: request
+                for (int i=1; i<sinceVersion; i++) {
+                    sendObjectRequest(key, i);
+                }
+            }
+        }
+
+        public void addObjectData(ObjectVersion objectVersion){
+            int version = objectVersion.getVersion();
+            if (objectVersion.getKey().equals(this.key) && version < sinceVersion && versions.indexOf(version) == -1) {
+                versions.add(version);
+                try {
+                    JSONObject data = objectVersion.parsePayload();
+                    callbacks.onRevision(key, version, convertJSON(data));                    
+                } catch (JSONException e) {
+                    callbacks.onError(e);
+                    revisionCollectors.remove(this);
+                    completed = true;
+                    return;
+                }
+                if (versions.size() == sinceVersion-1 ) {
+                    revisionCollectors.remove(this);
+                    completed = true;
+                    callbacks.onComplete();
+                }
+            }
+        }
+
+        @Override
+        public boolean isComplete(){
+            return completed;
+        }
+    }
+
+    private List<RevisionsCollector> revisionCollectors = Collections.synchronizedList(new ArrayList<RevisionsCollector>());
 
     public Channel(String appId, String sessionId, final Bucket<T> bucket, Serializer serializer, OnMessageListener listener){
         this.serializer = serializer;
@@ -167,10 +230,12 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         });
     }
 
+    @Override
     public boolean isIdle(){
         return changeProcessor == null || changeProcessor.isIdle();
     }
 
+    @Override
     public void reset(){
         changeProcessor.reset();
         if (started) {
@@ -202,16 +267,28 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     /**
      * Diffs and object's local modifications and queues up the changes
      */
+    @Override
     public Change<T> queueLocalChange(T object){
         Change<T> change = new Change<T>(Change.OPERATION_MODIFY, object);
         changeProcessor.addChange(change);
         return change;
     }
 
+    @Override
     public Change<T> queueLocalDeletion(T object){
         Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
         changeProcessor.addChange(change);
         return change;
+    }
+
+    @Override
+    public ChannelProvider.RevisionsRequest getRevisions(String key, int sinceVersion, final ChannelProvider.RevisionsRequestCallbacks callbacks){
+        // for the key and version iterate down requesting the each version for the object
+        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, callbacks);
+        revisionCollectors.add(collector);
+        collector.send();
+        // collect the responses back
+        return collector;
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -287,13 +364,23 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         Logger.log(TAG, String.format("Received %d change(s)", changes.length()));
     }
 
-    private static final String ENTITY_DATA_KEY = "data";
     private void handleVersionResponse(String versionData){
         // versionData will be: key.version\n{"data":ENTITY}
         // we need to parse out the key and version, parse the json payload and
         // retrieve the data
-        if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
-          Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
+        try {
+            ObjectVersion objectVersion = ObjectVersion.parseVersionData(versionData);
+            if (indexProcessor == null || !indexProcessor.addObjectData(objectVersion)) {
+              Logger.log(TAG, String.format("Unkown Object for index: %s", objectVersion.getKey()));
+            }
+            // if we have any revision requests pending, we want to collect the objects
+            Iterator<RevisionsCollector> collectors = revisionCollectors.iterator();
+            while(collectors.hasNext()){
+                RevisionsCollector collector = collectors.next();
+                collector.addObjectData(objectVersion);
+            }
+        } catch (ParseException e) {
+            Logger.log(TAG, "Invalid object version", e);
         }
 
     }
@@ -312,6 +399,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     /**
      * Send Bucket's init message to start syncing changes.
      */
+    @Override
     public void start(){
         if (started) {
             // we've already started
@@ -376,6 +464,10 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         // send a message
         MessageEvent event = new MessageEvent(this, message);
         emit(event);
+    }
+
+    private void sendObjectRequest(String key, int version){
+        sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, version));
     }
 
     private void emit(MessageEvent event){
@@ -488,17 +580,80 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
     }
 
-    private class ObjectVersion {
+    private static class ObjectVersion {
         private String key;
         private Integer version;
+        private String payload;
+        private JSONObject parsedPayload;
+        private boolean payloadPresent = false;
+        private boolean unknown = false;
 
         public ObjectVersion(String key, Integer version){
             this.key = key;
             this.version = version;
         }
 
+        public int getVersion(){
+            return version;
+        }
+
+        public String getKey(){
+            return key;
+        }
+
+        public boolean hasPayload(){
+            return payloadPresent;
+        }
+
+        public boolean isUnknown(){
+            return unknown;
+        }
+
         public String toString(){
             return String.format("%s.%d", key, version);
+        }
+
+        public JSONObject parsePayload() throws JSONException {
+            if (parsedPayload != null) {
+                return parsedPayload;
+            }
+            JSONObject payloadJSON = new JSONObject(payload);
+            parsedPayload = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
+            return parsedPayload;
+        }
+
+        /**
+         * Parses a full e: response with JSON payload
+         */
+        public static ObjectVersion parseVersionData(String versionData) throws ParseException {
+            int delimiter = versionData.indexOf(NEW_LINE);
+            if (delimiter == -1) {
+                throw new ParseException("Missing payload", 0);
+            }
+
+            String prefix = versionData.substring(0, delimiter);
+            int lastDot = prefix.lastIndexOf(".");
+            if (lastDot == -1) throw new ParseException(String.format("Missing version string: %s", prefix), prefix.length());
+
+            String key = prefix.substring(0, lastDot);
+            int version = 0;
+            try {
+                version = Integer.parseInt(prefix.substring(lastDot + 1));
+            } catch (NumberFormatException e) {
+                throw new ParseException("Invalid version number", lastDot + 1);
+            }
+
+            ObjectVersion object = new ObjectVersion(key, version);
+            String payload = versionData.substring(delimiter + 1);
+            if (payload.equals(RESPONSE_UNKNOWN)) {
+                object.unknown = true;
+                return object;
+            }
+
+            object.payload = payload;
+            object.payloadPresent = true;
+
+            return object;
         }
     }
     private interface IndexProcessorListener {
@@ -532,52 +687,28 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             this.cv = cv;
             this.listener = listener;
         }
-        public Boolean addObjectData(String versionData){
+        public Boolean addObjectData(ObjectVersion objectVersion){
 
-            String[] objectParts = versionData.split("\n");
-            String prefix = objectParts[0];
-            int lastDot = prefix.lastIndexOf(".");
-            if (lastDot == -1) {
-                Logger.log(TAG, String.format("Missing version string: %s", prefix));
-                return false;
-            }
-            String key = prefix.substring(0, lastDot);
-            String version = prefix.substring(lastDot + 1);
-            String payload = objectParts[1];
-
-            if (payload.equals(RESPONSE_UNKNOWN)) {
-                Logger.log(TAG, String.format("Object unkown to simperium: %s.%s", key, version));
+            if(!index.remove(objectVersion.toString())){
+                Logger.log(TAG, String.format("Index didn't have %s", objectVersion));
                 return false;
             }
 
-            ObjectVersion objectVersion = new ObjectVersion(key, Integer.parseInt(version));
-            synchronized(index){
-                if(!index.remove(objectVersion.toString())){
-                    Logger.log(TAG, String.format("Index didn't have %s", objectVersion));
-                    return false;
-                }
-            }
-            Logger.log(TAG, String.format("We were waiting for %s.%s", key, version));
-
-            JSONObject data = null;
             try {
-                JSONObject payloadJSON = new JSONObject(payload);
-                data = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
+                JSONObject data = objectVersion.parsePayload();
+                // build the ghost and update
+                Map<String,Object> properties = Channel.convertJSON(data);
+                Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), properties);
+                bucket.addObjectWithGhost(ghost);
+                indexedCount ++;
+                if (complete && index.size() == 0) {
+                    notifyDone();
+                } else if(indexedCount % 10 == 0) {
+                    notifyProgress();
+                }
             } catch (JSONException e) {
                 Logger.log(TAG, "Failed to parse object JSON", e);
                 return false;
-            }
-
-            Integer remoteVersion = Integer.parseInt(version);
-            // build the ghost and update
-            Map<String,Object> properties = Channel.convertJSON(data);
-            Ghost ghost = new Ghost(key, remoteVersion, properties);
-            bucket.addObjectWithGhost(ghost);
-            indexedCount ++;
-            if (complete && index.size() == 0) {
-                notifyDone();
-            } else if(indexedCount % 10 == 0) {
-                notifyProgress();
             }
 
             return true;
@@ -619,7 +750,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                         if (!bucket.hasKeyVersion(key, versionNumber)) {
                             // we need to get the remote object
                             index.add(objectVersion.toString());
-                            sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
+                            sendObjectRequest(key, versionNumber);
                         } else {
                             Logger.log(TAG, String.format("Object is up to date: %s", version));
                         }
@@ -701,7 +832,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         public void onComplete();
     }
     
-    private boolean haveCompleteIndex(){
+    public boolean haveCompleteIndex(){
         return haveIndex;
     }
 
@@ -985,6 +1116,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             if (change.requiresDiff()) {
                 Map<String,Object> diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
                 if (diff.isEmpty()) {
+                    Logger.log(TAG, String.format("Diff is empty, not sending %s", change.getChangeId()));
                     return false;
                 }
                 map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
@@ -1033,7 +1165,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                     list.add(val);
                 }
             } catch (JSONException e) {
-                Logger.log(TAG, String.format("Faile to convert JSON: %s", e.getMessage()), e);
+                Logger.log(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
             }
 
         }

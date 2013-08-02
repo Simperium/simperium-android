@@ -6,6 +6,7 @@ import com.simperium.client.BucketSchema.Indexer;
 import com.simperium.client.BucketSchema.Index;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -50,6 +51,10 @@ public class Note extends BucketObject {
 
     private static final String SPACE=" ";
     private StringBuilder preview;
+
+    public Note(String key){
+        this(key, new HashMap<String,Object>());
+    }
 
     public Note(String key, Map<String,Object> properties){
         super(key, properties);

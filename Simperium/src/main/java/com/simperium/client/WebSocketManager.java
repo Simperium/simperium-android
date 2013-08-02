@@ -66,7 +66,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public <T extends Syncable> Bucket.ChannelProvider<T> createChannel(Bucket<T> bucket, Channel.Serializer serializer){
+    public <T extends Syncable> ChannelProvider<T> createChannel(Bucket<T> bucket, Channel.Serializer serializer){
         // create a channel
         Channel<T> channel = new Channel<T>(appId, sessionId, bucket, serializer, this);
         int channelId = channels.size();

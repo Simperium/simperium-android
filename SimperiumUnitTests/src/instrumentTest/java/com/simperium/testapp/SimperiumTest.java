@@ -5,7 +5,6 @@ import static com.simperium.testapp.TestHelpers.*;
 import junit.framework.TestCase;
 
 import com.simperium.client.Change;
-import com.simperium.client.User;
 import com.simperium.util.Logger;
 
 public class SimperiumTest extends TestCase {
@@ -37,6 +36,5 @@ public class SimperiumTest extends TestCase {
     static protected void tick(){
         waitFor(1);
     }
-    
 
 }

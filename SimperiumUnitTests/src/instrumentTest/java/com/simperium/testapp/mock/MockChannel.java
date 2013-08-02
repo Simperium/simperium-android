@@ -4,7 +4,7 @@
 package com.simperium.testapp.mock;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.ChannelProvider;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.Syncable;
 import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
@@ -13,6 +13,8 @@ import com.simperium.util.Uuid;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
 
@@ -58,6 +60,24 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
         return true;
     }
 
+    @Override
+    public ChannelProvider.RevisionsRequest getRevisions(String key, int sinceVersion, ChannelProvider.RevisionsRequestCallbacks callbacks){
+        for(int i=1;i<sinceVersion;i++){
+            Map<String,Object> map = new HashMap<String,Object>();
+            map.put("title", String.format("Title %d", i));
+            map.put("content", String.format("Content %d", i));
+            callbacks.onRevision(key, i, map);
+        }
+        callbacks.onComplete();
+        // mock history request that is always complete
+        return new ChannelProvider.RevisionsRequest(){
+            @Override
+            public boolean isComplete(){
+                return true;
+            }
+        };
+    }
+
     /**
      * Simulate an acknowledged change
      */
@@ -83,4 +103,5 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
         ack.isAcknowledgedBy(change);
         mBucket.acknowledgeChange(ack, change);
     }
+
 }

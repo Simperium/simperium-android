@@ -65,6 +65,13 @@ public class MockGhostStore implements GhostStoreProvider {
         return ghost;
     }
 
+    @Override
+    public int getGhostVersion(Bucket bucket, String key) throws GhostMissingException{
+        Map<String,Ghost> ghosts = ghostsForBucket(bucket);
+        Ghost ghost = getGhost(bucket, key);
+        return ghost.getVersion();
+    }
+
     /**
      * Saves the provided ghost to the bucket
      */
@@ -91,7 +98,7 @@ public class MockGhostStore implements GhostStoreProvider {
         data.put(bucket.getName(), new HashMap<String,Ghost>());
     }
     
-    protected Map<String,Ghost> ghostsForBucket(Bucket bucket){
+    public Map<String,Ghost> ghostsForBucket(Bucket bucket){
         String name = bucket.getName();
         Map<String,Ghost> ghosts = data.get(name);
         if (ghosts == null) {

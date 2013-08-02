@@ -43,25 +43,35 @@ public abstract class Syncable implements Diffable {
     public void setBucket(Bucket bucket){
         this.bucket = bucket;
     }
-    
+
     /**
      * Returns the object as it should appear on the server
      */
     public Map<String, Object>getUnmodifiedValue(){
         return getGhost().getDiffableValue();
     }
+
     /**
      * Send modifications over the socket to simperium
      */
     public Change save(){
         return getBucket().sync(this);
     }
+
     /**
      * Sends a delete operation over the socket
      */
     public Change delete(){
         return getBucket().remove(this);
     }
+
+    /**
+     * Get this object's revisions
+     */
+    public ChannelProvider.RevisionsRequest getRevisions(Bucket.RevisionsRequestCallbacks<? extends Syncable> callbacks){
+        return getBucket().getRevisions(this, callbacks);
+    }
+
     /**
      * Key.VersionId
      */
@@ -72,9 +82,4 @@ public abstract class Syncable implements Diffable {
         return getGhost().getVersionId();
     }
 
-    public void notifySaved(){
-        if (bucket != null) {
-            bucket.notifyOnSaveListeners(this);
-        }
-    }
 }

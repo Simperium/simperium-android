@@ -44,13 +44,6 @@ import android.os.CancellationSignal;
 
 public class Bucket<T extends Syncable> {
     
-    public interface ChannelProvider<T extends Syncable> {
-        public Change<T> queueLocalChange(T object);
-        public Change<T> queueLocalDeletion(T object);
-        public boolean isIdle();
-        public void start();
-        public void reset();
-    }
 
     public interface OnSaveObjectListener<T extends Syncable> {
         void onSaveObject(Bucket<T> bucket, T object);
@@ -68,6 +61,12 @@ public class Bucket<T extends Syncable> {
         OnSaveObjectListener<T>, OnDeleteObjectListener<T>,
         OnNetworkChangeListener<T> {
             // implements all listener methods
+    }
+    
+    public interface RevisionsRequestCallbacks<T extends Syncable> {
+        public void onComplete();
+        public void onRevision(String key, int version, T object);
+        public void onError(Throwable exception);
     }
 
     public enum ChangeType {
@@ -412,10 +411,9 @@ public class Bucket<T extends Syncable> {
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
      */
-    protected void addObjectWithGhost(Ghost ghost){
+    public void addObjectWithGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Logger.log(TAG, "Built object with ghost, add it");
         addObject(object);
     }
     /**
@@ -484,6 +482,48 @@ public class Bucket<T extends Syncable> {
         removeOnSaveObjectListener(listener);
         removeOnDeleteObjectListener(listener);
         removeOnNetworkChangeListener(listener);
+    }
+    
+    public Channel.RevisionsRequest getRevisions(T object, RevisionsRequestCallbacks<T> callbacks){
+        return getRevisions(object.getSimperiumKey(), object.getVersion(), callbacks);
+    }
+
+    /**
+     * Request revision history for object with the given key
+     */
+    public Channel.RevisionsRequest getRevisions(String key, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
+        int version = 0;
+        try {
+            version = ghostStore.getGhostVersion(this, key);            
+        } catch (GhostMissingException e) {
+            callbacks.onError(e);
+            throw e;
+        }
+        return getRevisions(key, version, callbacks);
+    }
+
+    public Channel.RevisionsRequest getRevisions(String key, int version, final RevisionsRequestCallbacks<T> callbacks){
+        return channel.getRevisions(key, version, new ChannelProvider.RevisionsRequestCallbacks(){
+
+            @Override
+            public void onRevision(String key, int version, Map<String,Object> properties){
+                // build the object, set the read only ghost and call the callback
+                T object = schema.build(key, properties);
+                // TODO: object needs a ghost that prevents saving
+                callbacks.onRevision(key, version, object);
+            }
+
+            @Override
+            public void onComplete(){
+                callbacks.onComplete();
+            }
+
+            @Override
+            public void onError(Throwable exception){
+                callbacks.onError(exception);
+            }
+
+        });
     }
 
     public void addOnSaveObjectListener(OnSaveObjectListener<T> listener){
