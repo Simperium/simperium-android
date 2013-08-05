@@ -77,7 +77,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
-    private boolean started = false, connected = false, startOnConnect = false;
+    private boolean started = false, connected = false, startOnConnect = false, disconnectOnIdle = false;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
@@ -171,6 +171,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         return changeProcessor == null || changeProcessor.isIdle();
     }
 
+    @Override
     public void reset(){
         changeProcessor.reset();
         if (started) {
@@ -309,9 +310,11 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     public String getSessionId(){
         return sessionId;
     }
+
     /**
      * Send Bucket's init message to start syncing changes.
      */
+    @Override
     public void start(){
         if (started) {
             // we've already started
@@ -323,6 +326,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             startOnConnect = true;
             return;
         }
+        disconnectOnIdle = false;
         started = true;
         // If the websocket isn't connected yet we'll automatically start
         // when we're notified that we've connected
@@ -347,6 +351,25 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
         sendMessage(message);
     }
+
+    /**
+     * Completes all syncing operations and then disconnects
+     */
+    @Override
+    public void stop(){
+        startOnConnect = false;
+        disconnectOnIdle = true;
+    }
+
+    /**
+     * Called when ChangeProcessor has completed all activities
+     */
+    private void onIdle(){
+        if (disconnectOnIdle) {
+            Logger.log(TAG, String.format("%s Close up now", Thread.currentThread().getName()));
+        }
+    }
+
     // websocket
     public void onConnect(){
         connected = true;
@@ -735,13 +758,13 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             this.handler = new Handler(handlerThread.getLooper());
             Logger.log(TAG, String.format("Starting change processor handler on thread %s", this.handler.getLooper().getThread().getName()));
             this.retryTimer = new Timer();
-            restore();
+            // restore();
         }
         /**
          * not waiting for any remote changes and have no local or pending changes
          */
         public boolean isIdle(){
-            return !isRunning() && pendingChanges.size() == 0 && localQueue.size() == 0 && remoteQueue.size() == 0;
+            return !isRunning() && pendingChanges.isEmpty() && localQueue.isEmpty() && remoteQueue.isEmpty();
         }
         /**
          * If thread is running
@@ -843,14 +866,25 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             stop();
         }
 
+        protected void notifyIdleState(){
+            onIdle();
+        }
 
         public void run(){
             Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
+            boolean idle = false;
             while(true && !Thread.interrupted()){
                 // TODO: only process one remote change at a time
                 processRemoteChanges();
                 // TODO: only process one local change at a time
                 processLocalChanges();
+                boolean localActivity = !pendingChanges.isEmpty() || !localQueue.isEmpty();
+                if (!localActivity && !idle) {
+                    idle = true;
+                    notifyIdleState();
+                } else if(idle) {
+                    idle = false;
+                }
             }
             Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
             save();

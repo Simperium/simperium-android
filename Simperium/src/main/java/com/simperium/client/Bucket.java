@@ -49,6 +49,7 @@ public class Bucket<T extends Syncable> {
         public Change<T> queueLocalDeletion(T object);
         public boolean isIdle();
         public void start();
+        public void stop();
         public void reset();
     }
 
@@ -573,12 +574,17 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
-     * Initialize the bucket to start tracking changes. We can provide a way
-     * for storage mechanisms to initialize here.
+     * Initialize the bucket to start tracking changes.
      */
     public void start(){
         channel.start();
     }
+
+    public void stop(){
+        channel.stop();
+    }
+
+
     /*
      * Reset bucket what is on the server
      */
