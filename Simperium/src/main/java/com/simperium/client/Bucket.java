@@ -203,11 +203,16 @@ public class Bucket<T extends Syncable> {
     /**
      * Tell the bucket to remove the object
      */
-    public Change<T> remove(T object){
+    public Change<T> remove(final T object){
         cache.remove(object.getSimperiumKey());
-        storage.delete(object);
+        syncService.submit(new Runnable() {
+            @Override
+            public void run() {
+                storage.delete(object);
+                notifyOnDeleteListeners(object);
+            }
+        });
         Change<T> change = channel.queueLocalDeletion(object);
-        notifyOnDeleteListeners(object);
         return change;
     }
 
