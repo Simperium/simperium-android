@@ -953,10 +953,13 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         }
         
         public void processLocalChanges(){
-            final List<Change<T>> sendLater = new ArrayList<Change<T>>();
             synchronized(lock){
+                if (localQueue.isEmpty()) {
+                    return;
+                }
+                final List<Change<T>> sendLater = new ArrayList<Change<T>>();
                 // find the first local change whose key does not exist in the pendingChanges and there are no remote changes
-                while(localQueue.size() > 0 && !Thread.interrupted()){
+                while(!localQueue.isEmpty() && !Thread.interrupted()){
                     // take the first change of the queue
                     Change localChange = localQueue.remove(0);
                         // check if there's a pending change with the same key
@@ -978,9 +981,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                         }
                     }
                 }
-            }
-            // add the sendLater changes back on top of the queue
-            synchronized(lock){
                 localQueue.addAll(0, sendLater);
             }
         }
