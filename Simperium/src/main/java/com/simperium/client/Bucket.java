@@ -180,12 +180,13 @@ public class Bucket<T extends Syncable> {
     /**
      * Tell the bucket to sync changes.
      */
-    public Change<T> sync(final T object){
+    public void sync(final T object){
         Logger.log(TAG, String.format("Syncing object %s", object));
         // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
         syncService.submit(new Runnable(){
             @Override
             public void run(){
+                Change<T> change = channel.queueLocalChange(object);
                 storage.save(object, schema.indexesFor(object));
         
                 if (object.isModified()){
@@ -195,25 +196,21 @@ public class Bucket<T extends Syncable> {
                 }
             }
         });
-        Change<T> change = channel.queueLocalChange(object);
-
-        return change;
     }
 
     /**
      * Tell the bucket to remove the object
      */
-    public Change<T> remove(final T object){
+    public void remove(final T object){
         cache.remove(object.getSimperiumKey());
         syncService.submit(new Runnable() {
             @Override
             public void run() {
+                Change<T> change = channel.queueLocalDeletion(object);
                 storage.delete(object);
                 notifyOnDeleteListeners(object);
             }
         });
-        Change<T> change = channel.queueLocalDeletion(object);
-        return change;
     }
 
     /**
