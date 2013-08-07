@@ -882,7 +882,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                 if (!localActivity && !idle) {
                     idle = true;
                     notifyIdleState();
-                } else if(idle) {
+                } else if(idle && localActivity) {
                     idle = false;
                 }
             }
