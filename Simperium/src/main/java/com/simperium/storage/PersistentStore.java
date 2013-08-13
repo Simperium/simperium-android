@@ -111,7 +111,7 @@ public class PersistentStore implements StorageProvider {
 
         @Override
         public void prepare(Bucket<T> bucket){
-            reindex(bucket);
+            // reindex(bucket);
         }
 
         /**

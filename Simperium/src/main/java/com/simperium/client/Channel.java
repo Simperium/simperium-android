@@ -40,6 +40,12 @@ import android.os.HandlerThread;
 
 public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
+    public interface OnMessageListener {
+        void onMessage(MessageEvent event);
+        void onClose(Channel channel);
+        void onOpen(Channel channel);
+    }
+
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
     static final String FIELD_CLIENT_ID   = "clientid";
@@ -77,7 +83,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
-    private boolean started = false, connected = false, startOnConnect = false, disconnectOnIdle = false;
+    private boolean started = false, connected = false, startOnConnect = false, closed = true, closeOnIdle = false;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
@@ -311,6 +317,14 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         return sessionId;
     }
 
+    public boolean isClosed(){
+        return closed;
+    }
+
+    public boolean isStarted(){
+        return started;
+    }
+
     /**
      * Send Bucket's init message to start syncing changes.
      */
@@ -323,10 +337,16 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         // If socket isn't connected yet we have to wait until connection
         // is up and try starting then
         if (!connected) {
+            if (listener != null) listener.onOpen(this);
             startOnConnect = true;
             return;
         }
-        disconnectOnIdle = false;
+        if (bucket.getUser().needsAuthentication()) {
+            Logger.log(TAG, "Not starting, missing access token");
+            return;
+        }
+        closeOnIdle = false;
+        closed = false;
         started = true;
         // If the websocket isn't connected yet we'll automatically start
         // when we're notified that we've connected
@@ -358,15 +378,17 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     @Override
     public void stop(){
         startOnConnect = false;
-        disconnectOnIdle = true;
+        closeOnIdle = true;
     }
 
     /**
      * Called when ChangeProcessor has completed all activities
      */
-    private void onIdle(){
-        if (disconnectOnIdle) {
-            Logger.log(TAG, String.format("%s Close up now", Thread.currentThread().getName()));
+    protected void onIdle(){
+        if (closeOnIdle && listener != null) {
+            closeOnIdle = false;
+            listener.onClose(this);
+            closed = true;
         }
     }
 
@@ -397,12 +419,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     // send without the channel id, the socket manager should know which channel is writing
     private void sendMessage(String message){
         // send a message
-        MessageEvent event = new MessageEvent(this, message);
-        emit(event);
-    }
-
-    private void emit(MessageEvent event){
         if (listener != null) {
+            MessageEvent event = new MessageEvent(this, message);
             listener.onMessage(event);
         } else {
             Logger.log(TAG, String.format("No one listening to channel %s", this));
@@ -434,10 +452,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
     private void run(String name, String params){
         commands.run(name, params);
-    }
-
-    public interface OnMessageListener {
-        void onMessage(MessageEvent event);
     }
 
     /**
