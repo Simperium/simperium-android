@@ -34,6 +34,8 @@ public class LoginActivity extends Activity {
 
 	public static final String TAG = "SimperiumLoginActivity";
 
+    public static final String EXTRA_SIGN_IN_FIRST = "signInFirst";
+
 	private ConnectivityManager mSystemService;
 	private ProgressDialog pd;
 
@@ -44,6 +46,12 @@ public class LoginActivity extends Activity {
 	private EditText passwordTextField2;
 
     private TextView haveAccountTextView;
+    private TextView haveAccountButton;
+    private TextView createAccountButton;
+    private TextView l_agree_terms_of_service;
+
+    private Button signupButton;
+    private Button signinButton;
 
 	private Simperium simperium;
 
@@ -61,10 +69,10 @@ public class LoginActivity extends Activity {
 		mSystemService = (ConnectivityManager) getApplicationContext()
 				.getSystemService(Context.CONNECTIVITY_SERVICE);
 
-		final Button signupButton = (Button) findViewById(R.id.signup_button);
+		signupButton = (Button) findViewById(R.id.signup_button);
 		signupButton.setOnClickListener(signupClickListener);
 		
-		final Button signinButton = (Button) findViewById(R.id.signin_button);
+		signinButton = (Button) findViewById(R.id.signin_button);
 		signinButton.setOnClickListener(signinClickListener);
 		emailTextField = (EditText) findViewById(R.id.email_address);
 
@@ -78,9 +86,9 @@ public class LoginActivity extends Activity {
 			emailTextField.setText(intent.getStringExtra(EMAIL_EXTRA));
 		}
 
-		final TextView haveAccountButton = (TextView) findViewById(R.id.have_account_button);
-		final TextView createAccountButton = (TextView) findViewById(R.id.create_account_button);
-		final TextView l_agree_terms_of_service = (TextView) findViewById(R.id.l_agree_terms_of_service);
+		haveAccountButton = (TextView) findViewById(R.id.have_account_button);
+		createAccountButton = (TextView) findViewById(R.id.create_account_button);
+		l_agree_terms_of_service = (TextView) findViewById(R.id.l_agree_terms_of_service);
 		
 		l_agree_terms_of_service.setClickable(true);
 		l_agree_terms_of_service.setOnClickListener(new View.OnClickListener() {
@@ -96,13 +104,7 @@ public class LoginActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				//reset the screen to signin
-                haveAccountButton.setVisibility(View.GONE);
-				passwordTextField2.setVisibility(View.GONE);
-				l_agree_terms_of_service.setVisibility(View.GONE);
-                createAccountButton.setVisibility(View.VISIBLE);
-				signinButton.setVisibility(View.VISIBLE);
-				signupButton.setVisibility(View.GONE);
-                haveAccountTextView.setText(R.string.no_account);
+                setSignInVisible();
 			}
 		});
 
@@ -119,7 +121,20 @@ public class LoginActivity extends Activity {
                 haveAccountTextView.setText(getString(R.string.have_account));
 			}
 		});
+
+        if (intent.hasExtra(EXTRA_SIGN_IN_FIRST))
+            setSignInVisible();
 	}
+
+    private void setSignInVisible() {
+        haveAccountButton.setVisibility(View.GONE);
+        passwordTextField2.setVisibility(View.GONE);
+        l_agree_terms_of_service.setVisibility(View.GONE);
+        createAccountButton.setVisibility(View.VISIBLE);
+        signinButton.setVisibility(View.VISIBLE);
+        signupButton.setVisibility(View.GONE);
+        haveAccountTextView.setText(R.string.no_account);
+    }
 
     private void registerUser(User user) {
 		// TODO: finish activity
