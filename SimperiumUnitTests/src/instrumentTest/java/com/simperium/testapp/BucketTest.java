@@ -18,6 +18,7 @@ import com.simperium.testapp.models.Note;
 import com.simperium.testapp.mock.MockChannel;
 import com.simperium.testapp.mock.MockCache;
 import com.simperium.testapp.mock.MockGhostStore;
+import com.simperium.testapp.mock.MockSyncService;
 
 import org.json.JSONArray;
 
@@ -41,7 +42,7 @@ public class BucketTest extends SimperiumTest {
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MockGhostStore();
         ObjectCache<Note> cache = new ObjectCache<Note>(new MockCache<Note>());
-        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
+        mBucket = new Bucket<Note>(MockSyncService.service(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);
         mBucket.start();

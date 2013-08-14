@@ -111,7 +111,7 @@ public class PersistentStore implements StorageProvider {
 
         @Override
         public void prepare(Bucket<T> bucket){
-            reindex(bucket);
+            // reindex(bucket);
         }
 
         /**
@@ -291,6 +291,9 @@ public class PersistentStore implements StorageProvider {
             // create the table
             database.execSQL(String.format("CREATE TABLE %s (bucket, key, name, value)", INDEXES_TABLE));
         }
+        database.execSQL(String.format("CREATE INDEX IF NOT EXISTS index_name ON %s(bucket, key, name)", INDEXES_TABLE));
+        database.execSQL(String.format("CREATE INDEX IF NOT EXISTS index_value ON %s(bucket, key, value)", INDEXES_TABLE));
+        database.execSQL(String.format("CREATE INDEX IF NOT EXISTS index_key ON %s(bucket, key)", INDEXES_TABLE));
     }
 
     private void configureObjects(){
@@ -298,6 +301,7 @@ public class PersistentStore implements StorageProvider {
         if (tableInfo.getCount() == 0) {
             database.execSQL(String.format("CREATE TABLE %s (bucket, key, data)", OBJECTS_TABLE));
         }
+        database.execSQL(String.format("CREATE UNIQUE INDEX IF NOT EXISTS bucket_key ON %s (bucket, key)", OBJECTS_TABLE));
     }
 
     private Cursor tableInfo(String tableName){
@@ -333,7 +337,7 @@ public class PersistentStore implements StorageProvider {
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
             Iterator<String> keys = query.getKeys().iterator();
 
-            selection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
+            selection = new StringBuilder("SELECT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
             StringBuilder filters = new StringBuilder();
             StringBuilder where = new StringBuilder("WHERE objects.bucket = ?");
 

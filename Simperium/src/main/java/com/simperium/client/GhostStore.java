@@ -34,6 +34,7 @@ public class GhostStore implements GhostStoreProvider {
 		database = context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null);
 		database.execSQL(CREATE_TABLE_GHOSTS);
 		database.execSQL(CREATE_TABLE_CHANGE_VERSIONS);
+        database.execSQL(String.format("CREATE UNIQUE INDEX IF NOT EXISTS ghost_version ON ghosts (bucketName, simperiumKey, version)"));
 		database.setVersion(VERSION);
 	}
 	

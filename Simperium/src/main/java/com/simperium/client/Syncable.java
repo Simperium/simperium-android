@@ -53,14 +53,14 @@ public abstract class Syncable implements Diffable {
     /**
      * Send modifications over the socket to simperium
      */
-    public Change save(){
-        return getBucket().sync(this);
+    public void save(){
+        getBucket().sync(this);
     }
     /**
      * Sends a delete operation over the socket
      */
-    public Change delete(){
-        return getBucket().remove(this);
+    public void delete(){
+        getBucket().remove(this);
     }
     /**
      * Key.VersionId

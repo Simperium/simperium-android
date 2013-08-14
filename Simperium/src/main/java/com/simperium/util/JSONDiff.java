@@ -138,10 +138,10 @@ public class JSONDiff {
 			Map<String,Object> a_map = (Map<String,Object>)a;
 			Map<String,Object> b_map = (Map<String,Object>)b;
 			return diff(a_map, b_map);
-		} else if(List.class.isInstance(a)){
-			List<Object> a_list = (List<Object>)a;
-			List<Object> b_list = (List<Object>)b;
-			return diff(a_list, b_list);
+        // } else if(List.class.isInstance(a)){
+        //     List<Object> a_list = (List<Object>)a;
+        //     List<Object> b_list = (List<Object>)b;
+        //     return diff(a_list, b_list);
 		} else {
 			m.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
 			m.put(DIFF_VALUE_KEY, b);

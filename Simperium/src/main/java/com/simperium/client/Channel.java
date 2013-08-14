@@ -40,6 +40,12 @@ import android.os.HandlerThread;
 
 public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
+    public interface OnMessageListener {
+        void onMessage(MessageEvent event);
+        void onClose(Channel channel);
+        void onOpen(Channel channel);
+    }
+
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
     static final String FIELD_CLIENT_ID   = "clientid";
@@ -77,7 +83,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
-    private boolean started = false, connected = false, startOnConnect = false;
+    private boolean started = false, connected = false, startOnConnect = false, closed = true, closeOnIdle = false;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
@@ -171,6 +177,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         return changeProcessor == null || changeProcessor.isIdle();
     }
 
+    @Override
     public void reset(){
         changeProcessor.reset();
         if (started) {
@@ -309,9 +316,19 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     public String getSessionId(){
         return sessionId;
     }
+
+    public boolean isClosed(){
+        return closed;
+    }
+
+    public boolean isStarted(){
+        return started;
+    }
+
     /**
      * Send Bucket's init message to start syncing changes.
      */
+    @Override
     public void start(){
         if (started) {
             // we've already started
@@ -320,9 +337,16 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         // If socket isn't connected yet we have to wait until connection
         // is up and try starting then
         if (!connected) {
+            if (listener != null) listener.onOpen(this);
             startOnConnect = true;
             return;
         }
+        if (bucket.getUser().needsAuthentication()) {
+            Logger.log(TAG, "Not starting, missing access token");
+            return;
+        }
+        closeOnIdle = false;
+        closed = false;
         started = true;
         // If the websocket isn't connected yet we'll automatically start
         // when we're notified that we've connected
@@ -347,6 +371,27 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
         sendMessage(message);
     }
+
+    /**
+     * Completes all syncing operations and then disconnects
+     */
+    @Override
+    public void stop(){
+        startOnConnect = false;
+        closeOnIdle = true;
+    }
+
+    /**
+     * Called when ChangeProcessor has completed all activities
+     */
+    protected void onIdle(){
+        if (closeOnIdle && listener != null) {
+            closeOnIdle = false;
+            listener.onClose(this);
+            closed = true;
+        }
+    }
+
     // websocket
     public void onConnect(){
         connected = true;
@@ -374,12 +419,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     // send without the channel id, the socket manager should know which channel is writing
     private void sendMessage(String message){
         // send a message
-        MessageEvent event = new MessageEvent(this, message);
-        emit(event);
-    }
-
-    private void emit(MessageEvent event){
         if (listener != null) {
+            MessageEvent event = new MessageEvent(this, message);
             listener.onMessage(event);
         } else {
             Logger.log(TAG, String.format("No one listening to channel %s", this));
@@ -411,10 +452,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
     private void run(String name, String params){
         commands.run(name, params);
-    }
-
-    public interface OnMessageListener {
-        void onMessage(MessageEvent event);
     }
 
     /**
@@ -718,34 +755,30 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
         private ChangeProcessorListener listener;
         private Thread thread;
-        // private ArrayBlockingQueue<Map<String,Object>> queue;
-        private List<Map<String,Object>> remoteQueue;
-        private List<Change<T>> localQueue;
-        private Map<String,Change<T>> pendingChanges;
+
+        private List<Map<String,Object>> remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>(10));
+        private List<Change<T>> localQueue = Collections.synchronizedList(new ArrayList<Change<T>>());
+        private Map<String,Change<T>> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change<T>>());
         private Handler handler;
-        private Change pendingChange;
         private Timer retryTimer;
         
         private final Object lock = new Object();
 
         public ChangeProcessor(ChangeProcessorListener listener) {
             this.listener = listener;
-            this.remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>());
-            this.localQueue = Collections.synchronizedList(new ArrayList<Change<T>>());
-            this.pendingChanges = Collections.synchronizedMap(new HashMap<String,Change<T>>());
             String handlerThreadName = String.format("channel-handler-%s", bucket.getName());
             HandlerThread handlerThread = new HandlerThread(handlerThreadName);
             handlerThread.start();
             this.handler = new Handler(handlerThread.getLooper());
             Logger.log(TAG, String.format("Starting change processor handler on thread %s", this.handler.getLooper().getThread().getName()));
             this.retryTimer = new Timer();
-            restore();
+            // restore();
         }
         /**
          * not waiting for any remote changes and have no local or pending changes
          */
         public boolean isIdle(){
-            return !isRunning() && pendingChanges.size() == 0 && localQueue.size() == 0 && remoteQueue.size() == 0;
+            return !isRunning() && pendingChanges.isEmpty() && localQueue.isEmpty() && remoteQueue.isEmpty();
         }
         /**
          * If thread is running
@@ -756,6 +789,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
         private void save(){
             synchronized(lock){
+                Logger.log(TAG, String.format("%s - Saving queue with %d pending and %d local", Thread.currentThread().getName(), pendingChanges.size(), localQueue.size()));
                 serializer.save(bucket, new SerializedQueue(pendingChanges, localQueue));
             }
         }
@@ -826,8 +860,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                 );
                 thread = new Thread(this, String.format("simperium.processor.%s", getBucket().getName()));
                 thread.start();
-            } else {
-                Logger.log(TAG, "Didn't start thread");
             }
         }
 
@@ -848,19 +880,28 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             stop();
         }
 
+        protected void notifyIdleState(){
+            onIdle();
+        }
 
         public void run(){
-            // apply any remote changes we have
-            processRemoteChanges();
-            // if we have a change to an object that is waiting for an ack
-            processLocalChanges();
-            Logger.log(
-                TAG,
-                String.format(
-                    "Done processing thread with %d remote and %d local changes %d pending",
-                    remoteQueue.size(), localQueue.size(), pendingChanges.size()
-                )
-            );
+            Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
+            boolean idle = false;
+            while(true && !Thread.interrupted()){
+                // TODO: only process one remote change at a time
+                processRemoteChanges();
+                // TODO: only process one local change at a time
+                processLocalChanges();
+                boolean localActivity = !pendingChanges.isEmpty() || !localQueue.isEmpty();
+                if (!localActivity && !idle) {
+                    idle = true;
+                    notifyIdleState();
+                } else if(idle && localActivity) {
+                    idle = false;
+                }
+            }
+            Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
+            save();
         }
 
         private void processRemoteChanges(){
@@ -926,10 +967,13 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         }
         
         public void processLocalChanges(){
-            final List<Change<T>> sendLater = new ArrayList<Change<T>>();
             synchronized(lock){
-                // find the first local change whose key does not exist in the pendingChanges
-                while(localQueue.size() > 0 && !Thread.interrupted()){
+                if (localQueue.isEmpty()) {
+                    return;
+                }
+                final List<Change<T>> sendLater = new ArrayList<Change<T>>();
+                // find the first local change whose key does not exist in the pendingChanges and there are no remote changes
+                while(!localQueue.isEmpty() && !Thread.interrupted()){
                     // take the first change of the queue
                     Change localChange = localQueue.remove(0);
                         // check if there's a pending change with the same key
@@ -951,12 +995,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                         }
                     }
                 }
-            }
-            // add the sendLater changes back on top of the queue
-            synchronized(lock){
                 localQueue.addAll(0, sendLater);
             }
-            save();
         }
 
         @Override
@@ -971,7 +1011,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                 Logger.log(TAG, String.format("Abort sending change, channel not initialized: %s", change.getChangeId()));
                 return true;
             }
-            Logger.log(TAG, String.format("*** Send local change: %s", change.getChangeId()));
+            Logger.log(TAG, String.format("send change ccid %s", change.getChangeId()));
 
             Map<String,Object> map = new HashMap<String,Object>(3);
             map.put(Change.ID_KEY, change.getKey());
@@ -985,6 +1025,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             if (change.requiresDiff()) {
                 Map<String,Object> diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
                 if (diff.isEmpty()) {
+                    Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
+                    change.setComplete();
                     return false;
                 }
                 map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));

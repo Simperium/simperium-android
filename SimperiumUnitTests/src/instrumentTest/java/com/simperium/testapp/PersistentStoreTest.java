@@ -27,6 +27,7 @@ import com.simperium.testapp.models.Note;
 
 import com.simperium.testapp.mock.MockCache;
 import com.simperium.testapp.mock.MockChannel;
+import com.simperium.testapp.mock.MockSyncService;
 import com.simperium.testapp.mock.MockGhostStore;
 
 import java.util.List;
@@ -74,7 +75,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         mStore = new PersistentStore(mDatabase);
         mSchema = new Note.Schema();
         mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
-        mBucket = new Bucket<Note>(BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
+        mBucket = new Bucket<Note>(MockSyncService.service(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
         ChannelProvider<Note> channel = new MockChannel<Note>(mBucket);
         mBucket.setChannel(channel);
     }
@@ -284,7 +285,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Bucket<Note> bucket = new Bucket<Note>(bucketName, mSchema, mUser, store, mGhostStore, mCache);
+        Bucket<Note> bucket = new Bucket<Note>(MockSyncService.service(), bucketName, mSchema, mUser, store, mGhostStore, mCache);
         bucket.setChannel(new MockChannel<Note>(bucket));
         
         Note first = bucket.newObject("first");

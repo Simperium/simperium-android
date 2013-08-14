@@ -29,7 +29,7 @@ import com.codebutler.android_websockets.*;
 public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMessageListener {
 
     public enum ConnectionStatus {
-        DISCONNECTED, CONNECTING, CONNECTED
+        DISCONNECTING, DISCONNECTED, CONNECTING, CONNECTED
     }
 
     public static final String TAG = "Simperium.Websocket";
@@ -96,6 +96,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         // disconnect the channel
         reconnect = false;
         if (isConnected()) {
+            setConnectionStatus(ConnectionStatus.DISCONNECTING);
             Logger.log("Disconnecting");
             // being told to disconnect so don't automatically reconnect
             socketClient.disconnect();
@@ -112,6 +113,10 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
 
     public boolean isDisconnected(){
         return connectionStatus == ConnectionStatus.DISCONNECTED;
+    }
+
+    public boolean isDisconnecting(){
+        return connectionStatus == ConnectionStatus.DISCONNECTING;
     }
 
     public boolean getConnected(){
@@ -159,7 +164,7 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         heartbeatCount ++;
         String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
         Logger.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), command));
-        socketClient.send(command);
+        if(isConnected()) socketClient.send(command);
     }
 
     private void cancelReconnect(){
@@ -201,8 +206,22 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
         Logger.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), message));
-        socketClient.send(message);
+        if(isConnected()) socketClient.send(message);
     }
+
+    public void onClose(Channel fromChannel){
+        // check if all channels are disconnected and if so disconnect from the socket
+        Logger.log(TAG, String.format("%s disconnect from socket", Thread.currentThread().getName()));
+        for (Channel channel : channels.values()) {
+            if (!channel.isClosed()) return;
+        }
+        disconnect();
+    }
+
+    public void onOpen(Channel fromChannel){
+        connect();
+    }
+
     /**
      *
      * WebSocketClient.Listener methods for receiving status events from the socket
