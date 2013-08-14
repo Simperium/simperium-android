@@ -49,6 +49,7 @@ public class Bucket<T extends Syncable> {
         public Change<T> queueLocalDeletion(T object);
         public boolean isIdle();
         public void start();
+        public void stop();
         public void reset();
     }
 
@@ -93,17 +94,19 @@ public class Bucket<T extends Syncable> {
     private BucketSchema<T> schema;
     private GhostStoreProvider ghostStore;
     private ObjectCache<T> cache;
+    final private SyncService syncService;
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
-        this(name, schema, user, storage, ghostStore, null);
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
+        this(syncService, name, schema, user, storage, ghostStore, null);
         cache = ObjectCache.buildCache(this);
     }
 
-    public Bucket(String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore, ObjectCache cache){
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore, ObjectCache cache){
+        this.syncService = syncService;
         this.name = name;
         this.user = user;
         this.storage = storage;
@@ -177,29 +180,37 @@ public class Bucket<T extends Syncable> {
     /**
      * Tell the bucket to sync changes.
      */
-    public Change<T> sync(T object){
+    public void sync(final T object){
         Logger.log(TAG, String.format("Syncing object %s", object));
-        storage.save(object, schema.indexesFor(object));
+        // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
+        syncService.submit(new Runnable(){
+            @Override
+            public void run(){
+                Change<T> change = channel.queueLocalChange(object);
+                storage.save(object, schema.indexesFor(object));
         
-        if (object.isModified()){
-            Change<T> change = channel.queueLocalChange(object);
-            // Notify listeners that an object has been saved, this was
-            // triggered locally
-            notifyOnSaveListeners(object);
-            return change;
-        }
-        return null;
+                if (object.isModified()){
+                    // Notify listeners that an object has been saved, this was
+                    // triggered locally
+                    notifyOnSaveListeners(object);
+                }
+            }
+        });
     }
 
     /**
      * Tell the bucket to remove the object
      */
-    public Change<T> remove(T object){
+    public void remove(final T object){
         cache.remove(object.getSimperiumKey());
-        storage.delete(object);
-        Change<T> change = channel.queueLocalDeletion(object);
-        notifyOnDeleteListeners(object);
-        return change;
+        syncService.submit(new Runnable() {
+            @Override
+            public void run() {
+                Change<T> change = channel.queueLocalDeletion(object);
+                storage.delete(object);
+                notifyOnDeleteListeners(object);
+            }
+        });
     }
 
     /**
@@ -512,7 +523,7 @@ public class Bucket<T extends Syncable> {
 
     public void notifyOnSaveListeners(T object){
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
-        Logger.log(TAG, String.format("Notifying OnSaveObjectListener %d", notify.size()));
+        Logger.log(TAG, String.format("%s - Notifying %s OnSaveObjectListener %d", Thread.currentThread().getName(), getName(), notify.size()));
 
         Iterator<OnSaveObjectListener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
@@ -527,7 +538,8 @@ public class Bucket<T extends Syncable> {
 
     public void notifyOnDeleteListeners(T object){
         Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
-
+        Logger.log(TAG, String.format("%s - Notifying %s OnDeleteObjectListeners %d", Thread.currentThread().getName(), getName(), notify.size()));
+        
         Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
             OnDeleteObjectListener<T> listener = iterator.next();
@@ -564,12 +576,17 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
-     * Initialize the bucket to start tracking changes. We can provide a way
-     * for storage mechanisms to initialize here.
+     * Initialize the bucket to start tracking changes.
      */
     public void start(){
         channel.start();
     }
+
+    public void stop(){
+        channel.stop();
+    }
+
+
     /*
      * Reset bucket what is on the server
      */

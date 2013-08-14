@@ -26,7 +26,7 @@ public class MockBucket {
         GhostStoreProvider ghosts = new MockGhostStore();
         ObjectCache<T> cache = new ObjectCache<T>(new MockCache<T>());
         
-        Bucket<T> bucket = new Bucket<T>(schema.getRemoteName(), schema, user, store, ghosts, cache);
+        Bucket<T> bucket = new Bucket<T>(MockSyncService.service(), schema.getRemoteName(), schema, user, store, ghosts, cache);
         ChannelProvider<T> channel = new MockChannel<T>(bucket);
         bucket.setChannel(channel);
         bucket.start();

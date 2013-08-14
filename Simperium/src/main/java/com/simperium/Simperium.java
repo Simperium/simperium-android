@@ -19,9 +19,11 @@ import com.simperium.client.User.AuthResponseHandler;
 import com.simperium.client.AuthHttpClient;
 import com.simperium.client.WebSocketManager;
 import com.simperium.client.FileQueueSerializer;
+import com.simperium.client.SyncService;
 
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
+import com.simperium.util.BasicSyncService;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
@@ -58,6 +60,7 @@ public class Simperium implements User.AuthenticationListener {
 	private GhostStore ghostStore;
     private Channel.Serializer channelSerializer;
     private OnUserCreatedListener onUserCreatedListener;
+    private SyncService syncService = new BasicSyncService();
     
     public Simperium(String appId, String appSecret, Context context){
         this(appId, appSecret, context, new PersistentStore(context.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null)), null);
@@ -146,7 +149,7 @@ public class Simperium implements User.AuthenticationListener {
      */
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
         BucketStore<T> storage = storageProvider.createStore(bucketName, schema);
-        Bucket<T> bucket = new Bucket<T>(bucketName, schema, user, storage, ghostStore);
+        Bucket<T> bucket = new Bucket<T>(syncService, bucketName, schema, user, storage, ghostStore);
         Bucket.ChannelProvider<T> channel = socketManager.createChannel(bucket, channelSerializer);
         bucket.setChannel(channel);
         storage.prepare(bucket);
