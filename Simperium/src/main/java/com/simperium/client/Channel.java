@@ -944,7 +944,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                             }
                         }
                     } else {
-                        Logger.log(TAG, )
                         if (remoteChange.isError())
                             Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
                         try {
