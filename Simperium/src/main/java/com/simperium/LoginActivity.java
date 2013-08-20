@@ -19,6 +19,7 @@ import android.util.Log;
 import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -140,8 +141,11 @@ public class LoginActivity extends Activity {
     }
 
     private void registerUser(User user) {
-		// TODO: finish activity
 		setResult(RESULT_OK);
+        // Dismiss soft keyboard
+        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (inputMethodManager != null)
+            inputMethodManager.hideSoftInputFromWindow(passwordTextField.getWindowToken(), 0);
 		finish();
 	}
 
