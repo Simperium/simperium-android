@@ -91,6 +91,17 @@
                 android:text="@string/signin_label"
                 android:visibility="gone"/>
 
+        <TextView
+                android:id="@+id/forgot_password_button"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textSize="16sp"
+                android:textColor="#3489d6"
+                android:gravity="center_horizontal"
+                android:text="@string/forgot_password"
+                android:visibility="gone"/>
+
         <LinearLayout android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
                       android:orientation="horizontal">
@@ -123,7 +134,6 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginLeft="8dp"
                 android:textSize="16sp"
-                android:shadowRadius="1"
                 android:textColor="#3489d6"
                 android:text="@string/signin_label"/>
         </LinearLayout>

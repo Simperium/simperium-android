@@ -17,8 +17,6 @@ import android.os.Looper;
 import android.view.View;
 import android.util.Log;
 import android.view.Window;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,7 +27,6 @@ import org.json.*;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
 import com.simperium.util.AlertUtil;
-import com.simperium.client.User;
 import com.simperium.util.Logger;
 
 public class LoginActivity extends Activity {
@@ -37,6 +34,7 @@ public class LoginActivity extends Activity {
 	public static final String TAG = "SimperiumLoginActivity";
 
     public static final String EXTRA_SIGN_IN_FIRST = "signInFirst";
+    private static final String URL_FORGOT_PASSWORD = "https://simple-note.appspot.com/forgot/";
 
 	private ConnectivityManager mSystemService;
 	private ProgressDialog pd;
@@ -50,7 +48,8 @@ public class LoginActivity extends Activity {
     private TextView haveAccountTextView;
     private TextView haveAccountButton;
     private TextView createAccountButton;
-    private TextView l_agree_terms_of_service;
+    private TextView termsOfService;
+    private TextView forgotPasswordButton;
 
     private Button signupButton;
     private Button signinButton;
@@ -90,41 +89,56 @@ public class LoginActivity extends Activity {
 			emailTextField.setText(intent.getStringExtra(EMAIL_EXTRA));
 		}
 
+        forgotPasswordButton = (TextView) findViewById(R.id.forgot_password_button);
+        forgotPasswordButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Head off to the reset password form
+                try {
+                    Intent i = new Intent(Intent.ACTION_VIEW);
+                    i.setData(Uri.parse(URL_FORGOT_PASSWORD));
+                    startActivity(i);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
 		haveAccountButton = (TextView) findViewById(R.id.have_account_button);
-		createAccountButton = (TextView) findViewById(R.id.create_account_button);
-		l_agree_terms_of_service = (TextView) findViewById(R.id.l_agree_terms_of_service);
-		
-		l_agree_terms_of_service.setClickable(true);
-		l_agree_terms_of_service.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				Uri uriUrl = Uri.parse("https://simperium.com/tos/");  
-				Intent launchBrowser = new Intent(Intent.ACTION_VIEW, uriUrl);
-				startActivity(launchBrowser); 
-			}
-		});
-
         haveAccountButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				//reset the screen to signin
+            @Override
+            public void onClick(View v) {
+                //reset the screen to signin
                 setSignInVisible();
-			}
-		});
+            }
+        });
 
+		createAccountButton = (TextView) findViewById(R.id.create_account_button);
         createAccountButton.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				//reset the screen to signup
+            @Override
+            public void onClick(View v) {
+                //reset the screen to signup
+                forgotPasswordButton.setVisibility(View.GONE);
                 createAccountButton.setVisibility(View.GONE);
-				signinButton.setVisibility(View.GONE);
-				l_agree_terms_of_service.setVisibility(View.VISIBLE);
-				haveAccountButton.setVisibility(View.VISIBLE);
-				passwordTextField2.setVisibility(View.VISIBLE);
-				signupButton.setVisibility(View.VISIBLE);
+                signinButton.setVisibility(View.GONE);
+                termsOfService.setVisibility(View.VISIBLE);
+                haveAccountButton.setVisibility(View.VISIBLE);
+                passwordTextField2.setVisibility(View.VISIBLE);
+                signupButton.setVisibility(View.VISIBLE);
                 haveAccountTextView.setText(getString(R.string.have_account));
-			}
-		});
+            }
+        });
+
+		termsOfService = (TextView) findViewById(R.id.l_agree_terms_of_service);
+		termsOfService.setClickable(true);
+		termsOfService.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Uri uriUrl = Uri.parse("https://simperium.com/tos/");
+                Intent launchBrowser = new Intent(Intent.ACTION_VIEW, uriUrl);
+                startActivity(launchBrowser);
+            }
+        });
 
         if (intent.hasExtra(EXTRA_SIGN_IN_FIRST))
             setSignInVisible();
@@ -133,8 +147,9 @@ public class LoginActivity extends Activity {
     private void setSignInVisible() {
         haveAccountButton.setVisibility(View.GONE);
         passwordTextField2.setVisibility(View.GONE);
-        l_agree_terms_of_service.setVisibility(View.GONE);
+        termsOfService.setVisibility(View.GONE);
         createAccountButton.setVisibility(View.VISIBLE);
+        forgotPasswordButton.setVisibility(View.VISIBLE);
         signinButton.setVisibility(View.VISIBLE);
         signupButton.setVisibility(View.GONE);
         haveAccountTextView.setText(R.string.no_account);
