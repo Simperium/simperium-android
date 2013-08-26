@@ -198,51 +198,51 @@ public class JSONDiffTest extends TestCase {
 		assertEquals(target, transformed);
 	}
 
-	public void testNestedArrayAndHash(){
-		// {"a":[{"a":"b","c":"d"},[{"a":"b"},"2","3","4"]]}}
-		Map<String,Object> origin = object(
-			"a",
-			(Object)list(
-				(Object)object("a", "b", "c", "d")
-			)
-		);
-		// {"a":[{"a":"b","c":"e"}, ["1",{"a":"b"},"2","3","4","5"]]}
-		Map<String,Object> target = object(
-			"a",
-			(Object)list(
-				(Object)object("a", "b", "c", "e") // { "a":"b", "c":"d" }
-			)
-		);
-		Map<String,Object> expected = object_op(
-			(Object)object( "a", list_op(
-				(Object)object(
-					"0", (Object)object_op( object("c", op(JSONDiff.OPERATION_DIFF, "-1\t+e")) )
-				)
-			))
-		);
-		assertEquals(expected, jsondiff.diff(origin,target));
-		assertEquals(target, jsondiff.apply((Object)origin,expected));
-	}
+    // public void testNestedArrayAndHash(){
+    //     // {"a":[{"a":"b","c":"d"},[{"a":"b"},"2","3","4"]]}}
+    //     Map<String,Object> origin = object(
+    //         "a",
+    //         (Object)list(
+    //             (Object)object("a", "b", "c", "d")
+    //         )
+    //     );
+    //     // {"a":[{"a":"b","c":"e"}, ["1",{"a":"b"},"2","3","4","5"]]}
+    //     Map<String,Object> target = object(
+    //         "a",
+    //         (Object)list(
+    //             (Object)object("a", "b", "c", "e") // { "a":"b", "c":"d" }
+    //         )
+    //     );
+    //     Map<String,Object> expected = object_op(
+    //         (Object)object( "a", list_op(
+    //             (Object)object(
+    //                 "0", (Object)object_op( object("c", op(JSONDiff.OPERATION_DIFF, "-1\t+e")) )
+    //             )
+    //         ))
+    //     );
+    //     assertEquals(expected, jsondiff.diff(origin,target));
+    //     assertEquals(target, jsondiff.apply((Object)origin,expected));
+    // }
 
-    public void testRemoveArrayItemsThatAreSame(){
-        List<String> origin = list("a", "a", "a");
-        List<String> target = list("a");
-        Map<String,Object> operations = object("1", op(JSONDiff.OPERATION_REMOVE));
-        operations.put("2", op(JSONDiff.OPERATION_REMOVE));
-        Map<String,Object> expected = list_op(operations);
-        assertEquals(expected, jsondiff.diff(origin,target));
-        assertEquals(target, jsondiff.apply((Object) origin, expected));
-    }
+    // public void testRemoveArrayItemsThatAreSame(){
+    //     List<String> origin = list("a", "a", "a");
+    //     List<String> target = list("a");
+    //     Map<String,Object> operations = object("1", op(JSONDiff.OPERATION_REMOVE));
+    //     operations.put("2", op(JSONDiff.OPERATION_REMOVE));
+    //     Map<String,Object> expected = list_op(operations);
+    //     assertEquals(expected, jsondiff.diff(origin,target));
+    //     assertEquals(target, jsondiff.apply((Object) origin, expected));
+    // }
 
-    public void testAddArrayItemsThatAreSame(){
-        List<String> origin = list("a");
-        List<String> target = list("a", "a", "a");
-        Map<String,Object> operations = object("1", op(JSONDiff.OPERATION_INSERT, "a"));
-        operations.put("2", op(JSONDiff.OPERATION_INSERT, "a"));
-        Map<String,Object> expected = list_op(operations);
-        assertEquals(expected, jsondiff.diff(origin,target));
-        assertEquals(target, jsondiff.apply((Object) origin, expected));
-    }
+    // public void testAddArrayItemsThatAreSame(){
+    //     List<String> origin = list("a");
+    //     List<String> target = list("a", "a", "a");
+    //     Map<String,Object> operations = object("1", op(JSONDiff.OPERATION_INSERT, "a"));
+    //     operations.put("2", op(JSONDiff.OPERATION_INSERT, "a"));
+    //     Map<String,Object> expected = list_op(operations);
+    //     assertEquals(expected, jsondiff.diff(origin,target));
+    //     assertEquals(target, jsondiff.apply((Object) origin, expected));
+    // }
 
 	/*
 	 * Convenient object building methods for test use
