@@ -210,7 +210,7 @@ public class Change<T extends Syncable> {
     }
 
     public String toString(){
-        return String.format("Change %s %s", getChangeId(), getKey());
+        return String.format("Change %s %s %s", getChangeId(), getKey(), operation);
     }
     /**
      * The change message requires a diff value in the JSON payload
