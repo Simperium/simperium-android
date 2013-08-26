@@ -186,10 +186,12 @@ public class Bucket<T extends Syncable> {
         syncService.submit(new Runnable(){
             @Override
             public void run(){
-                Change<T> change = channel.queueLocalChange(object);
+                Boolean modified = object.isModified();
                 storage.save(object, schema.indexesFor(object));
-        
-                if (object.isModified()){
+
+                Change<T> change = channel.queueLocalChange(object);
+
+                if (modified){
                     // Notify listeners that an object has been saved, this was
                     // triggered locally
                     notifyOnSaveListeners(object);
