@@ -54,7 +54,6 @@ public class ChannelTest extends SimperiumTest {
         mBucket = MockBucket.buildBucket(new Note.Schema(), new MockBucket.ChannelFactory<Note>(){
             @Override
             public Channel<Note> buildChannel(Bucket<Note> bucket){
-                // public Channel(String appId, String sessionId, final Bucket<T> bucket, Serializer serializer, OnMessageListener listener);
                 mChannel = new Channel<Note>(APP_ID, SESSION_ID, bucket, new MockChannelSerializer<Note>(), mListener);
                 return mChannel;
             }
@@ -121,7 +120,8 @@ public class ChannelTest extends SimperiumTest {
 
     }
 
-    public void testSendChange() throws InterruptedException {
+    public void testSendChange()
+    throws Exception {
         start();
         // channel won't send changes until it has an index
         sendEmptyIndex();
@@ -159,14 +159,12 @@ public class ChannelTest extends SimperiumTest {
      * be called before waitForMessage()
      */
     protected void waitForMessage() throws InterruptedException {
-        long timeout = 1000; // half second timeout
-        long start = System.currentTimeMillis();
-        while(mLastMessage == null){
-            Thread.sleep(100);
-            if (System.currentTimeMillis() - start > timeout) {
-                throw(new RuntimeException(String.format("No message sent within %.1f seconds", (float) timeout/1000)));
+        waitUntil(new Flag(){
+            @Override
+            public boolean isComplete(){
+                return mLastMessage != null;
             }
-        }
+        }, "No message receieved");
     }
 
     /**
@@ -175,6 +173,41 @@ public class ChannelTest extends SimperiumTest {
     protected void clearMessages(){
         mLastMessage = null;
         mMessages.clear();
+    }
+
+    protected void waitForIndex()
+    throws InterruptedException {
+        waitUntil(new Flag(){
+            @Override
+            public boolean isComplete(){
+                return mChannel.haveCompleteIndex();
+            }
+        }, "Index never received");
+    }
+
+    protected void waitUntil(Flag flag, String message, long timeout)
+    throws InterruptedException {
+        long start = System.currentTimeMillis();
+        while(!flag.isComplete()){
+            Thread.sleep(100);
+            if (System.currentTimeMillis() - start > timeout) {
+                throw(new RuntimeException(message));
+            }
+        }
+    }
+
+    protected void waitUntil(Flag flag, String message)
+    throws InterruptedException {
+        waitUntil(flag, message, 1000);
+    }
+
+    protected void waitUntil(Flag flag)
+    throws InterruptedException {
+        waitUntil(flag, "Wait timed out");
+    }
+
+    private static abstract class Flag {
+        abstract boolean isComplete();
     }
 
 }
