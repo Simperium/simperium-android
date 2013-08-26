@@ -11,6 +11,9 @@ import com.simperium.testapp.mock.MockChannelSerializer;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+
+import static android.test.MoreAsserts.*;
 
 public class ChannelTest extends SimperiumTest {
 
@@ -21,7 +24,7 @@ public class ChannelTest extends SimperiumTest {
     private Bucket<Note> mBucket;
     private Channel<Note> mChannel;
 
-    protected List<Channel.MessageEvent> mMessages = new ArrayList<Channel.MessageEvent>();
+    protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     protected Channel.MessageEvent mLastMessage;
     private Boolean mOpen = false;
 
@@ -56,6 +59,11 @@ public class ChannelTest extends SimperiumTest {
                 return mChannel;
             }
         });
+    }
+
+    protected void tearDown() throws Exception {
+        clearMessages();
+        super.tearDown();
     }
 
     public void testChannelInitialState(){
@@ -113,9 +121,60 @@ public class ChannelTest extends SimperiumTest {
 
     }
 
+    public void testSendChange() throws InterruptedException {
+        start();
+        // channel won't send changes until it has an index
+        sendEmptyIndex();
+
+        Note note = mBucket.newObject("test-channel-object");
+        note.setTitle("Hola mundo");
+
+        clearMessages();
+        note.save();
+
+        waitForMessage();
+        // message should be a change message "c:{}"
+        assertMatchesRegex("^c:\\{.*\\}$", mLastMessage.toString());
+
+    }
+
+    /**
+     * Get's the channel into a started state
+     */
     protected void start(){
         mChannel.onConnect();
         mChannel.start();
+
+    }
+
+    /**
+     * Simulates a brand new bucket with and empty index
+     */
+    protected void sendEmptyIndex(){
+        mChannel.receiveMessage("i:{\"index\":[]}");
+    }
+
+    /**
+     * Wait until a message received. More than likely clearMessages() should
+     * be called before waitForMessage()
+     */
+    protected void waitForMessage() throws InterruptedException {
+        long timeout = 1000; // half second timeout
+        long start = System.currentTimeMillis();
+        while(mLastMessage == null){
+            Thread.sleep(100);
+            if (System.currentTimeMillis() - start > timeout) {
+                throw(new RuntimeException(String.format("No message sent within %.1f seconds", (float) timeout/1000)));
+            }
+        }
+    }
+
+    /**
+     * Empties the list of received messages and sets mLastMessage to null
+     */
+    protected void clearMessages(){
+        mLastMessage = null;
+        mMessages.clear();
     }
 
 }
