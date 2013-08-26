@@ -35,9 +35,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import android.os.Handler;
-import android.os.HandlerThread;
-
 public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
     public interface OnMessageListener {
@@ -264,7 +261,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         }
 
     }
-    
+
     private IndexProcessorListener indexProcessorListener = new IndexProcessorListener(){
         @Override
         public void onComplete(String cv){
@@ -559,7 +556,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         final private Bucket bucket;
         private List<String> index = Collections.synchronizedList(new ArrayList<String>());
         private boolean complete = false;
-        private Handler handler;
         final private IndexProcessorListener listener;
         int indexedCount = 0;
 
@@ -738,7 +734,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         public void onComplete();
     }
     
-    private boolean haveCompleteIndex(){
+    public boolean haveCompleteIndex(){
         return haveIndex;
     }
 
@@ -759,20 +755,14 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         private List<Map<String,Object>> remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>(10));
         private List<Change<T>> localQueue = Collections.synchronizedList(new ArrayList<Change<T>>());
         private Map<String,Change<T>> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change<T>>());
-        private Handler handler;
         private Timer retryTimer;
         
         private final Object lock = new Object();
+        public Object runLock = new Object();
 
         public ChangeProcessor(ChangeProcessorListener listener) {
             this.listener = listener;
-            String handlerThreadName = String.format("channel-handler-%s", bucket.getName());
-            HandlerThread handlerThread = new HandlerThread(handlerThreadName);
-            handlerThread.start();
-            this.handler = new Handler(handlerThread.getLooper());
-            Logger.log(TAG, String.format("Starting change processor handler on thread %s", this.handler.getLooper().getThread().getName()));
             this.retryTimer = new Timer();
-            // restore();
         }
         /**
          * not waiting for any remote changes and have no local or pending changes
@@ -860,6 +850,11 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                 );
                 thread = new Thread(this, String.format("simperium.processor.%s", getBucket().getName()));
                 thread.start();
+            } else {
+                // notify
+                synchronized(runLock){
+                    runLock.notify();
+                }
             }
         }
 
@@ -886,18 +881,22 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
 
         public void run(){
             Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
-            boolean idle = false;
             while(true && !Thread.interrupted()){
                 // TODO: only process one remote change at a time
                 processRemoteChanges();
                 // TODO: only process one local change at a time
                 processLocalChanges();
                 boolean localActivity = !pendingChanges.isEmpty() || !localQueue.isEmpty();
-                if (!localActivity && !idle) {
-                    idle = true;
-                    notifyIdleState();
-                } else if(idle && localActivity) {
-                    idle = false;
+                //
+                if(!localActivity){
+                    synchronized(runLock){
+                        notifyIdleState();
+                        try {
+                            runLock.wait();
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                    }
                 }
             }
             Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
