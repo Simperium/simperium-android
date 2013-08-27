@@ -98,6 +98,14 @@ public class User {
         return authenticationStatus;
     }
 
+    public void setAuthenticationListener(AuthenticationListener authListener){
+        listener = authListener;
+    }
+
+    public AuthenticationListener getAuthenticationListener(){
+        return listener;
+    }
+
     public void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
         if (this.authenticationStatus != authenticationStatus) {
             this.authenticationStatus = authenticationStatus;
