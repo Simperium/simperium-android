@@ -1,6 +1,13 @@
-package com.simperium.client;
+package com.simperium.android;
 
+import com.simperium.client.Channel;
+import com.simperium.client.Channel.Serializer;
 import com.simperium.client.Channel.SerializedQueue;
+import com.simperium.client.Change;
+import com.simperium.client.RemoteChange;
+import com.simperium.client.Bucket;
+import com.simperium.client.BucketObjectMissingException;
+import com.simperium.client.Syncable;
 import com.simperium.util.Logger;
 
 import java.io.FileOutputStream;
@@ -20,7 +27,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-public class FileQueueSerializer implements Channel.Serializer {
+public class FileQueueSerializer implements Serializer {
 
     public static final String TAG="Simperium.FileQueueSerializer";
 

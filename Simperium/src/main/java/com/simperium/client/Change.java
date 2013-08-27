@@ -52,7 +52,7 @@ public class Change<T extends Syncable> {
     /**
      * Constructs a change object from a map of values
      */
-    protected static <T extends Syncable> Change<T> buildChange(T object, Map<String,Object> properties){
+    public static <T extends Syncable> Change<T> buildChange(T object, Map<String,Object> properties){
         return new Change<T>(
             (String)  properties.get(OPERATION_KEY),
             object,

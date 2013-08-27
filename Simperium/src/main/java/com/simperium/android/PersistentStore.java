@@ -1,5 +1,8 @@
-package com.simperium.storage;
+package com.simperium.android;
 
+import com.simperium.client.ClientFactory.StorageProvider;
+
+import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.client.Bucket;
 import com.simperium.client.Bucket.ChangeType;
 import com.simperium.client.BucketSchema;

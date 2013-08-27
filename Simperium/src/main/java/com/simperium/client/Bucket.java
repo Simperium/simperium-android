@@ -47,7 +47,6 @@ public class Bucket<T extends Syncable> {
     public interface ChannelProvider<T extends Syncable> {
         public Change<T> queueLocalChange(T object);
         public Change<T> queueLocalDeletion(T object);
-        public boolean isIdle();
         public void start();
         public void stop();
         public void reset();
@@ -119,12 +118,6 @@ public class Bucket<T extends Syncable> {
      */
     public User getUser(){
         return user;
-    }
-    /**
-     * If the channel is running or expecting to process changes
-     */
-    public boolean isIdle(){
-        return channel.isIdle();
     }
 
     /**
@@ -589,13 +582,11 @@ public class Bucket<T extends Syncable> {
     }
 
 
-    /*
-     * Reset bucket what is on the server
-     */
     public void reset(){
         storage.reset();
         ghostStore.resetBucket(this);
         channel.reset();
+        stop();
         // Clear the ghost store
     }
     /**

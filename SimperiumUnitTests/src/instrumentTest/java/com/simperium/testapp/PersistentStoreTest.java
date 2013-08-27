@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.Cursor;
 
-import com.simperium.storage.PersistentStore;
+import com.simperium.android.PersistentStore;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Bucket.ChannelProvider;

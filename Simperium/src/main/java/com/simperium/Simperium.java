@@ -1,89 +1,70 @@
 package com.simperium;
 
-import com.loopj.android.http.*;
-
-import com.simperium.storage.StorageProvider;
-import com.simperium.storage.StorageProvider.BucketStore;
-import com.simperium.storage.PersistentStore;
-
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.Channel;
-import com.simperium.client.GhostStore;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
 import com.simperium.client.User.AuthenticationListener;
 import com.simperium.client.User.AuthenticationStatus;
 import com.simperium.client.User.AuthResponseHandler;
-import com.simperium.client.AuthHttpClient;
-import com.simperium.client.WebSocketManager;
-import com.simperium.client.FileQueueSerializer;
 import com.simperium.client.SyncService;
+import com.simperium.client.ClientFactory;
+import com.simperium.client.ClientFactory.*;
+
+import com.simperium.storage.StorageProvider;
+import com.simperium.storage.StorageProvider.BucketStore;
 
 import com.simperium.util.Logger;
-import com.simperium.util.Uuid;
 import com.simperium.util.BasicSyncService;
-
-import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
-import android.content.SharedPreferences;
-import android.util.Log;
 
 import org.json.JSONObject;
 
+import android.content.Context;
+
 public class Simperium implements User.AuthenticationListener {
+
+    // builds and Android client
+    public static Simperium newClient(String appId, String appSecret, Context context){
+        return new Simperium(appId, appSecret, new com.simperium.android.AndroidClient(context));
+    }
 
     public interface OnUserCreatedListener {
         void onUserCreated(User user);
     }
 
-    public static final String VERSION = "duo-beta";
+    public static final String VERSION = "1.0";
     public static final String CLIENT_ID = String.format("android-%s", VERSION);
-    public static final String SHARED_PREFERENCES_NAME = "simperium";
-    public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     public static final int SIGNUP_SIGNIN_REQUEST = 1000;  // The request code
-    public static final String DEFAULT_DATABASE_NAME = "simperium-store";
 
     private String appId;
     private String appSecret;
 
-    protected AsyncHttpClient httpClient;
-    protected AuthHttpClient authClient;
-    protected WebSocketManager socketManager;
-
     private User user;
-    private Context context;
     private AuthenticationListener authenticationListener;
-    private StorageProvider storageProvider;
     private static Simperium simperiumClient = null;
-	private GhostStore ghostStore;
-    private Channel.Serializer channelSerializer;
     private OnUserCreatedListener onUserCreatedListener;
     private SyncService syncService = new BasicSyncService();
-    
-    public Simperium(String appId, String appSecret, Context context){
-        this(appId, appSecret, context, new PersistentStore(context.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null)), null);
-    }
 
-    public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider){
-        this(appId, appSecret, context, storageProvider, null);
-    }
+    protected ClientFactory.AuthProvider mAuthProvider;
+    protected ClientFactory.ChannelProvider mChannelProvider;
+    protected ClientFactory.StorageProvider mStorageProvider;
+    protected ClientFactory.GhostStorageProvider mGhostStorageProvider;
 
-    public Simperium(String appId, String appSecret, Context context, StorageProvider storageProvider, AuthenticationListener authenticationListener){
+    public Simperium(String appId, String appSecret, ClientFactory factory){
         this.appId = appId;
         this.appSecret = appSecret;
-        this.context = context;
-        httpClient = new AsyncHttpClient();
-        httpClient.setUserAgent(CLIENT_ID);
-        authClient = new AuthHttpClient(appId, appSecret, httpClient);
-        socketManager = new WebSocketManager(appId, String.format("%s-%s", CLIENT_ID, Uuid.uuid().substring(0,6)));
-        channelSerializer = new FileQueueSerializer(context);
-        this.authenticationListener = authenticationListener;
-        this.storageProvider = storageProvider;
-		ghostStore = new GhostStore(context);
-        loadUser();
+
+        mAuthProvider = factory.buildAuthProvider(appId, appSecret);
+
+        mChannelProvider = factory.buildChannelProvider(appId);
+
+        mStorageProvider = factory.buildStorageProvider();
+
+        mGhostStorageProvider = factory.buildGhostStorageProvider();
+
         Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
+        loadUser();
         simperiumClient = this;
     }
 
@@ -92,26 +73,6 @@ public class Simperium implements User.AuthenticationListener {
     		throw new SimperiumNotInitializedException("You must create an instance of Simperium before call this method.");
     	
     	return simperiumClient;
-    }
-
-    public void connect(){
-        socketManager.connect();
-    }
-
-    public void disconnect(){
-        socketManager.disconnect();
-    }
-
-    public boolean isConnected(){
-        return socketManager.isConnected();
-    }
-
-    public boolean isConnecting(){
-        return socketManager.isConnecting();
-    }
-
-    public boolean isDisconnected(){
-        return socketManager.isDisconnected();
     }
 
     private void loadUser(){
@@ -148,10 +109,16 @@ public class Simperium implements User.AuthenticationListener {
      * @param bucketName the namespace to store the data in simperium
      */
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
-        BucketStore<T> storage = storageProvider.createStore(bucketName, schema);
-        Bucket<T> bucket = new Bucket<T>(syncService, bucketName, schema, user, storage, ghostStore);
-        Bucket.ChannelProvider<T> channel = socketManager.createChannel(bucket, channelSerializer);
+        // initialize the bucket
+        BucketStore<T> storage = mStorageProvider.createStore(bucketName, schema);
+        Bucket<T> bucket = new Bucket<T>(syncService, bucketName, schema, user, storage, mGhostStorageProvider);
+
+        // initialize the communication method for the bucket
+        Bucket.ChannelProvider<T> channel = mChannelProvider.createChannel(bucket);
+
+        // tell the bucket about the channel
         bucket.setChannel(channel);
+
         storage.prepare(bucket);
         return bucket;
     }
@@ -172,7 +139,7 @@ public class Simperium implements User.AuthenticationListener {
     }
 
     public void setAuthProvider(String providerString){
-        authClient.setAuthProvider(providerString);
+        mAuthProvider.setAuthProvider(providerString);
     }
 
     public void setOnUserCreatedListener(OnUserCreatedListener listener){
@@ -194,19 +161,19 @@ public class Simperium implements User.AuthenticationListener {
                 notifyOnUserCreatedListener(user);
             }
         };
-        return authClient.createUser(user, wrapper);
+        return user;
     }
 
     public User authorizeUser(String email, String password, AuthResponseHandler handler){
         user.setCredentials(email, password);
-        return authClient.authorizeUser(user, handler);
+        mAuthProvider.authorizeUser(user, handler);
+        return user;
     }
 
-    public boolean deAuthorizeUser(){
-    	user.setAccessToken(null);
-    	user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
-    	clearUserAccessToken();
-    	return true;
+    public void deauthorizeUser(){
+        user.setAccessToken(null);
+        user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
+        clearUserAccessToken();
     }
 
     public void onAuthenticationStatusChange(AuthenticationStatus status){
@@ -218,7 +185,7 @@ public class Simperium implements User.AuthenticationListener {
             saveUserAccessToken();
             break;
             case NOT_AUTHENTICATED:
-            clearUserAccessToken();
+            // tell everything that we're not authenticated anymore 
             break;
             case UNKNOWN:
             // we haven't tried to auth yet or the socket is disconnected
@@ -229,32 +196,22 @@ public class Simperium implements User.AuthenticationListener {
         }
     }
 
-    private SharedPreferences.Editor getPreferenceEditor(){
-        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        return preferences.edit();
-    }
-
-    private boolean clearUserAccessToken(){
-        SharedPreferences.Editor editor = getPreferenceEditor();
-        editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
-        return editor.commit();
-    }
-
-    private boolean saveUserAccessToken(){
+    private void saveUserAccessToken(){
         String token = user.getAccessToken();
-        SharedPreferences.Editor editor = getPreferenceEditor();
-        editor.putString(USER_ACCESS_TOKEN_PREFERENCE, token);
-        return editor.commit();
+        mAuthProvider.setAccessToken(token);
     }
 
     private String getUserAccessToken(){
-        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        return preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
+        return mAuthProvider.getAccessToken();
     }
 
-	public AuthenticationListener getAuthenticationListener() {
-		return authenticationListener;
-	}
+    private void clearUserAccessToken(){
+        mAuthProvider.clearAccessToken();
+    }
+
+    public AuthenticationListener getAuthenticationListener() {
+        return authenticationListener;
+    }
 
     public void setAuthenticationListener(AuthenticationListener listener){
         authenticationListener = listener;
@@ -283,4 +240,5 @@ public class Simperium implements User.AuthenticationListener {
             handler.onFailure(user, error, message);
         }
     }
+
 }

@@ -6,12 +6,17 @@
  * WebSocketManager is configured by Simperium and shouldn't need to be access directly
  * by applications.
  */
-package com.simperium.client;
+package com.simperium.android;
 
 import android.content.Context;
 
 import com.simperium.Simperium;
 import com.simperium.util.Logger;
+
+import com.simperium.client.ClientFactory.ChannelProvider;
+import com.simperium.client.Channel;
+import com.simperium.client.Channel.Serializer;
+import com.simperium.client.Bucket;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -26,7 +31,7 @@ import org.apache.http.message.BasicNameValuePair;
 
 import com.codebutler.android_websockets.*;
 
-public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMessageListener {
+public class WebSocketManager implements ChannelProvider, WebSocketClient.Listener, Channel.OnMessageListener {
 
     public enum ConnectionStatus {
         DISCONNECTING, DISCONNECTED, CONNECTING, CONNECTED
@@ -53,9 +58,12 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
 
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
 
-    public WebSocketManager(String appId, String sessionId){
+    protected Channel.Serializer mSerializer;
+
+    public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer){
         this.appId = appId;
         this.sessionId = sessionId;
+        mSerializer = channelSerializer;
         List<BasicNameValuePair> headers = Arrays.asList(
             new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
         );
@@ -66,9 +74,9 @@ public class WebSocketManager implements WebSocketClient.Listener, Channel.OnMes
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public <T extends Syncable> Bucket.ChannelProvider<T> createChannel(Bucket<T> bucket, Channel.Serializer serializer){
+    public Bucket.ChannelProvider createChannel(Bucket bucket){
         // create a channel
-        Channel<T> channel = new Channel<T>(appId, sessionId, bucket, serializer, this);
+        Channel channel = new Channel(appId, sessionId, bucket, mSerializer, this);
         int channelId = channels.size();
         channelIndex.put(channel, channelId);
         channels.put(channelId, channel);

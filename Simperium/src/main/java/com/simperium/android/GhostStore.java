@@ -1,4 +1,4 @@
-package com.simperium.client;
+package com.simperium.android;
 
 import android.content.Context;
 import android.content.ContentValues;
@@ -10,11 +10,16 @@ import java.util.HashMap;
 
 import org.json.JSONObject;
 
+import com.simperium.client.ClientFactory.GhostStorageProvider;
+import com.simperium.client.Bucket;
+import com.simperium.client.Ghost;
+import com.simperium.client.GhostMissingException;
+
 import static com.simperium.client.Channel.serializeJSON;
 import static com.simperium.client.Channel.convertJSON;
 import com.simperium.util.Logger;
 
-public class GhostStore implements GhostStoreProvider {
+public class GhostStore implements GhostStorageProvider {
     
 	private static final String DATABASE_NAME="simperium-ghost";
 	private static final String GHOSTS_TABLE_NAME="ghosts";

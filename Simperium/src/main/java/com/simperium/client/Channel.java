@@ -173,18 +173,9 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         });
     }
 
-    public boolean isIdle(){
-        return changeProcessor == null || changeProcessor.isIdle();
-    }
-
     @Override
     public void reset(){
         changeProcessor.reset();
-        if (started) {
-            getLatestVersions();
-        } else {
-            startOnConnect = true;
-        }
     }
 
     private boolean hasChangeVersion(){
@@ -376,8 +367,9 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
      */
     @Override
     public void stop(){
-        startOnConnect = false;
+        started = false;
         closed = true;
+        startOnConnect = false;
         if (changeProcessor != null) {
             changeProcessor.stop();
         }
@@ -759,12 +751,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             this.listener = listener;
             this.retryTimer = new Timer();
         }
-        /**
-         * not waiting for any remote changes and have no local or pending changes
-         */
-        public boolean isIdle(){
-            return !isRunning() && pendingChanges.isEmpty() && localQueue.isEmpty() && remoteQueue.isEmpty();
-        }
+
         /**
          * If thread is running
          */

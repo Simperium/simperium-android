@@ -22,7 +22,7 @@ import com.simperium.testapp.mock.MockSyncService;
 
 import org.json.JSONArray;
 
-public class BucketTest extends SimperiumTest {
+public class BucketTest extends BaseSimperiumTest {
 
     public static final String TAG="SimperiumTest";
     private Bucket<Note> mBucket;

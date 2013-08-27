@@ -15,8 +15,12 @@
  * can provide feedback to the user in a global way. See User for more info.
  *
  */
-package com.simperium.client;
+package com.simperium.android;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import com.simperium.client.ClientFactory;
 import com.simperium.client.User;
 import com.simperium.util.Logger;
 
@@ -28,25 +32,28 @@ import com.loopj.android.http.*;
 
 import java.io.UnsupportedEncodingException;
 
-public class AuthHttpClient {
+public class AuthClient implements ClientFactory.AuthProvider {
 
     private static final String AUTH_URL = "https://auth.simperium.com/1";
     private static final String JSON_CONTENT_TYPE = "application/json";
     private static final String API_KEY_HEADER_NAME = "X-Simperium-API-Key";
+    public static final String SHARED_PREFERENCES_NAME = "simperium";
+    public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
 
     private AsyncHttpClient httpClient;
     private String appSecret;
     private String appId;
     private String mAuthProvider;
 
+    public Context context;
 
-    public AuthHttpClient(String appId, String appSecret, AsyncHttpClient httpClient){
+    public AuthClient(String appId, String appSecret, AsyncHttpClient httpClient){
         this.appSecret = appSecret;
         this.httpClient = httpClient;
         this.appId = appId;
     }
 
-    public AuthHttpClient(String appId, String appSecret){
+    public AuthClient(String appId, String appSecret){
         AsyncHttpClient httpClient = new AsyncHttpClient();
         this.appSecret = appSecret;
         this.appId = appId;
@@ -54,24 +61,22 @@ public class AuthHttpClient {
     }
 
 
-    public User createUser(User user, User.AuthResponseHandler handler){
+    public void createUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("create/");
         try {
             httpClient.post(null, url, authHeaders(), user.toHttpEntity(mAuthProvider), JSON_CONTENT_TYPE, user.getCreateResponseHandler(handler));
         } catch (UnsupportedEncodingException e){
             handler.onFailure(user, e, e.getMessage());
         }
-        return user;
     }
 
-    public User authorizeUser(User user, User.AuthResponseHandler handler){
+    public void authorizeUser(User user, User.AuthResponseHandler handler){
         String url = absoluteUrl("authorize/");
         try {
             httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
         } catch (UnsupportedEncodingException e){
             handler.onFailure(user, e, e.getMessage());
         }
-        return user;
     }
 
     private Header[] authHeaders(){
@@ -87,5 +92,25 @@ public class AuthHttpClient {
     public void setAuthProvider(String authProvider) {
         mAuthProvider = authProvider;
     }
+
+    public void setAccessToken(String token){
+        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString(USER_ACCESS_TOKEN_PREFERENCE, token);
+        editor.commit();
+    }
+
+    public void clearAccessToken(){
+        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
+        editor.commit();
+    }
+
+    public String getAccessToken(){
+        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+        return preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
+    }
+
 }
 

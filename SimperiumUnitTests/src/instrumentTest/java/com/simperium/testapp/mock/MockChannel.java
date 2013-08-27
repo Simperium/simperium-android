@@ -56,11 +56,6 @@ public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
     @Override
     public void stop(){}
 
-    @Override
-    public boolean isIdle(){
-        return true;
-    }
-
     /**
      * Simulate an acknowledged change
      */

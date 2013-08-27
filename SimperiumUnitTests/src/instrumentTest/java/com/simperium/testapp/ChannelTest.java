@@ -16,7 +16,7 @@ import java.util.Collections;
 
 import static android.test.MoreAsserts.*;
 
-public class ChannelTest extends SimperiumTest {
+public class ChannelTest extends BaseSimperiumTest {
 
 
     public static String SESSION_ID = "SESSION-ID";
