@@ -216,12 +216,9 @@ public class Simperium implements User.AuthenticationListener {
             // Start up the websocket
             // save the key
             saveUserAccessToken();
-            socketManager.connect();
             break;
             case NOT_AUTHENTICATED:
             clearUserAccessToken();
-            // Disconnect the websocket
-            socketManager.disconnect();
             break;
             case UNKNOWN:
             // we haven't tried to auth yet or the socket is disconnected
