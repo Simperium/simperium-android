@@ -80,7 +80,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
-    private boolean started = false, connected = false, startOnConnect = false, closed = true, closeOnIdle = false;
+    private boolean started = false, connected = false, startOnConnect = false, closed = true;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
@@ -342,7 +342,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             Logger.log(TAG, "Not starting, missing access token");
             return;
         }
-        closeOnIdle = false;
         closed = false;
         started = true;
         // If the websocket isn't connected yet we'll automatically start
@@ -375,18 +374,11 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     @Override
     public void stop(){
         startOnConnect = false;
-        closeOnIdle = true;
-    }
-
-    /**
-     * Called when ChangeProcessor has completed all activities
-     */
-    protected void onIdle(){
-        if (closeOnIdle && listener != null) {
-            closeOnIdle = false;
-            listener.onClose(this);
-            closed = true;
+        closed = true;
+        if (changeProcessor != null) {
+            changeProcessor.stop();
         }
+        
     }
 
     // websocket
@@ -862,6 +854,9 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             // interrupt the thread
             if (this.thread != null) {
                 this.thread.interrupt();
+                synchronized(runLock){
+                    runLock.notify();
+                }
             }
         }
 
@@ -875,10 +870,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             stop();
         }
 
-        protected void notifyIdleState(){
-            onIdle();
-        }
-
         public void run(){
             Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
             while(true && !Thread.interrupted()){
@@ -890,7 +881,6 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
                 //
                 if(!localActivity){
                     synchronized(runLock){
-                        notifyIdleState();
                         try {
                             runLock.wait();
                         } catch (InterruptedException e) {
