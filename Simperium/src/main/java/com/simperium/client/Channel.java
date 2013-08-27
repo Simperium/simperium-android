@@ -178,9 +178,9 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     public void reset(){
         changeProcessor.reset();
         if (started) {
-            getLatestVersions();            
+            getLatestVersions();
         } else {
-            startOnConnect = true;  
+            startOnConnect = true;
         }
     }
 
@@ -378,7 +378,7 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         if (changeProcessor != null) {
             changeProcessor.stop();
         }
-        
+
     }
 
     // websocket
