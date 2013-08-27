@@ -119,10 +119,13 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         // Receive auth: command
         command(COMMAND_AUTH, new Command(){
             public void run(String param){
+                User user = getUser();
                 if (EXPIRED_AUTH.equals(param.trim())) {
-                    getUser().setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+                    user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+                    stop();
                     return;
                 }
+                user.setAuthenticationStatus(User.AuthenticationStatus.AUTHENTICATED);
             }
         });
         // Receive i: command

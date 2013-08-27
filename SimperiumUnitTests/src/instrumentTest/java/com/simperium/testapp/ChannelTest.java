@@ -5,6 +5,7 @@ import com.simperium.testapp.models.Note;
 import com.simperium.client.Channel;
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
+import com.simperium.client.User;
 
 import com.simperium.testapp.mock.MockBucket;
 import com.simperium.testapp.mock.MockChannelSerializer;
@@ -26,6 +27,7 @@ public class ChannelTest extends SimperiumTest {
 
     protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     protected Channel.MessageEvent mLastMessage;
+    protected User.AuthenticationStatus mAuthStatus;
     private Boolean mOpen = false;
 
     final private Channel.OnMessageListener mListener = new Channel.OnMessageListener(){
@@ -58,6 +60,13 @@ public class ChannelTest extends SimperiumTest {
                 return mChannel;
             }
         });
+
+        mBucket.getUser().setAuthenticationListener(new User.AuthenticationListener(){
+            @Override
+            public void onAuthenticationStatusChange(User.AuthenticationStatus status){
+                mAuthStatus = status;
+            }
+        });
     }
 
     protected void tearDown() throws Exception {
@@ -69,6 +78,24 @@ public class ChannelTest extends SimperiumTest {
         assertNotNull(mChannel);
         assertTrue(mChannel.isClosed());
         assertFalse(mChannel.isStarted());
+    }
+
+    public void testValidAuth(){
+        start();
+
+        mChannel.receiveMessage("auth:user@example.com");
+        assertEquals(mAuthStatus, User.AuthenticationStatus.AUTHENTICATED);
+    }
+
+    public void testExpiredAuth(){
+
+        start();
+
+        // D/Simperium.Websocket(25158): Thread-2286 <= 0:auth:expired
+        // D/Simperium.Websocket(25158): Thread-2286 <= 0:auth:{"msg": "Token invalid", "code": 401}
+        assertNotNull(mLastMessage);
+        mChannel.receiveMessage("auth:expired");
+        assertEquals(mAuthStatus, User.AuthenticationStatus.NOT_AUTHENTICATED);
     }
 
     public void testStartChannel(){
@@ -144,7 +171,8 @@ public class ChannelTest extends SimperiumTest {
     protected void start(){
         mChannel.onConnect();
         mChannel.start();
-
+        // send auth success message
+        mChannel.receiveMessage("auth:user@example.com");
     }
 
     /**
