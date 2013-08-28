@@ -5,6 +5,8 @@
  */
 package com.simperium.client;
 
+import com.simperium.storage.StorageProvider;
+
 public interface ClientFactory {
 
     public interface AuthProvider {
@@ -25,8 +27,6 @@ public interface ClientFactory {
 
     }
 
-    public interface StorageProvider extends com.simperium.storage.StorageProvider {}
-    public interface GhostStorageProvider extends GhostStoreProvider {}
 
     public AuthProvider buildAuthProvider(String appId, String appSecret);
     public ChannelProvider buildChannelProvider(String appId);

@@ -91,7 +91,7 @@ public class Bucket<T extends Syncable> {
 
     private BucketStore<T> storage;
     private BucketSchema<T> schema;
-    private GhostStoreProvider ghostStore;
+    private GhostStorageProvider ghostStore;
     private ObjectCache<T> cache;
     final private SyncService syncService;
     /**
@@ -99,12 +99,12 @@ public class Bucket<T extends Syncable> {
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore){
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore){
         this(syncService, name, schema, user, storage, ghostStore, null);
         cache = ObjectCache.buildCache(this);
     }
 
-    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStoreProvider ghostStore, ObjectCache cache){
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache cache){
         this.syncService = syncService;
         this.name = name;
         this.user = user;

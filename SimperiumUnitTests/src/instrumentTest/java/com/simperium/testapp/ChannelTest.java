@@ -27,7 +27,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     protected Channel.MessageEvent mLastMessage;
-    protected User.AuthenticationStatus mAuthStatus;
+    protected User.Status mAuthStatus;
     private Boolean mOpen = false;
 
     final private Channel.OnMessageListener mListener = new Channel.OnMessageListener(){
@@ -61,9 +61,9 @@ public class ChannelTest extends BaseSimperiumTest {
             }
         });
 
-        mBucket.getUser().setAuthenticationListener(new User.AuthenticationListener(){
+        mBucket.getUser().setStatusChangeListener(new User.StatusChangeListener(){
             @Override
-            public void onAuthenticationStatusChange(User.AuthenticationStatus status){
+            public void onUserStatusChange(User.Status status){
                 mAuthStatus = status;
             }
         });
@@ -84,7 +84,7 @@ public class ChannelTest extends BaseSimperiumTest {
         start();
 
         mChannel.receiveMessage("auth:user@example.com");
-        assertEquals(mAuthStatus, User.AuthenticationStatus.AUTHENTICATED);
+        assertEquals(mAuthStatus, User.Status.AUTHORIZED);
     }
 
     public void testExpiredAuth(){
@@ -95,7 +95,7 @@ public class ChannelTest extends BaseSimperiumTest {
         // D/Simperium.Websocket(25158): Thread-2286 <= 0:auth:{"msg": "Token invalid", "code": 401}
         assertNotNull(mLastMessage);
         mChannel.receiveMessage("auth:expired");
-        assertEquals(mAuthStatus, User.AuthenticationStatus.NOT_AUTHENTICATED);
+        assertEquals(mAuthStatus, User.Status.NOT_AUTHORIZED);
     }
 
     public void testStartChannel(){

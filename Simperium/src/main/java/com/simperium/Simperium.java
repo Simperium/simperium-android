@@ -5,12 +5,11 @@ import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
-import com.simperium.client.User.AuthenticationListener;
-import com.simperium.client.User.AuthenticationStatus;
 import com.simperium.client.User.AuthResponseHandler;
 import com.simperium.client.SyncService;
 import com.simperium.client.ClientFactory;
 import com.simperium.client.ClientFactory.*;
+import com.simperium.client.GhostStorageProvider;
 
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
@@ -22,7 +21,7 @@ import org.json.JSONObject;
 
 import android.content.Context;
 
-public class Simperium implements User.AuthenticationListener {
+public class Simperium implements User.StatusChangeListener {
 
     // builds and Android client
     public static Simperium newClient(String appId, String appSecret, Context context){
@@ -41,15 +40,15 @@ public class Simperium implements User.AuthenticationListener {
     private String appSecret;
 
     private User user;
-    private AuthenticationListener authenticationListener;
+    private User.StatusChangeListener userListener;
     private static Simperium simperiumClient = null;
     private OnUserCreatedListener onUserCreatedListener;
     private SyncService syncService = new BasicSyncService();
 
     protected ClientFactory.AuthProvider mAuthProvider;
     protected ClientFactory.ChannelProvider mChannelProvider;
-    protected ClientFactory.StorageProvider mStorageProvider;
-    protected ClientFactory.GhostStorageProvider mGhostStorageProvider;
+    protected StorageProvider mStorageProvider;
+    protected GhostStorageProvider mGhostStorageProvider;
 
     public Simperium(String appId, String appSecret, ClientFactory factory){
         this.appId = appId;
@@ -78,11 +77,10 @@ public class Simperium implements User.AuthenticationListener {
     private void loadUser(){
         user = new User(this);
         String token = getUserAccessToken();
-        if (token != null) {
-            user.setAccessToken(token);
-            user.setAuthenticationStatus(AuthenticationStatus.AUTHENTICATED);
+        if (token == null) {
+            user.setStatus(User.Status.NOT_AUTHORIZED);
         } else {
-            user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
+            user.setAccessToken(token);
         }
     }
 
@@ -94,9 +92,9 @@ public class Simperium implements User.AuthenticationListener {
         return user;
     }
 
-    public boolean needsAuthentication(){
+    public boolean needsAuthorization(){
         // we don't have an access token yet
-        return user.needsAuthentication();
+        return user.needsAuthorization();
     }
 
     /**
@@ -161,6 +159,7 @@ public class Simperium implements User.AuthenticationListener {
                 notifyOnUserCreatedListener(user);
             }
         };
+        mAuthProvider.createUser(user, wrapper);
         return user;
     }
 
@@ -172,27 +171,15 @@ public class Simperium implements User.AuthenticationListener {
 
     public void deauthorizeUser(){
         user.setAccessToken(null);
-        user.setAuthenticationStatus(AuthenticationStatus.NOT_AUTHENTICATED);
+        user.setStatus(User.Status.NOT_AUTHORIZED);
         clearUserAccessToken();
     }
 
-    public void onAuthenticationStatusChange(AuthenticationStatus status){
+    public void onUserStatusChange(User.Status status){
+        if(status == User.Status.AUTHORIZED) saveUserAccessToken();
 
-        switch (status) {
-            case AUTHENTICATED:
-            // Start up the websocket
-            // save the key
-            saveUserAccessToken();
-            break;
-            case NOT_AUTHENTICATED:
-            // tell everything that we're not authenticated anymore 
-            break;
-            case UNKNOWN:
-            // we haven't tried to auth yet or the socket is disconnected
-            break;
-        }
-        if (authenticationListener != null) {
-            authenticationListener.onAuthenticationStatusChange(status);
+        if (userListener != null) {
+            userListener.onUserStatusChange(status);
         }
     }
 
@@ -209,12 +196,12 @@ public class Simperium implements User.AuthenticationListener {
         mAuthProvider.clearAccessToken();
     }
 
-    public AuthenticationListener getAuthenticationListener() {
-        return authenticationListener;
+    public User.StatusChangeListener getUserStatusChangeListener() {
+        return userListener;
     }
 
-    public void setAuthenticationListener(AuthenticationListener listener){
-        authenticationListener = listener;
+    public void setUserStatusChangeListener(User.StatusChangeListener listener){
+        userListener = listener;
     }
 
     private class AuthResponseHandlerWrapper implements AuthResponseHandler {

@@ -15,7 +15,7 @@ import com.simperium.client.Bucket.ChannelProvider;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Query;
 import com.simperium.client.ObjectCache;
-import com.simperium.client.GhostStoreProvider;
+import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
 import com.simperium.client.BucketObjectMissingException;
@@ -55,7 +55,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     private User mUser;
     private BucketSchema mSchema;
     private ObjectCache<Note> mCache;
-    private GhostStoreProvider mGhostStore;
+    private GhostStorageProvider mGhostStore;
 
     public PersistentStoreTest() {
         super("com.simperium.tests", MainActivity.class);

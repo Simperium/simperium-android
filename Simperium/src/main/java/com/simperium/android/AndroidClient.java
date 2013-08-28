@@ -27,7 +27,7 @@ public class AndroidClient implements ClientFactory {
     }
 
     @Override
-    public AuthProvider buildAuthProvider(String appId, String appSecret){
+    public AuthClient buildAuthProvider(String appId, String appSecret){
         AsyncHttpClient httpClient = new AsyncHttpClient();
         httpClient.setUserAgent(Simperium.CLIENT_ID);
         AuthClient client = new AuthClient(appId, appSecret, httpClient);
@@ -37,18 +37,18 @@ public class AndroidClient implements ClientFactory {
     }
 
     @Override
-    public ChannelProvider buildChannelProvider(String appId){
+    public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
         return new WebSocketManager(appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new FileQueueSerializer(mContext));
     }
 
     @Override
-    public StorageProvider buildStorageProvider(){
+    public PersistentStore buildStorageProvider(){
         return new PersistentStore(mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null));
     }
 
     @Override
-    public GhostStorageProvider buildGhostStorageProvider(){
+    public GhostStore buildGhostStorageProvider(){
         return new GhostStore(mContext);
     }
     

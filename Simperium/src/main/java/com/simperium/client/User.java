@@ -41,8 +41,8 @@ public class User {
      *       }
      *     });
      */
-    public interface AuthenticationListener {
-        void onAuthenticationStatusChange(AuthenticationStatus authorized);
+    public interface StatusChangeListener {
+        void onUserStatusChange(Status authorized);
     }
     /**
      * Determines a user's network status with Simperium:
@@ -51,8 +51,8 @@ public class User {
      *   - UKNOWN: User objects start in this state and then transitions to AUTHENTICATED or
      *             NOT_AUTHENTICATED. Also the state given when the Simperium is not reachable.
      */
-    public enum AuthenticationStatus {
-        AUTHENTICATED, NOT_AUTHENTICATED, UNKNOWN
+    public enum Status {
+        AUTHORIZED, NOT_AUTHORIZED, UNKNOWN
     }
     /**
      * For use with Simperium.createUser and Simperium.authorizeUser
@@ -73,50 +73,50 @@ public class User {
     private String password;
     private String userId;
     private String accessToken;
-    private AuthenticationStatus authenticationStatus = AuthenticationStatus.UNKNOWN;
-    private AuthenticationListener listener;
+    private Status status = Status.UNKNOWN;
+    private StatusChangeListener listener;
 
     public User(){
         this(null, null, null);
     }
     // a user that hasn't been logged in
-    public User(AuthenticationListener listener){
+    public User(StatusChangeListener listener){
         this(null, null, listener);
     }
 
-    public User(String email, AuthenticationListener listener){
+    public User(String email, StatusChangeListener listener){
         this(email, null, listener);
     }
 
-    public User(String email, String password, AuthenticationListener listener){
+    public User(String email, String password, StatusChangeListener listener){
         this.email = email;
         this.password = password;
         this.listener = listener;
     }
 
-    public AuthenticationStatus getAuthenticationStatus(){
-        return authenticationStatus;
+    public Status getStatus(){
+        return status;
     }
 
-    public void setAuthenticationListener(AuthenticationListener authListener){
+    public void setStatusChangeListener(StatusChangeListener authListener){
         listener = authListener;
     }
 
-    public AuthenticationListener getAuthenticationListener(){
+    public StatusChangeListener getStatusChangeListener(){
         return listener;
     }
 
-    public void setAuthenticationStatus(AuthenticationStatus authenticationStatus){
-        if (this.authenticationStatus != authenticationStatus) {
-            this.authenticationStatus = authenticationStatus;
+    public void setStatus(Status status){
+        if (this.status != status) {
+            this.status = status;
             if (this.listener != null) {
-                listener.onAuthenticationStatusChange(this.authenticationStatus);                
+                listener.onUserStatusChange(this.status);                
             }
         }
     }
 
     // check if we have an access token
-    public boolean needsAuthentication(){
+    public boolean needsAuthorization(){
         return accessToken == null;
     }
 
@@ -201,7 +201,7 @@ public class User {
                     handler.onFailure(user, error, response.toString());
                     return;
                 }
-                setAuthenticationStatus(AuthenticationStatus.AUTHENTICATED);
+                setStatus(Status.AUTHORIZED);
                 handler.onSuccess(user);
             }
             @Override
@@ -234,7 +234,7 @@ public class User {
                     handler.onFailure(user, error, response.toString());
                     return;
                 }
-                setAuthenticationStatus(AuthenticationStatus.AUTHENTICATED);
+                setStatus(Status.AUTHORIZED);
                 handler.onSuccess(user);
             }
             @Override

@@ -121,11 +121,11 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             public void run(String param){
                 User user = getUser();
                 if (EXPIRED_AUTH.equals(param.trim())) {
-                    user.setAuthenticationStatus(User.AuthenticationStatus.NOT_AUTHENTICATED);
+                    user.setStatus(User.Status.NOT_AUTHORIZED);
                     stop();
                     return;
                 }
-                user.setAuthenticationStatus(User.AuthenticationStatus.AUTHENTICATED);
+                user.setStatus(User.Status.AUTHORIZED);
             }
         });
         // Receive i: command
@@ -332,8 +332,8 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
             startOnConnect = true;
             return;
         }
-        if (bucket.getUser().needsAuthentication()) {
-            Logger.log(TAG, "Not starting, missing access token");
+        if (!bucket.getUser().hasAccessToken()) {
+            // we won't connect unless we have an access token
             return;
         }
         closed = false;

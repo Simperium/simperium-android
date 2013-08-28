@@ -1,6 +1,6 @@
 package com.simperium.client;
 
-public interface GhostStoreProvider {
+public interface GhostStorageProvider {
     /**
      * Check if the store has a change version for the provided bucket
      */

@@ -7,7 +7,7 @@ import com.simperium.client.RemoteChange;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.ObjectCache;
-import com.simperium.client.GhostStoreProvider;
+import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.User;
 import com.simperium.storage.MemoryStore;
 
@@ -28,7 +28,7 @@ public class BucketTest extends BaseSimperiumTest {
     private Bucket<Note> mBucket;
     private BucketSchema<Note> mSchema;
     private User mUser;
-    private GhostStoreProvider mGhostStore;
+    private GhostStorageProvider mGhostStore;
     private Bucket.ChannelProvider<Note> mChannel;
 
     private static String BUCKET_NAME="local-notes";

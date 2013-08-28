@@ -10,7 +10,7 @@ import java.util.HashMap;
 
 import org.json.JSONObject;
 
-import com.simperium.client.ClientFactory.GhostStorageProvider;
+import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.Bucket;
 import com.simperium.client.Ghost;
 import com.simperium.client.GhostMissingException;
