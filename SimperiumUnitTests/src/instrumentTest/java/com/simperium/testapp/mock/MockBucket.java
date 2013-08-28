@@ -4,7 +4,6 @@ import com.simperium.client.Bucket;
 import com.simperium.client.Bucket.ChannelProvider;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.ObjectCache;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
 
@@ -43,7 +42,7 @@ public class MockBucket {
         StorageProvider storage = new MemoryStore();
         BucketStore<T> store = storage.createStore(schema.getRemoteName(), schema);
         GhostStorageProvider ghosts = new MockGhostStore();
-        ObjectCache<T> cache = new ObjectCache<T>(new MockCache<T>());
+        MockCache<T> cache = new MockCache<T>();
 
         Bucket<T> bucket = new Bucket<T>(MockSyncService.service(), schema.getRemoteName(), schema, user, store, ghosts, cache);
 

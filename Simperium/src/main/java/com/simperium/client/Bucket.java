@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.simperium.storage.StorageProvider.BucketStore;
+import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 import com.simperium.util.JSONDiff;
@@ -94,17 +95,13 @@ public class Bucket<T extends Syncable> {
     private GhostStorageProvider ghostStore;
     private ObjectCache<T> cache;
     final private SyncService syncService;
+
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore){
-        this(syncService, name, schema, user, storage, ghostStore, null);
-        cache = ObjectCache.buildCache(this);
-    }
-
-    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache cache){
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache){
         this.syncService = syncService;
         this.name = name;
         this.user = user;

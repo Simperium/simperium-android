@@ -14,7 +14,7 @@ import com.simperium.client.Bucket;
 import com.simperium.client.Bucket.ChannelProvider;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Query;
-import com.simperium.client.ObjectCache;
+import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
@@ -71,7 +71,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         mActivity = getActivity();
         mDatabase = mActivity.openOrCreateDatabase(mDatabaseName, 0, null);
         mGhostStore = new MockGhostStore();
-        mCache = new ObjectCache<Note>(new MockCache<Note>());
+        mCache = new MockCache<Note>();
         mStore = new PersistentStore(mDatabase);
         mSchema = new Note.Schema();
         mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);

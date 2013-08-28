@@ -6,6 +6,7 @@
 package com.simperium.client;
 
 import com.simperium.storage.StorageProvider;
+import com.simperium.client.ObjectCacheProvider;
 
 public interface ClientFactory {
 
@@ -32,5 +33,6 @@ public interface ClientFactory {
     public ChannelProvider buildChannelProvider(String appId);
     public StorageProvider buildStorageProvider();
     public GhostStorageProvider buildGhostStorageProvider();
+    public ObjectCacheProvider buildObjectCacheProvider();
 
 }

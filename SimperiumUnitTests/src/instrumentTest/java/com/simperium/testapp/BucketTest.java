@@ -6,7 +6,6 @@ import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.ObjectCache;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.User;
 import com.simperium.storage.MemoryStore;
@@ -41,7 +40,7 @@ public class BucketTest extends BaseSimperiumTest {
         mSchema = new Note.Schema();
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MockGhostStore();
-        ObjectCache<Note> cache = new ObjectCache<Note>(new MockCache<Note>());
+        MockCache<Note> cache = new MockCache<Note>();
         mBucket = new Bucket<Note>(MockSyncService.service(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);

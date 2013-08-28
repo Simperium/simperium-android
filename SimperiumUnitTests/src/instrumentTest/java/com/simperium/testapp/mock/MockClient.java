@@ -29,6 +29,10 @@ public class MockClient implements ClientFactory {
         return new MockGhostStore();
     }
 
+    public MockCacheProvider buildObjectCacheProvider(){
+        return new MockCacheProvider();
+    }
+
     private class MockAuthProvider implements ClientFactory.AuthProvider {
 
         @Override

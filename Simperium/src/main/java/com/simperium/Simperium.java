@@ -10,6 +10,7 @@ import com.simperium.client.SyncService;
 import com.simperium.client.ClientFactory;
 import com.simperium.client.ClientFactory.*;
 import com.simperium.client.GhostStorageProvider;
+import com.simperium.client.ObjectCacheProvider;
 
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
@@ -49,6 +50,7 @@ public class Simperium implements User.StatusChangeListener {
     protected ClientFactory.ChannelProvider mChannelProvider;
     protected StorageProvider mStorageProvider;
     protected GhostStorageProvider mGhostStorageProvider;
+    protected ObjectCacheProvider mObjectCacheProvider;
 
     public Simperium(String appId, String appSecret, ClientFactory factory){
         this.appId = appId;
@@ -61,6 +63,8 @@ public class Simperium implements User.StatusChangeListener {
         mStorageProvider = factory.buildStorageProvider();
 
         mGhostStorageProvider = factory.buildGhostStorageProvider();
+
+        mObjectCacheProvider = factory.buildObjectCacheProvider();
 
         Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
         loadUser();
@@ -101,15 +105,23 @@ public class Simperium implements User.StatusChangeListener {
      * Creates a bucket and starts syncing data and uses the provided
      * Class to instantiate data.
      * 
-     * Should only allow one instance of bucketName and the scheme should
-     * match the existing bucket.
+     * Should only allow one instance of bucketName and the schema should
+     * match the existing bucket?
      *
      * @param bucketName the namespace to store the data in simperium
      */
     public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
+        return bucket(bucketName, schema, mStorageProvider.createStore(bucketName, schema));
+    }
+
+    /**
+     * Allow alternate storage mechanisms
+     */
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema, BucketStore<T> storage){
+
         // initialize the bucket
-        BucketStore<T> storage = mStorageProvider.createStore(bucketName, schema);
-        Bucket<T> bucket = new Bucket<T>(syncService, bucketName, schema, user, storage, mGhostStorageProvider);
+        ObjectCacheProvider.ObjectCache<T> cache = mObjectCacheProvider.buildCache();
+        Bucket<T> bucket = new Bucket<T>(syncService, bucketName, schema, user, storage, mGhostStorageProvider, cache);
 
         // initialize the communication method for the bucket
         Bucket.ChannelProvider<T> channel = mChannelProvider.createChannel(bucket);
@@ -120,6 +132,8 @@ public class Simperium implements User.StatusChangeListener {
         storage.prepare(bucket);
         return bucket;
     }
+
+
     /**
      * Creates a bucket and starts syncing data. Users the generic BucketObject for
      * serializing and deserializing data
@@ -226,6 +240,7 @@ public class Simperium implements User.StatusChangeListener {
         public void onFailure(User user, Throwable error, String message) {
             handler.onFailure(user, error, message);
         }
+
     }
 
 }

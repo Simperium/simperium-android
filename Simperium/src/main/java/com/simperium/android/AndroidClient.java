@@ -51,5 +51,9 @@ public class AndroidClient implements ClientFactory {
     public GhostStore buildGhostStorageProvider(){
         return new GhostStore(mContext);
     }
-    
+
+    @Override
+    public LruCacheProvider buildObjectCacheProvider(){
+        return new LruCacheProvider();
+    }
 }
