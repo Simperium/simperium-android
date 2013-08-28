@@ -13,24 +13,34 @@ public class MockClient implements ClientFactory {
 
     public String accessToken = "fake-token";
 
+    @Override
     public MockAuthProvider buildAuthProvider(String appId, String appSecret){
         return new MockAuthProvider();
     }
 
+    @Override
     public MockChannelProvider buildChannelProvider(String appId){
         return new MockChannelProvider();
     }
 
+    @Override
     public MemoryStore buildStorageProvider(){
         return new MemoryStore();
     }
 
+    @Override
     public MockGhostStore buildGhostStorageProvider(){
         return new MockGhostStore();
     }
 
+    @Override
     public MockCacheProvider buildObjectCacheProvider(){
         return new MockCacheProvider();
+    }
+
+    @Override
+    public MockSyncService buildSyncService(){
+        return new MockSyncService();
     }
 
     private class MockAuthProvider implements ClientFactory.AuthProvider {
