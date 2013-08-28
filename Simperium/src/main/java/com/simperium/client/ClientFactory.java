@@ -28,11 +28,11 @@ public interface ClientFactory {
 
     }
 
-
     public AuthProvider buildAuthProvider(String appId, String appSecret);
     public ChannelProvider buildChannelProvider(String appId);
     public StorageProvider buildStorageProvider();
     public GhostStorageProvider buildGhostStorageProvider();
     public ObjectCacheProvider buildObjectCacheProvider();
+    public SyncService buildSyncService();
 
 }

@@ -16,7 +16,6 @@ import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
 
 import com.simperium.util.Logger;
-import com.simperium.util.BasicSyncService;
 
 import org.json.JSONObject;
 
@@ -44,13 +43,13 @@ public class Simperium implements User.StatusChangeListener {
     private User.StatusChangeListener userListener;
     private static Simperium simperiumClient = null;
     private OnUserCreatedListener onUserCreatedListener;
-    private SyncService syncService = new BasicSyncService();
 
     protected ClientFactory.AuthProvider mAuthProvider;
     protected ClientFactory.ChannelProvider mChannelProvider;
     protected StorageProvider mStorageProvider;
     protected GhostStorageProvider mGhostStorageProvider;
     protected ObjectCacheProvider mObjectCacheProvider;
+    protected SyncService mSyncService;
 
     public Simperium(String appId, String appSecret, ClientFactory factory){
         this.appId = appId;
@@ -65,6 +64,8 @@ public class Simperium implements User.StatusChangeListener {
         mGhostStorageProvider = factory.buildGhostStorageProvider();
 
         mObjectCacheProvider = factory.buildObjectCacheProvider();
+
+        mSyncService = factory.buildSyncService();
 
         Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
         loadUser();
@@ -121,7 +122,7 @@ public class Simperium implements User.StatusChangeListener {
 
         // initialize the bucket
         ObjectCacheProvider.ObjectCache<T> cache = mObjectCacheProvider.buildCache();
-        Bucket<T> bucket = new Bucket<T>(syncService, bucketName, schema, user, storage, mGhostStorageProvider, cache);
+        Bucket<T> bucket = new Bucket<T>(mSyncService, bucketName, schema, user, storage, mGhostStorageProvider, cache);
 
         // initialize the communication method for the bucket
         Bucket.ChannelProvider<T> channel = mChannelProvider.createChannel(bucket);

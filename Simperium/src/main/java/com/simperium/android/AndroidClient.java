@@ -4,6 +4,7 @@ import com.loopj.android.http.*;
 
 import com.simperium.Simperium;
 import com.simperium.client.ClientFactory;
+import com.simperium.util.BasicSyncService;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
@@ -55,5 +56,10 @@ public class AndroidClient implements ClientFactory {
     @Override
     public LruCacheProvider buildObjectCacheProvider(){
         return new LruCacheProvider();
+    }
+
+    @Override
+    public BasicSyncService buildSyncService(){
+        return new BasicSyncService();
     }
 }

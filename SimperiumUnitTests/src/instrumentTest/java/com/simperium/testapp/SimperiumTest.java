@@ -2,6 +2,8 @@ package com.simperium.testapp;
 
 import com.simperium.Simperium;
 import com.simperium.client.User;
+import com.simperium.client.Bucket;
+import com.simperium.client.BucketObject;
 
 import com.simperium.testapp.mock.MockClient;
 import com.simperium.testapp.mock.MockAuthResponseHandler;
@@ -37,6 +39,15 @@ public class SimperiumTest extends BaseSimperiumTest {
     protected void tearDown() throws Exception {
         mLastStatus = null;
         super.tearDown();
+    }
+
+    public void testBuildBucket(){
+
+        Bucket<BucketObject> bucket = mSimperium.bucket("stuff");
+        BucketObject object = bucket.newObject();
+
+        object.setProperty("Title", "Hola mundo");
+
     }
 
     public void testInitialAuthState(){
