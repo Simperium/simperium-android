@@ -41,13 +41,19 @@ public class SimperiumTest extends BaseSimperiumTest {
         super.tearDown();
     }
 
-    public void testBuildBucket(){
+    public void testBuildBucket()
+    throws Exception {
 
         Bucket<BucketObject> bucket = mSimperium.bucket("stuff");
         BucketObject object = bucket.newObject();
 
-        object.setProperty("Title", "Hola mundo");
+        object.setProperty("title", "Hola mundo");
+        object.save();
 
+        BucketObject other = bucket.get(object.getSimperiumKey());
+
+        assertEquals("Hola mundo", other.getProperty("title"));
+        assertEquals(object, other);
     }
 
     public void testInitialAuthState(){
