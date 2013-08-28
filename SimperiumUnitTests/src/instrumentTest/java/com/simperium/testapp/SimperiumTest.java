@@ -4,8 +4,10 @@ import com.simperium.Simperium;
 import com.simperium.client.User;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
+import com.simperium.client.BucketSchema.Index;
 
 import com.simperium.testapp.mock.MockClient;
+import com.simperium.testapp.mock.MockBucketStore;
 import com.simperium.testapp.mock.MockAuthResponseHandler;
 
 import java.util.List;
@@ -54,6 +56,28 @@ public class SimperiumTest extends BaseSimperiumTest {
 
         assertEquals("Hola mundo", other.getProperty("title"));
         assertEquals(object, other);
+    }
+
+    public void testBuildBucketWithAlternateStorage()
+    throws Exception {
+        BucketObject.Schema schema = new BucketObject.Schema();
+        TestStore store = new TestStore();
+        Bucket<BucketObject> bucket = mSimperium.bucket("stuff", schema, store);
+
+        assertTrue(store.prepare);
+
+        BucketObject thing = bucket.newObject();
+        thing.setProperty("title", "hola mundo");
+
+        thing.save();
+        assertTrue(store.save);
+
+        thing = bucket.get(thing.getSimperiumKey());
+        assertTrue(store.get);
+
+        thing.delete();
+        assertTrue(store.delete);
+
     }
 
     public void testInitialAuthState(){
@@ -150,6 +174,35 @@ public class SimperiumTest extends BaseSimperiumTest {
         @Override
         public void onUserCreated(User user){
             userCreated = true;
+        }
+
+    }
+
+    static class TestStore extends MockBucketStore<BucketObject>{
+
+        public boolean prepare = false, save = false, delete = false, get = false;
+
+        @Override
+        public void prepare(Bucket<BucketObject> bucket){
+            prepare = true;
+        }
+
+        @Override
+        public void save(BucketObject object, List<Index> indexes){
+            save = true;
+            super.save(object, indexes);
+        }
+
+        @Override
+        public void delete(BucketObject object){
+            delete = true;
+            super.delete(object);
+        }
+
+        @Override
+        public BucketObject get(String key){
+            get = true;
+            return super.get(key);
         }
 
     }
