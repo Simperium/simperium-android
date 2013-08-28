@@ -55,6 +55,14 @@ public class BucketObject extends Syncable {
         this(key, new HashMap<String,Object>());
     }
 
+    public Object getProperty(String key){
+        return properties.get(key);
+    }
+
+    public void setProperty(String key, Object value){
+        properties.put(key, value);
+    }
+
     public String getSimperiumKey(){
         return simperiumKey;
     }
