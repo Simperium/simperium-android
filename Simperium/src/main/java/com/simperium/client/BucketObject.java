@@ -15,24 +15,31 @@ public class BucketObject extends Syncable {
      */
     public static class Schema extends BucketSchema<BucketObject>{
         private String remoteName;
-        public Schema(String remoteName){
+
+        public Schema(String name){
             this.remoteName = remoteName;
+            autoIndex();
         }
+
         public String getRemoteName(){
             return remoteName;
         }
+
         public String getRemoteName(Bucket bucket){
             if (remoteName == null) {
-                return bucket.getName();                
+                return bucket.getName();
             }
             return remoteName;
         }
+
         public BucketObject build(String key, Map<String,Object> properties){
             return new BucketObject(key, properties);
         }
+
         public void update(BucketObject object, Map<String,Object> properties){
             object.properties = properties;
         }
+
     }
 
     private String simperiumKey;
