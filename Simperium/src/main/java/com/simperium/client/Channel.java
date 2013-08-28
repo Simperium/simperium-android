@@ -63,6 +63,11 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
     static final String RESPONSE_UNKNOWN  = "?";
 
     static final String EXPIRED_AUTH      = "expired"; // after unsuccessful init:
+    static final String EXPIRED_AUTH_INDICATOR = "{";
+    static final String EXPIRED_AUTH_REASON_KEY = "msg";
+    static final String EXPIRED_AUTH_CODE_KEY = "code";
+    static final int EXPIRED_AUTH_INVALID_TOKEN_CODE = 401;
+
 
     // Parameters for querying bucket
     static final Integer INDEX_PAGE_SIZE  = 500;
@@ -120,11 +125,27 @@ public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
         command(COMMAND_AUTH, new Command(){
             public void run(String param){
                 User user = getUser();
-                if (EXPIRED_AUTH.equals(param.trim())) {
-                    user.setStatus(User.Status.NOT_AUTHORIZED);
-                    stop();
-                    return;
+                // ignore auth:expired, implement new auth:{JSON} for failures
+                if(EXPIRED_AUTH.equals(param.trim())) return;
+                // if it starts with { let's see if it's error JSON
+                if (param.indexOf(EXPIRED_AUTH_INDICATOR) == 0) {
+                    try {
+                        JSONObject authResponse = new JSONObject(param);
+                        int code = authResponse.getInt(EXPIRED_AUTH_CODE_KEY);
+                        if (code == EXPIRED_AUTH_INVALID_TOKEN_CODE) {
+                            user.setStatus(User.Status.NOT_AUTHORIZED);
+                            stop();
+                            return;
+                        } else {
+                            // TODO retry auth?
+                            Logger.log(TAG, String.format("Unable to auth: %d", code));
+                            return;
+                        }
+                    } catch (JSONException e) {
+                        Logger.log(TAG, String.format("Unable to parse auth JSON, assume was email %s", param));
+                    }
                 }
+                user.setEmail(param);
                 user.setStatus(User.Status.AUTHORIZED);
             }
         });

@@ -87,15 +87,24 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(mAuthStatus, User.Status.AUTHORIZED);
     }
 
-    public void testExpiredAuth(){
+    public void testIgnoreOldExpiredAuth(){
 
         start();
 
-        // D/Simperium.Websocket(25158): Thread-2286 <= 0:auth:expired
-        // D/Simperium.Websocket(25158): Thread-2286 <= 0:auth:{"msg": "Token invalid", "code": 401}
         assertNotNull(mLastMessage);
         mChannel.receiveMessage("auth:expired");
-        assertEquals(mAuthStatus, User.Status.NOT_AUTHORIZED);
+
+        // make sure we ignore the auth:expired
+        assertEquals(User.Status.AUTHORIZED, mAuthStatus);
+    }
+
+    public void testFailedAuthMessage(){
+        start();
+
+        assertNotNull(mLastMessage);
+        mChannel.receiveMessage("auth:expired");
+        mChannel.receiveMessage("auth:{\"msg\":\"Token invalid\",\"code\":401}");
+        assertEquals(User.Status.NOT_AUTHORIZED, mAuthStatus);
     }
 
     public void testStartChannel(){
