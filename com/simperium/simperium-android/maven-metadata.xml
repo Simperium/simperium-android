@@ -4,8 +4,8 @@
   <artifactId>simperium-android</artifactId>
   <versioning>
     <versions>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>0.1.3-alpha-SNAPSHOT</version>
     </versions>
-    <lastUpdated>20130829183536</lastUpdated>
+    <lastUpdated>20130829231112</lastUpdated>
   </versioning>
 </metadata>
