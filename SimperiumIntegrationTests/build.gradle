@@ -9,6 +9,7 @@ buildscript {
 apply plugin: 'android'
 
 repositories {
+    maven { url "http://simperium.github.io/simperium-android" }
     mavenCentral()
 }
 
