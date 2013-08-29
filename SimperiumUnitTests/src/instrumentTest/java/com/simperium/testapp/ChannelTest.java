@@ -3,6 +3,7 @@ package com.simperium.testapp;
 import com.simperium.testapp.models.Note;
 
 import com.simperium.client.Channel;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
@@ -53,10 +54,10 @@ public class ChannelTest extends BaseSimperiumTest {
     protected void setUp() throws Exception {
         super.setUp();
         
-        mBucket = MockBucket.buildBucket(new Note.Schema(), new MockBucket.ChannelFactory<Note>(){
+        mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
             @Override
-            public Channel<Note> buildChannel(Bucket<Note> bucket){
-                mChannel = new Channel<Note>(APP_ID, SESSION_ID, bucket, new MockChannelSerializer<Note>(), mListener);
+            public Bucket.Channel buildChannel(Bucket bucket){
+                mChannel = new Channel(APP_ID, SESSION_ID, bucket, new MockChannelSerializer<Note>(), mListener);
                 return mChannel;
             }
         });

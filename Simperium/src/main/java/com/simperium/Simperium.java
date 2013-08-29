@@ -11,6 +11,9 @@ import com.simperium.client.ClientFactory;
 import com.simperium.client.ClientFactory.*;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.ObjectCacheProvider;
+import com.simperium.client.AuthProvider;
+import com.simperium.client.ChannelProvider;
+import com.simperium.client.Channel;
 
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
@@ -44,8 +47,8 @@ public class Simperium implements User.StatusChangeListener {
     private static Simperium simperiumClient = null;
     private OnUserCreatedListener onUserCreatedListener;
 
-    protected ClientFactory.AuthProvider mAuthProvider;
-    protected ClientFactory.ChannelProvider mChannelProvider;
+    protected AuthProvider mAuthProvider;
+    protected ChannelProvider mChannelProvider;
     protected StorageProvider mStorageProvider;
     protected GhostStorageProvider mGhostStorageProvider;
     protected ObjectCacheProvider mObjectCacheProvider;
@@ -125,7 +128,7 @@ public class Simperium implements User.StatusChangeListener {
         Bucket<T> bucket = new Bucket<T>(mSyncService, bucketName, schema, user, storage, mGhostStorageProvider, cache);
 
         // initialize the communication method for the bucket
-        Bucket.ChannelProvider<T> channel = mChannelProvider.createChannel(bucket);
+        Bucket.Channel<T> channel = mChannelProvider.buildChannel(bucket);
 
         // tell the bucket about the channel
         bucket.setChannel(channel);

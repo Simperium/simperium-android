@@ -28,7 +28,7 @@ public class BucketTest extends BaseSimperiumTest {
     private BucketSchema<Note> mSchema;
     private User mUser;
     private GhostStorageProvider mGhostStore;
-    private Bucket.ChannelProvider<Note> mChannel;
+    private Bucket.Channel<Note> mChannel;
 
     private static String BUCKET_NAME="local-notes";
 

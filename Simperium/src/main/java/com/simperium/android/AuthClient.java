@@ -20,7 +20,7 @@ package com.simperium.android;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.simperium.client.ClientFactory;
+import com.simperium.client.AuthProvider;
 import com.simperium.client.User;
 import com.simperium.util.Logger;
 
@@ -32,7 +32,7 @@ import com.loopj.android.http.*;
 
 import java.io.UnsupportedEncodingException;
 
-public class AuthClient implements ClientFactory.AuthProvider {
+public class AuthClient implements AuthProvider {
 
     private static final String AUTH_URL = "https://auth.simperium.com/1";
     private static final String JSON_CONTENT_TYPE = "application/json";

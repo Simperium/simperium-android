@@ -4,7 +4,7 @@
 package com.simperium.testapp.mock;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.ChannelProvider;
+import com.simperium.client.Bucket.Channel;
 import com.simperium.client.Syncable;
 import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
@@ -14,7 +14,7 @@ import com.simperium.util.Uuid;
 import java.util.List;
 import java.util.ArrayList;
 
-public class MockChannel<T extends Syncable> implements ChannelProvider<T> {
+public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
 
     private Bucket<T> mBucket;
     private boolean started = false;

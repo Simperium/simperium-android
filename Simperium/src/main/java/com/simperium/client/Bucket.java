@@ -45,7 +45,7 @@ import android.os.CancellationSignal;
 
 public class Bucket<T extends Syncable> {
     
-    public interface ChannelProvider<T extends Syncable> {
+    public interface Channel<T extends Syncable> {
         public Change<T> queueLocalChange(T object);
         public Change<T> queueLocalDeletion(T object);
         public void start();
@@ -81,7 +81,7 @@ public class Bucket<T extends Syncable> {
     // User provides the access token for authentication
     private User user;
     // The channel that provides networking and change processing.
-    private ChannelProvider<T> channel;
+    private Channel<T> channel;
     // For storing the bucket listeners
     private Set<OnSaveObjectListener<T>> onSaveListeners =
         Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
@@ -563,7 +563,7 @@ public class Bucket<T extends Syncable> {
     }
 
 
-    public void setChannel(ChannelProvider channel){
+    public void setChannel(Channel channel){
         this.channel = channel;
     }
 

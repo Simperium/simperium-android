@@ -15,7 +15,22 @@ public class MockClient implements ClientFactory {
 
     @Override
     public MockAuthProvider buildAuthProvider(String appId, String appSecret){
-        return new MockAuthProvider();
+        return new MockAuthProvider(){
+            @Override
+            public String getAccessToken(){
+                return accessToken;
+            }
+
+            @Override
+            public void setAccessToken(String token){
+                accessToken = token;
+            }
+
+            @Override
+            public void clearAccessToken(){
+                accessToken = null;
+            }
+        };
     }
 
     @Override
@@ -41,49 +56,6 @@ public class MockClient implements ClientFactory {
     @Override
     public MockSyncService buildSyncService(){
         return new MockSyncService();
-    }
-
-    private class MockAuthProvider implements ClientFactory.AuthProvider {
-
-        @Override
-        public void setAuthProvider(String name){}
-
-        @Override
-        public void createUser(User user, User.AuthResponseHandler handler){
-            user.setAccessToken("fake-token");
-            handler.onSuccess(user);
-        }
-
-        @Override
-        public void authorizeUser(User user, User.AuthResponseHandler handler){
-            // just call success callback
-            user.setAccessToken("fake-token");
-            handler.onSuccess(user);
-        }
-
-        @Override
-        public String getAccessToken(){
-            return accessToken;
-        }
-
-        @Override
-        public void setAccessToken(String token){
-            accessToken = token;
-        }
-
-        @Override
-        public void clearAccessToken(){
-            accessToken = null;
-        }
-
-    }
-
-    private class MockChannelProvider implements ClientFactory.ChannelProvider {
-
-        public MockChannel createChannel(Bucket bucket){
-            return new MockChannel(bucket);
-        }
-
     }
 
 }

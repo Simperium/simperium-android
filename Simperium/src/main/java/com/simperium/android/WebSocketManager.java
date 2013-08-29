@@ -13,7 +13,7 @@ import android.content.Context;
 import com.simperium.Simperium;
 import com.simperium.util.Logger;
 
-import com.simperium.client.ClientFactory.ChannelProvider;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.Channel;
 import com.simperium.client.Channel.Serializer;
 import com.simperium.client.Bucket;
@@ -74,7 +74,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
-    public Bucket.ChannelProvider createChannel(Bucket bucket){
+    public Channel buildChannel(Bucket bucket){
         // create a channel
         Channel channel = new Channel(appId, sessionId, bucket, mSerializer, this);
         int channelId = channels.size();

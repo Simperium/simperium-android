@@ -11,7 +11,6 @@ import android.database.Cursor;
 import com.simperium.android.PersistentStore;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.ChannelProvider;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Query;
 import com.simperium.client.ObjectCacheProvider.ObjectCache;
@@ -76,7 +75,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
         mSchema = new Note.Schema();
         mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
         mBucket = new Bucket<Note>(MockSyncService.service(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
-        ChannelProvider<Note> channel = new MockChannel<Note>(mBucket);
+        Bucket.Channel<Note> channel = new MockChannel<Note>(mBucket);
         mBucket.setChannel(channel);
     }
 

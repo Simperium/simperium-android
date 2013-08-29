@@ -35,7 +35,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-public class Channel<T extends Syncable> implements Bucket.ChannelProvider<T> {
+public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
     public interface OnMessageListener {
         void onMessage(MessageEvent event);

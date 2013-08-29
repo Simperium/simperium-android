@@ -10,24 +10,6 @@ import com.simperium.client.ObjectCacheProvider;
 
 public interface ClientFactory {
 
-    public interface AuthProvider {
-        // TODO: refactor this out
-        void setAuthProvider(String name);
-
-        void createUser(User user, User.AuthResponseHandler handler);
-        void authorizeUser(User user, User.AuthResponseHandler handler);
-
-        String getAccessToken();
-        void setAccessToken(String token);
-        void clearAccessToken();
-    }
-
-    public interface ChannelProvider {
-
-        Bucket.ChannelProvider createChannel(Bucket bucket);
-
-    }
-
     public AuthProvider buildAuthProvider(String appId, String appSecret);
     public ChannelProvider buildChannelProvider(String appId);
     public StorageProvider buildStorageProvider();
