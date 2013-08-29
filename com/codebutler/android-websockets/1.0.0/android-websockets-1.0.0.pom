@@ -4,6 +4,6 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.codebutler</groupId>
   <artifactId>android-websockets</artifactId>
-  <version>6c7c60d</version>
-  <description>Websocket client for Android</description>
+  <version>1.0.0</version>
+  <description>Websocket client for Android (6c7c60d)</description>
 </project>

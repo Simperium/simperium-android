@@ -3,10 +3,11 @@
   <groupId>com.codebutler</groupId>
   <artifactId>android-websockets</artifactId>
   <versioning>
-    <release>6c7c60d</release>
+    <release>1.0.0</release>
     <versions>
       <version>6c7c60d</version>
+      <version>1.0.0</version>
     </versions>
-    <lastUpdated>20130829214454</lastUpdated>
+    <lastUpdated>20130829215714</lastUpdated>
   </versioning>
 </metadata>
