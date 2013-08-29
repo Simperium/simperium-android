@@ -5,6 +5,7 @@
   <groupId>com.simperium</groupId>
   <artifactId>simperium-android</artifactId>
   <version>0.1.3-alpha-SNAPSHOT</version>
+  <packaging>aar</packaging>
   <dependencies>
     <dependency>
       <groupId>com.loopj</groupId>
