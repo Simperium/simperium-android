@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.simperium</groupId>
   <artifactId>simperium-android</artifactId>
-  <version>1.0-alpha</version>
+  <version>g0f7b78d</version>
   <packaging>aar</packaging>
   <dependencies>
     <dependency>
