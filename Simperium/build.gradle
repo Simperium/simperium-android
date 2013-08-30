@@ -32,22 +32,6 @@ android {
         targetSdkVersion 16
     }
 
-    debug {
-        sourceSets {
-            main {
-                manifest.srcFile "src/instrumentTest/AndroidManifest.xml"
-            }
-        }
-    }
-
-    release {
-        sourceSets {
-            main {
-                manifest.srcFile "src/main/AndroidManifest.xml"
-            }
-        }
-    }
-
 }
 
 task writePom << {
