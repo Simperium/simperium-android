@@ -28,7 +28,8 @@ public class Simperium implements User.StatusChangeListener {
 
     // builds and Android client
     public static Simperium newClient(String appId, String appSecret, Context context){
-        return new Simperium(appId, appSecret, new com.simperium.android.AndroidClient(context));
+        simperiumClient = new Simperium(appId, appSecret, new com.simperium.android.AndroidClient(context));
+        return simperiumClient;
     }
 
     public interface OnUserCreatedListener {
@@ -72,7 +73,6 @@ public class Simperium implements User.StatusChangeListener {
 
         Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
         loadUser();
-        simperiumClient = this;
     }
 
     public static Simperium getInstance() throws SimperiumNotInitializedException{

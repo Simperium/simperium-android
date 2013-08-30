@@ -56,7 +56,11 @@ public class LoginActivity extends Activity {
     private Button signupButton;
     private Button signinButton;
 
-	private Simperium simperium;
+	private Simperium mSimperium;
+
+    public void setSimperium(Simperium simperium){
+        mSimperium = simperium;
+    }
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -66,7 +70,7 @@ public class LoginActivity extends Activity {
 		setContentView(R.layout.login);
 
 		try {
-			simperium = Simperium.getInstance();
+			setSimperium(Simperium.getInstance());
 		} catch (SimperiumNotInitializedException e) {
 			Logger.log("Can't create the LoginActivity", e);
 		}
@@ -233,7 +237,7 @@ public class LoginActivity extends Activity {
 				null,
 				getString(R.string.signing_up), true, false);
 		
-		simperium.createUser(email, password, new User.AuthResponseHandler() {
+		mSimperium.createUser(email, password, new User.AuthResponseHandler() {
 			@Override
 			public void onSuccess(User user) {
 				Log.i(TAG, String.format("Success! %s %s", user.getUserId(), user));
@@ -268,7 +272,7 @@ public class LoginActivity extends Activity {
 				null,
 				getString(R.string.signing_in), true, false);
 		
-		simperium.authorizeUser(email, password,
+		mSimperium.authorizeUser(email, password,
 				new User.AuthResponseHandler() {
 					@Override
 					public void onSuccess(User user) {
