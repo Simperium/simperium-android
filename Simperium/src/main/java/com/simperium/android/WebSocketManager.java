@@ -218,11 +218,14 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onClose(Channel fromChannel){
+        // if we're allready disconnected we can ignore
+        if (isDisconnected()) return;
+
         // check if all channels are disconnected and if so disconnect from the socket
-        Logger.log(TAG, String.format("%s disconnect from socket", Thread.currentThread().getName()));
         for (Channel channel : channels.values()) {
-            if (!channel.isClosed()) return;
+            if (channel.isStarted()) return;
         }
+        Logger.log(TAG, String.format("%s disconnect from socket", Thread.currentThread().getName()));
         disconnect();
     }
 
