@@ -9,6 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.database.Cursor;
 
 import com.simperium.android.PersistentStore;
+import com.simperium.android.LoginActivity;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
@@ -38,12 +39,12 @@ import java.io.FileOutputStream;
 import java.io.File;
 import java.io.IOException;
 
-public class PersistentStoreTest extends ActivityInstrumentationTestCase2<TestActivity> {
-    public static final String TAG = TestActivity.TAG;
+public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginActivity> {
+    public static final String TAG = "SimperiumTest.PersistentStore";
     public static final String MASTER_TABLE = "sqlite_master";
     public static final String BUCKET_NAME="bucket";
     
-    private TestActivity mActivity;
+    private LoginActivity mActivity;
     
     private PersistentStore mStore;
     private BucketStore<Note> mNoteStore;
@@ -57,7 +58,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<TestAc
     private GhostStorageProvider mGhostStore;
 
     public PersistentStoreTest() {
-        super("com.simperium.client.test", TestActivity.class);
+        super("com.simperium.client.test", LoginActivity.class);
     }
 
     @Override
