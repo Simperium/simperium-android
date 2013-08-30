@@ -1,4 +1,4 @@
-package com.simperium.client;
+package com.simperium.android;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
