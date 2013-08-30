@@ -11,26 +11,11 @@ import com.simperium.storage.MemoryStore;
 
 public class MockClient implements ClientFactory {
 
-    public String accessToken = "fake-token";
+    public MockAuthProvider authProvider = new MockAuthProvider();
 
     @Override
     public MockAuthProvider buildAuthProvider(String appId, String appSecret){
-        return new MockAuthProvider(){
-            @Override
-            public String getAccessToken(){
-                return accessToken;
-            }
-
-            @Override
-            public void setAccessToken(String token){
-                accessToken = token;
-            }
-
-            @Override
-            public void clearAccessToken(){
-                accessToken = null;
-            }
-        };
+        return authProvider;
     }
 
     @Override

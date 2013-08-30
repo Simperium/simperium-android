@@ -32,6 +32,8 @@ import com.loopj.android.http.*;
 
 import java.io.UnsupportedEncodingException;
 
+import org.json.JSONObject;
+
 public class AuthClient implements AuthProvider {
 
     private static final String AUTH_URL = "https://auth.simperium.com/1";
@@ -39,6 +41,7 @@ public class AuthClient implements AuthProvider {
     private static final String API_KEY_HEADER_NAME = "X-Simperium-API-Key";
     public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
+    public static final String USER_EMAIL_PREFERENCE = "user-email";
 
     private AsyncHttpClient httpClient;
     private String appSecret;
@@ -60,25 +63,6 @@ public class AuthClient implements AuthProvider {
         this.httpClient = httpClient;
     }
 
-
-    public void createUser(User user, User.AuthResponseHandler handler){
-        String url = absoluteUrl("create/");
-        try {
-            httpClient.post(null, url, authHeaders(), user.toHttpEntity(mAuthProvider), JSON_CONTENT_TYPE, user.getCreateResponseHandler(handler));
-        } catch (UnsupportedEncodingException e){
-            handler.onFailure(user, e, e.getMessage());
-        }
-    }
-
-    public void authorizeUser(User user, User.AuthResponseHandler handler){
-        String url = absoluteUrl("authorize/");
-        try {
-            httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(handler));
-        } catch (UnsupportedEncodingException e){
-            handler.onFailure(user, e, e.getMessage());
-        }
-    }
-
     private Header[] authHeaders(){
         Header[] headers = new Header[1];
         headers[0] = new BasicHeader(API_KEY_HEADER_NAME, appSecret);
@@ -89,27 +73,81 @@ public class AuthClient implements AuthProvider {
         return String.format("%s/%s/%s", AUTH_URL, appId, path);
     }
 
+    @Override
     public void setAuthProvider(String authProvider) {
         mAuthProvider = authProvider;
     }
 
-    public void setAccessToken(String token){
-        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putString(USER_ACCESS_TOKEN_PREFERENCE, token);
-        editor.commit();
+    @Override
+    public void createUser(User user, User.AuthResponseHandler handler){
+        String url = absoluteUrl("create/");
+        User.AuthResponseHandler saveOnSuccessHandler = wrapHandler(user, handler);
+        try {
+            httpClient.post(null, url, authHeaders(), user.toHttpEntity(mAuthProvider), JSON_CONTENT_TYPE, user.getCreateResponseHandler(saveOnSuccessHandler));
+        } catch (UnsupportedEncodingException e){
+            handler.onFailure(user, e, e.getMessage());
+        }
     }
 
-    public void clearAccessToken(){
-        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
+    @Override
+    public void authorizeUser(User user, User.AuthResponseHandler handler){
+        String url = absoluteUrl("authorize/");
+        User.AuthResponseHandler saveOnSuccessHandler = wrapHandler(user, handler);
+        try {
+            httpClient.post(null, url, authHeaders(), user.toHttpEntity(), JSON_CONTENT_TYPE, user.getAuthorizeResponseHandler(saveOnSuccessHandler));
+        } catch (UnsupportedEncodingException e){
+            handler.onFailure(user, e, e.getMessage());
+        }
+    }
+
+    @Override
+    public void restoreUser(User user){
+        SharedPreferences preferences = getPreferences();
+        user.setAccessToken(preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null));
+        user.setEmail(preferences.getString(USER_EMAIL_PREFERENCE, null));
+    }
+
+    @Override
+    public void deauthorizeUser(User user){
+        SharedPreferences.Editor editor = getPreferences().edit();
         editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
+        editor.remove(USER_EMAIL_PREFERENCE);
         editor.commit();
     }
 
-    public String getAccessToken(){
+    protected void saveUser(User user){
+        SharedPreferences.Editor editor = getPreferences().edit();
+        editor.putString(USER_ACCESS_TOKEN_PREFERENCE, user.getAccessToken());
+        editor.putString(USER_EMAIL_PREFERENCE, user.getEmail());
+        editor.commit();
+    }
+
+    private SharedPreferences getPreferences(){
         SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        return preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null);
+        return preferences;
+    }
+
+    // all of this so we can persist the user token
+    private User.AuthResponseHandler wrapHandler(final User user, final User.AuthResponseHandler handler){
+        return new User.AuthResponseHandler(){
+
+            @Override
+            public void onSuccess(User user){
+                saveUser(user);
+                handler.onSuccess(user);
+            }
+
+            @Override
+            public void onInvalid(User user, Throwable error, JSONObject validationErrors){
+                handler.onInvalid(user, error, validationErrors);
+            }
+
+            @Override
+            public void onFailure(User user, Throwable error, String message){
+                handler.onFailure(user, error, message);
+            }
+
+        };
     }
 
 }

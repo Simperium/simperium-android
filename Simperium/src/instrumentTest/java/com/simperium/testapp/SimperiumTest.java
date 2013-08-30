@@ -82,7 +82,7 @@ public class SimperiumTest extends BaseSimperiumTest {
 
     public void testInitialAuthState(){
         // clear out the saved access token and build a new client for this test
-        mClient.accessToken = null;
+        mClient.authProvider.accessToken = null;
         mSimperium = new Simperium("fake-id", "fake-secret", mClient);
         mSimperium.setUserStatusChangeListener(mAuthListener);
 
@@ -114,7 +114,7 @@ public class SimperiumTest extends BaseSimperiumTest {
         // make sure the authentication listener was called
         assertEquals(User.Status.AUTHORIZED, mLastStatus);
         // make sure the token was saved by the auth client
-        assertEquals("fake-token", mClient.accessToken);
+        assertEquals("fake-token", mClient.authProvider.accessToken);
         // make sure callback was called once
         assertEquals(1, mAuthStatuses.size());
     }
@@ -149,7 +149,7 @@ public class SimperiumTest extends BaseSimperiumTest {
         // token should be cleared
         assertTrue(mSimperium.needsAuthorization());
         // token should be clared from auth client
-        assertNull(mClient.accessToken);
+        assertNull(mClient.authProvider.accessToken);
         // last status change should be NOT_AUTHORIZED
         assertEquals(User.Status.NOT_AUTHORIZED, user.getStatus());
     }

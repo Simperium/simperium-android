@@ -5,33 +5,38 @@ import com.simperium.client.User;
 
 public class MockAuthProvider implements AuthProvider {
 
+    public String accessToken = "fake-token";
+    public String email = "user@example.com";
+
     @Override
     public void setAuthProvider(String name){}
 
     @Override
     public void createUser(User user, User.AuthResponseHandler handler){
-        user.setAccessToken("user-create-token");
+        accessToken = "user-create-token";
+        user.setAccessToken(accessToken);
+        user.setEmail(email);
         handler.onSuccess(user);
     }
 
     @Override
     public void authorizeUser(User user, User.AuthResponseHandler handler){
-        // just call success callback
-        user.setAccessToken("user-auth-token");
+        accessToken = "user-auth-token";
+        user.setAccessToken(accessToken);
+        user.setEmail(email);
         handler.onSuccess(user);
     }
 
     @Override
-    public String getAccessToken(){
-        return null;
+    public void restoreUser(User user){
+        user.setAccessToken(accessToken);
+        user.setEmail(email);
     }
 
     @Override
-    public void setAccessToken(String token){
-    }
-
-    @Override
-    public void clearAccessToken(){
+    public void deauthorizeUser(User user){
+        email = null;
+        accessToken = null;
     }
 
 }

@@ -84,11 +84,9 @@ public class Simperium implements User.StatusChangeListener {
 
     private void loadUser(){
         user = new User(this);
-        String token = getUserAccessToken();
-        if (token == null) {
+        mAuthProvider.restoreUser(user);
+        if (user.needsAuthorization()) {
             user.setStatus(User.Status.NOT_AUTHORIZED);
-        } else {
-            user.setAccessToken(token);
         }
     }
 
@@ -189,29 +187,15 @@ public class Simperium implements User.StatusChangeListener {
 
     public void deauthorizeUser(){
         user.setAccessToken(null);
+        user.setEmail(null);
+        mAuthProvider.deauthorizeUser(user);
         user.setStatus(User.Status.NOT_AUTHORIZED);
-        clearUserAccessToken();
     }
 
     public void onUserStatusChange(User.Status status){
-        if(status == User.Status.AUTHORIZED) saveUserAccessToken();
-
         if (userListener != null) {
             userListener.onUserStatusChange(status);
         }
-    }
-
-    private void saveUserAccessToken(){
-        String token = user.getAccessToken();
-        mAuthProvider.setAccessToken(token);
-    }
-
-    private String getUserAccessToken(){
-        return mAuthProvider.getAccessToken();
-    }
-
-    private void clearUserAccessToken(){
-        mAuthProvider.clearAccessToken();
     }
 
     public User.StatusChangeListener getUserStatusChangeListener() {
