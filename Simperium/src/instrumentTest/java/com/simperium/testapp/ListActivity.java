@@ -3,6 +3,8 @@
  */
 package com.simperium.testapp;
 
+import com.simperium.client.test.R;
+
 import android.os.Bundle;
 
 public class ListActivity extends android.app.ListActivity

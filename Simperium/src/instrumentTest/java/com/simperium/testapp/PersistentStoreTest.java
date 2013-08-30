@@ -57,7 +57,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     private GhostStorageProvider mGhostStore;
 
     public PersistentStoreTest() {
-        super("com.simperium.tests", MainActivity.class);
+        super("com.simperium.client.test", MainActivity.class);
     }
 
     @Override

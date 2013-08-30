@@ -1,4 +1,4 @@
-version "0.1.3-alpha-SNAPSHOT"
+version "1.0-alpha"
 group "com.simperium"
 
 buildscript {
@@ -31,6 +31,23 @@ android {
         minSdkVersion 7
         targetSdkVersion 16
     }
+
+    debug {
+        sourceSets {
+            main {
+                manifest.srcFile "src/instrumentTest/AndroidManifest.xml"
+            }
+        }
+    }
+
+    release {
+        sourceSets {
+            main {
+                manifest.srcFile "src/main/AndroidManifest.xml"
+            }
+        }
+    }
+
 }
 
 task writePom << {
