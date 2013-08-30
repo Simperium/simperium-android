@@ -10,7 +10,7 @@ import com.simperium.Simperium;
 import com.simperium.storage.MemoryStore;
 import com.simperium.client.Bucket;
 
-public class MainActivity extends AppActivity
+public class TestActivity extends AppActivity
 {
 
     @Override

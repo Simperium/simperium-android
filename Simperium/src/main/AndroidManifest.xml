@@ -8,4 +8,11 @@
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- applicatoin declration Used for testing Simperium -->
+    <application android:label="@string/app_name"
+                 android:icon="@drawable/ic_launcher">
+        <activity android:name="com.simperium.testapp.TestActivity"/>
+    </application>
+
 </manifest>

@@ -38,12 +38,12 @@ import java.io.FileOutputStream;
 import java.io.File;
 import java.io.IOException;
 
-public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainActivity> {
-    public static final String TAG = MainActivity.TAG;
+public class PersistentStoreTest extends ActivityInstrumentationTestCase2<TestActivity> {
+    public static final String TAG = TestActivity.TAG;
     public static final String MASTER_TABLE = "sqlite_master";
     public static final String BUCKET_NAME="bucket";
     
-    private MainActivity mActivity;
+    private TestActivity mActivity;
     
     private PersistentStore mStore;
     private BucketStore<Note> mNoteStore;
@@ -57,7 +57,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<MainAc
     private GhostStorageProvider mGhostStore;
 
     public PersistentStoreTest() {
-        super("com.simperium.client.test", MainActivity.class);
+        super("com.simperium.client.test", TestActivity.class);
     }
 
     @Override
