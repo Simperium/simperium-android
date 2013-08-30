@@ -85,7 +85,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
-    private boolean started = false, connected = false, startOnConnect = false, closed = true;
+    protected boolean started = false, connected = false, startOnConnect = false, stopOnIdle = false;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
@@ -329,12 +329,12 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         return sessionId;
     }
 
-    public boolean isClosed(){
-        return closed;
-    }
-
     public boolean isStarted(){
         return started;
+    }
+
+    public boolean isConnected(){
+        return connected;
     }
 
     /**
@@ -357,11 +357,21 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             // we won't connect unless we have an access token
             return;
         }
-        closed = false;
+
         started = true;
-        // If the websocket isn't connected yet we'll automatically start
-        // when we're notified that we've connected
-        startOnConnect = true;
+        stopOnIdle = false;
+
+        Object initialCommand;
+        if (!hasChangeVersion()) {
+            // the bucket has never gotten an index
+            haveIndex = false;
+            initialCommand = new IndexQuery();
+        } else {
+            // retive changes since last cv
+            haveIndex = true;
+            initialCommand = String.format("%s:%s", COMMAND_VERSION, getChangeVersion());
+        }
+
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(6);
         init.put(FIELD_API_VERSION, 1);
@@ -369,32 +379,25 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, bucket.getUser().getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
-        if (!hasChangeVersion()) {
-            // the bucket has never gotten an index
-            haveIndex = false;
-            init.put(FIELD_COMMAND, new IndexQuery());
-        } else {
-            // retive changes since last cv
-            haveIndex = true;
-            init.put(FIELD_COMMAND, String.format("%s:%s", COMMAND_VERSION, getChangeVersion()));
-        }
+        init.put(FIELD_COMMAND, initialCommand);
         String initParams = new JSONObject(init).toString();
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
         sendMessage(message);
     }
 
     /**
-     * Completes all syncing operations and then disconnects
+     * Saves syncing state and tells listener to close
      */
     @Override
     public void stop(){
-        started = false;
-        closed = true;
         startOnConnect = false;
+        started = false;
         if (changeProcessor != null) {
             changeProcessor.stop();
         }
-
+        if (listener != null) {
+            listener.onClose(this);
+        }
     }
 
     // websocket
@@ -881,6 +884,12 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             stop();
         }
 
+        protected boolean hasPendingChanges(){
+            synchronized(lock){
+                return !pendingChanges.isEmpty() || !localQueue.isEmpty();
+            }
+        }
+
         public void run(){
             Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
             while(true && !Thread.interrupted()){
@@ -888,9 +897,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 processRemoteChanges();
                 // TODO: only process one local change at a time
                 processLocalChanges();
-                boolean localActivity = !pendingChanges.isEmpty() || !localQueue.isEmpty();
-                //
-                if(!localActivity){
+                if(!hasPendingChanges()){
                     synchronized(runLock){
                         try {
                             runLock.wait();

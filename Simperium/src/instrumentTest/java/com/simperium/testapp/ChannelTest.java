@@ -77,7 +77,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     public void testChannelInitialState(){
         assertNotNull(mChannel);
-        assertTrue(mChannel.isClosed());
+        assertFalse(mChannel.isConnected());
         assertFalse(mChannel.isStarted());
     }
 
@@ -123,9 +123,11 @@ public class ChannelTest extends BaseSimperiumTest {
         // try to start channel that isn't connected
         mChannel.start();
         assertFalse(mChannel.isStarted());
+        assertFalse(mChannel.isConnected());
 
         // tell the channel that it is connected and it should automatically start now
         mChannel.onConnect();
+        assertTrue(mChannel.isConnected());
         assertTrue(mChannel.isStarted());
         assertTrue(mOpen);
     }
