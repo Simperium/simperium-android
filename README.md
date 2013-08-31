@@ -16,20 +16,14 @@ To get started first clone the project:
 git clone https://github.com/Simperium/simperium-android.git
 ```
 
-Simperium Android now uses [Android Studio][] and [gradle][] for development.
+Simperium Android uses [Android Studio][] and [gradle][] for development.
 
 ### Tests
 
-Please provide unit tests for your contributions.
-
-Currently there are two projects for running tests: SimperiumUnitTests and SimperiumIntegrationTests.
-
-#### Running Unit Tests
-
-To run the unit tests use the `gradlew` command:
+Please provide unit tests for your contributions. Run tests with gradle:
 
 ```
-./gradlew :SimperiumUnitTests:connectedInstrumentTest
+./gradlew connectedInstrumentTest
 ```
 
 Unit tests use a mock networking and storage stack so that different components can be tested in isolation. The unit tests should not connect to any external services.
