@@ -21,6 +21,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.text.TextUtils;
 
 import org.json.*;
 
@@ -93,8 +94,12 @@ public class LoginActivity extends Activity {
 		Intent intent = getIntent();
 		if (intent.hasExtra(EMAIL_EXTRA)) {
 			emailTextField.setText(intent.getStringExtra(EMAIL_EXTRA));
-		}
-
+        } else if (mSimperium != null){
+            emailTextField.setText(mSimperium.getUser().getEmail());
+        }
+        if (!TextUtils.isEmpty(emailTextField.getText())) {
+            passwordTextField.requestFocus();
+        }
         forgotPasswordButton = (TextView) findViewById(R.id.forgot_password_button);
         forgotPasswordButton.setOnClickListener(new View.OnClickListener() {
             @Override
