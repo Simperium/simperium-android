@@ -28,7 +28,11 @@ public class Simperium implements User.StatusChangeListener {
 
     // builds and Android client
     public static Simperium newClient(String appId, String appSecret, Context context){
-        simperiumClient = new Simperium(appId, appSecret, new com.simperium.android.AndroidClient(context));
+        return newClient(appId, appSecret, new com.simperium.android.AndroidClient(context));
+    }
+
+    public static Simperium newClient(String appId, String appSecret, ClientFactory factory){
+        simperiumClient = new Simperium(appId, appSecret, factory);
         return simperiumClient;
     }
 
