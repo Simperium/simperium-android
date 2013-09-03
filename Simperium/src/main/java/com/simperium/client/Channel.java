@@ -96,7 +96,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     private IndexProcessor indexProcessor;
     
     public interface Serializer {
-        public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data);
+        // public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data);
         public <T extends Syncable> SerializedQueue<T> restore(Bucket<T> bucket);
         public <T extends Syncable> void reset(Bucket<T> bucket);
     }
@@ -783,13 +783,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             return thread != null && thread.isAlive();
         }
 
-        private void save(){
-            synchronized(lock){
-                Logger.log(TAG, String.format("%s - Saving queue with %d pending and %d local", Thread.currentThread().getName(), pendingChanges.size(), localQueue.size()));
-                serializer.save(bucket, new SerializedQueue(pendingChanges, localQueue));
-            }
-        }
-        
         private void restore(){
             synchronized(lock){
                 SerializedQueue<T> serialized = serializer.restore(bucket);
@@ -829,7 +822,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 }
                 localQueue.add(change);
             }
-            save();
             start();
         }
 
@@ -908,7 +900,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 }
             }
             Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
-            save();
         }
 
         private void processRemoteChanges(){

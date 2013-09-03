@@ -108,6 +108,24 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(User.Status.NOT_AUTHORIZED, mAuthStatus);
     }
 
+    /**
+     * Simulates saving items
+     */
+    public void testManageQueueStatus(){
+        // bucket is started and channel is connected
+        start();
+        // user if off network (airplane mode or similar)
+        mChannel.onDisconnect();
+        // user saves a new note and kills the app
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.setContent("This is a new note!");
+        note.save();
+
+        // the queue should be updated now with a pending time
+
+    }
+
     public void testStartChannel(){
         // tell the channel that it is connected
         mChannel.onConnect();

@@ -41,18 +41,9 @@ public class FileQueueSerializer implements Serializer {
     }
 
     @Override
-    public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data){
-        try {
-            saveToFile(bucket, data);            
-        } catch (java.io.IOException e) {
-            Logger.log(TAG, "Unable to save queue", e);
-        }
-    }
-
-    @Override
     public <T extends Syncable> SerializedQueue<T> restore(Bucket<T> bucket){
         try {
-            return restoreFromFile(bucket);            
+            return restoreFromFile(bucket);
         } catch (java.io.IOException e) {
             Logger.log(TAG, "Unable to restore queue", e);
             return new SerializedQueue<T>();
