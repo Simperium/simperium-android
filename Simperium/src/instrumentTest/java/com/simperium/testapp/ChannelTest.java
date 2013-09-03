@@ -7,6 +7,7 @@ import com.simperium.client.ChannelProvider;
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
+import com.simperium.client.RemoteChange;
 
 import com.simperium.testapp.mock.MockBucket;
 import com.simperium.testapp.mock.MockChannelSerializer;
@@ -23,7 +24,7 @@ public class ChannelTest extends BaseSimperiumTest {
     public static String SESSION_ID = "SESSION-ID";
     public static String APP_ID = "APP_ID";
 
-    private Bucket<Note> mBucket;
+    private MockBucket<Note> mBucket;
     private Channel<Note> mChannel;
 
     protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
@@ -177,6 +178,24 @@ public class ChannelTest extends BaseSimperiumTest {
 
     }
 
+    public void testReceiveUnacknowledgedError()
+    throws Exception {
+        // There are some instances where we are receiving an error from simperium for a ccid we weren't expecting to acknowledge
+        RemoteChangeFlagger flagger = new RemoteChangeFlagger();
+
+        mBucket.setRemoteChangeListener(flagger);
+        start();
+        sendEmptyIndex();
+
+        String errorMessage = "c:[{\"error\": 409, \"ccids\": [\"6c25afe49ac14c3f9b0e9fb7a629118e\"], \"clientid\": \"android-1.0-2dd0aa\", \"id\": \"welcome-android\"}]";
+        mChannel.receiveMessage(errorMessage);
+        waitForMessage();
+
+        // make sure the RemoteChange error never makes it to the bucket at this point
+        assertFalse("Bucket received remote change error", flagger.called);
+
+    }
+
     /**
      * Get's the channel into a started state
      */
@@ -248,6 +267,21 @@ public class ChannelTest extends BaseSimperiumTest {
 
     private static abstract class Flag {
         abstract boolean isComplete();
+    }
+
+    private static class RemoteChangeFlagger implements MockBucket.RemoteChangeListener {
+
+        public boolean called = false;
+
+        @Override
+        public void onApplyRemoteChange(RemoteChange change){
+            called = true;
+        }
+
+        @Override
+        public void onAcknowledgeRemoteChange(RemoteChange change){
+            called = true;
+        }
     }
 
 }
