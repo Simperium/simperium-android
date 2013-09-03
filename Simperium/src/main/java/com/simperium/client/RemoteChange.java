@@ -125,10 +125,12 @@ public class RemoteChange {
     }
 
     public boolean isRemoveOperation(){
+        if (operation == null) return false;
         return operation.equals(OPERATION_REMOVE);
     }
 
     public boolean isModifyOperation(){
+        if (operation == null) return false;
         return operation.equals(OPERATION_MODIFY);
     }
 
