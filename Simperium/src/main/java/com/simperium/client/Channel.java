@@ -187,7 +187,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             @Override
             public Ghost onRemote(RemoteChange remoteChange)
             throws RemoteChangeInvalidException {
-                Logger.log(TAG, "Time to apply change");
                 return bucket.applyRemoteChange(remoteChange);
             }
             
@@ -951,12 +950,14 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                             }
                         }
                     } else {
-                        if (remoteChange.isError())
+                        if (remoteChange.isError()){
                             Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
-                        try {
-                            listener.onRemote(remoteChange);                            
-                        } catch (RemoteChangeInvalidException e) {
-                            Logger.log(TAG, "Remote change could not be applied", e);
+                        } else {
+                            try {
+                                listener.onRemote(remoteChange);
+                            } catch (RemoteChangeInvalidException e) {
+                                Logger.log(TAG, "Remote change could not be applied", e);
+                            }
                         }
                     }
                     if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
