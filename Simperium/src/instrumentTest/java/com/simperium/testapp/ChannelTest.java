@@ -25,6 +25,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     private Bucket<Note> mBucket;
     private Channel<Note> mChannel;
+    private MockChannelSerializer<Note> mChannelSerializer;
 
     protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     protected Channel.MessageEvent mLastMessage;
@@ -57,7 +58,8 @@ public class ChannelTest extends BaseSimperiumTest {
         mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
-                mChannel = new Channel(APP_ID, SESSION_ID, bucket, new MockChannelSerializer<Note>(), mListener);
+                mChannelSerializer = new MockChannelSerializer<Note>();
+                mChannel = new Channel(APP_ID, SESSION_ID, bucket, mChannelSerializer, mListener);
                 return mChannel;
             }
         });
@@ -68,6 +70,7 @@ public class ChannelTest extends BaseSimperiumTest {
                 mAuthStatus = status;
             }
         });
+
     }
 
     protected void tearDown() throws Exception {
@@ -111,19 +114,50 @@ public class ChannelTest extends BaseSimperiumTest {
     /**
      * Simulates saving items
      */
-    public void testManageQueueStatus(){
+    public void testOfflineQueueStatus()
+    throws Exception {
         // bucket is started and channel is connected
         start();
+
         // user if off network (airplane mode or similar)
         mChannel.onDisconnect();
+
         // user saves a new note and kills the app
         Note note = mBucket.newObject();
         note.setTitle("Hola mundo");
         note.setContent("This is a new note!");
         note.save();
 
-        // the queue should be updated now with a pending time
+        Note note2 = mBucket.newObject();
+        note2.setTitle("Second note");
+        note2.setContent("This is the second note.");
+        note2.save();
 
+        // two different notes are waiting to be sent
+        assertEquals(2, mChannelSerializer.queue.queued.size());
+
+    }
+
+    public void testQueuePendingStatus()
+    throws Exception {
+        start();
+        sendEmptyIndex();
+        waitForIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.save();
+
+        clearMessages();
+        waitForMessage();
+
+        note.setTitle("Second change");
+        note.save();
+
+        // first change has been sent and we're waiting to ack
+        assertEquals(1, mChannelSerializer.queue.pending.size());
+        // second change is waiting for ack before sending
+        assertEquals(1, mChannelSerializer.queue.queued.size());
     }
 
     public void testStartChannel(){

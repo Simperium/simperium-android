@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-public class FileQueueSerializer implements Serializer {
+public class FileQueueSerializer<T extends Syncable> implements Serializer<T> {
 
     public static final String TAG="Simperium.FileQueueSerializer";
 
@@ -41,7 +41,32 @@ public class FileQueueSerializer implements Serializer {
     }
 
     @Override
-    public <T extends Syncable> SerializedQueue<T> restore(Bucket<T> bucket){
+    public void reset(Bucket<T> bucket){
+
+    }
+
+    @Override
+    public void onQueueChange(Change<T> object){
+
+    }
+
+    @Override
+    public void onDequeueChange(Change<T> object){
+
+    }
+
+    @Override
+    public void onSendChange(Change<T> object){
+
+    }
+
+    @Override
+    public void onAcknowledgeChange(Change<T> object){
+
+    }
+
+    @Override
+    public SerializedQueue<T> restore(Bucket<T> bucket){
         try {
             return restoreFromFile(bucket);
         } catch (java.io.IOException e) {
@@ -53,14 +78,10 @@ public class FileQueueSerializer implements Serializer {
         }
     }
 
-    @Override
-    public <T extends Syncable> void reset(Bucket<T> bucket){
-        
-    }
     /**
      * Save state of pending and locally queued items
      */
-    private <T extends Syncable> void saveToFile(Bucket<T> bucket, SerializedQueue<T> data) throws java.io.IOException {
+    private void saveToFile(Bucket<T> bucket, SerializedQueue<T> data) throws java.io.IOException {
         //  construct JSON string of pending and local queue
         String fileName = getFileName(bucket);
         Logger.log(TAG, String.format("Saving to file %s", fileName));
@@ -82,7 +103,7 @@ public class FileQueueSerializer implements Serializer {
     /**
      * 
      */
-    private <T extends Syncable> SerializedQueue<T> restoreFromFile(Bucket<T> bucket) throws java.io.IOException, org.json.JSONException {
+    private SerializedQueue<T> restoreFromFile(Bucket<T> bucket) throws java.io.IOException, org.json.JSONException {
         BufferedInputStream stream = null;
         List<Change<T>> queued = new ArrayList<Change<T>>();
         Map<String,Change<T>> pending = new HashMap<String,Change<T>>();
@@ -132,6 +153,7 @@ public class FileQueueSerializer implements Serializer {
         }
         return new SerializedQueue(pending, queued);
     }
+
     /**
      * 
      */

@@ -95,10 +95,14 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
     
-    public interface Serializer {
+    public interface Serializer<T extends Syncable> {
         // public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data);
-        public <T extends Syncable> SerializedQueue<T> restore(Bucket<T> bucket);
-        public <T extends Syncable> void reset(Bucket<T> bucket);
+        public SerializedQueue<T> restore(Bucket<T> bucket);
+        public void reset(Bucket<T> bucket);
+        public void onQueueChange(Change<T> change);
+        public void onDequeueChange(Change<T> change);
+        public void onSendChange(Change<T> change);
+        public void onAcknowledgeChange(Change<T> change);
     }
 
     public static class SerializedQueue<T extends Syncable> {
@@ -817,9 +821,11 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 while(iterator.hasNext()){
                     Change<T> queued = iterator.next();
                     if(queued.getKey().equals(change.getKey())){
+                        serializer.onDequeueChange(queued);
                         iterator.remove();
                     }
                 }
+                serializer.onQueueChange(change);
                 localQueue.add(change);
             }
             start();
@@ -923,7 +929,8 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                             listener.onError(remoteChange, change);
                         } else {
                             try {
-                                Ghost ghost = listener.onAcknowledged(remoteChange, change);                                
+                                Ghost ghost = listener.onAcknowledged(remoteChange, change);
+                                serializer.onAcknowledgeChange(change);
                                 Change compressed = null;
                                 Iterator<Change<T>> queuedChanges = localQueue.iterator();
                                 while(queuedChanges.hasNext()){
@@ -1031,6 +1038,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             JSONObject changeJSON = Channel.serializeJSON(map);
 
             sendMessage(String.format("c:%s", changeJSON.toString()));
+            serializer.onSendChange(change);
             change.setSent();
             return true;
         }
