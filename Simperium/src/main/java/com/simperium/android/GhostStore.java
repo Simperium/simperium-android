@@ -1,6 +1,5 @@
 package com.simperium.android;
 
-import android.content.Context;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.Cursor;
@@ -35,12 +34,12 @@ public class GhostStore implements GhostStorageProvider {
 
     private SQLiteDatabase database;
 
-    public GhostStore(Context context) {
-        prepare(context);
+    public GhostStore(SQLiteDatabase database) {
+        this.database = database;
+        prepare();
     }
 
-    private void prepare(Context context) {
-        database = context.openOrCreateDatabase(DATABASE_NAME, Context.MODE_PRIVATE, null);
+    private void prepare() {
         database.execSQL(CREATE_TABLE_GHOSTS);
         database.execSQL(CREATE_TABLE_CHANGE_VERSIONS);
         database.execSQL(String.format("CREATE UNIQUE INDEX IF NOT EXISTS ghost_version ON ghosts (bucketName, simperiumKey, version)"));

@@ -52,7 +52,7 @@ public class AndroidClient implements ClientFactory {
 
     @Override
     public GhostStore buildGhostStorageProvider(){
-        return new GhostStore(mContext);
+        return new GhostStore(mDatabase);
     }
 
     @Override
