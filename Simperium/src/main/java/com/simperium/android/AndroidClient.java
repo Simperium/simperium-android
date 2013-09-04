@@ -22,9 +22,11 @@ public class AndroidClient implements ClientFactory {
     public static final String DEFAULT_DATABASE_NAME = "simperium-store";
 
     protected Context mContext;
+    protected SQLiteDatabase mDatabase;
 
     public AndroidClient(Context context){
         mContext = context;
+        mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
     }
 
     @Override
@@ -45,7 +47,7 @@ public class AndroidClient implements ClientFactory {
 
     @Override
     public PersistentStore buildStorageProvider(){
-        return new PersistentStore(mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null));
+        return new PersistentStore(mDatabase);
     }
 
     @Override
