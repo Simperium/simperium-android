@@ -9,35 +9,34 @@ import com.simperium.util.Logger;
 import static com.simperium.util.Uuid.uuid;
 
 
-public class Change<T extends Syncable> {
+public class Change {
 
     public static final String TAG="Simperium.Change";
 
-    public interface OnRetryListener<T extends Syncable> {
-        public void onRetry(Change<T> change);
+    public interface OnRetryListener {
+        public void onRetry(Change change);
     }
 
-    public interface OnAcknowledgedListener<T extends Syncable> {
-        public void onAcknowledged(Change<T> change);
+    public interface OnAcknowledgedListener {
+        public void onAcknowledged(Change change);
     }
 
-    public interface OnCompleteListener<T extends Syncable> {
-        public void onComplete(Change<T> change);
+    public interface OnCompleteListener {
+        public void onComplete(Change change);
     }
 
     private String operation;
-    private String key;
+    private String key, bucketName;
     private Integer version;
     private Map<String,Object> origin;
     private Map<String,Object> target;
     private String ccid;
     private boolean pending = true, acknowledged = false, sent = false;
-    private OnRetryListener<T> retryListener;
-    private OnCompleteListener<T> completeListener;
-    private OnAcknowledgedListener<T> acknowledgedListener;
-    private Change<T> compressed;
+    private OnRetryListener retryListener;
+    private OnCompleteListener completeListener;
+    private OnAcknowledgedListener acknowledgedListener;
+    private Change compressed;
     private JSONDiff jsondiff = new JSONDiff();
-    final private T object;
 
     public static final String OPERATION_MODIFY   = "M";
     public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
@@ -52,52 +51,53 @@ public class Change<T extends Syncable> {
     /**
      * Constructs a change object from a map of values
      */
-    public static <T extends Syncable> Change<T> buildChange(T object, Map<String,Object> properties){
-        return new Change<T>(
+    public static Change buildChange(Syncable object, Map<String,Object> properties){
+        return new Change(
             (String)  properties.get(OPERATION_KEY),
-            object,
-            (String)  properties.get(ID_KEY),
+            object.getBucketName(),
+            object.getSimperiumKey(),
             (Integer) properties.get(SOURCE_VERSION_KEY),
             (Map<String,Object>) properties.get(ORIGIN_KEY),
             (Map<String,Object>) properties.get(TARGET_KEY)
         );
     }
-    
-    private Change(String operation, T object, Map<String,Object> origin){
-        this(
-            operation,
-            object,
-            object.getSimperiumKey(),
-            object.getVersion(),
-            object.getUnmodifiedValue(),
-            object.getDiffableValue()
-        );
+
+    public static Change buildChange(String operation, String ccid, String bucketName, String key, Integer version, Map<String,Object> origin, Map<String,Object> target){
+        return new Change(operation, ccid, bucketName, key, version, origin, target);
     }
 
-    private Change(String operation, T object, Map<String,Object> origin, Change<T> compressed){
-        this(operation, object, origin);
+    private Change(String operation, Syncable object, Map<String,Object> origin){
+        this(operation, object.getBucketName(), object.getSimperiumKey(), object.getVersion(),
+            origin, object.getDiffableValue());
+    }
+
+    private Change(String operation, String bucketName, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target, Change compressed){
+        this(operation, bucketName, key, sourceVersion, origin, target);
         this.compressed = compressed;
     }
 
-    public Change(String operation, T object){
+    public Change(String operation, Syncable object){
         this(operation, object, object.getUnmodifiedValue());
     }
 
-    protected Change(String operation, T object, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
-        super();
+    protected Change(String operation, String bucketName, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
+        this(operation, uuid(), bucketName, key, sourceVersion, origin, target);
+    }
+
+    protected Change(String operation, String ccid, String bucketName, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
         this.operation = operation;
-        this.object = object;
-        this.ccid = uuid();
-        this.key = object.getSimperiumKey();
+        this.ccid = ccid;
+        this.bucketName = bucketName;
+        this.key = key;
         if (operation != OPERATION_REMOVE) {
-            this.version = object.getVersion();
+            this.version = sourceVersion;
             this.origin = JSONDiff.deepCopy(origin);
             this.target = JSONDiff.deepCopy(target);
         }
     }
 
-    public T getObject(){
-        return this.object;
+    public boolean isModifyOperation(){
+        return operation.equals(OPERATION_MODIFY);
     }
 
     public boolean isPending(){
@@ -152,6 +152,10 @@ public class Change<T extends Syncable> {
         return key;
     }
 
+    public String getBucketName(){
+        return bucketName;
+    }
+
     public String getChangeId(){
         return this.ccid;
     }
@@ -189,15 +193,15 @@ public class Change<T extends Syncable> {
         
     }
 
-    public void setOnAcknowledgedListener(OnAcknowledgedListener<T> listener){
+    public void setOnAcknowledgedListener(OnAcknowledgedListener listener){
         acknowledgedListener = listener;
     }
 
-    public void setOnCompleteListener(OnCompleteListener<T> listener){
+    public void setOnCompleteListener(OnCompleteListener listener){
         
     }
 
-    protected void setOnRetryListener(OnRetryListener<T> listener){
+    protected void setOnRetryListener(OnRetryListener listener){
         retryListener = listener;
     }
 
@@ -227,8 +231,9 @@ public class Change<T extends Syncable> {
     /**
      * Creates a new change with the given sourceVersion and origin
      */
-    protected Change<T> reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
-        return new Change<T>(operation, object, origin, this);
+    protected Change reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
+        // protected Change(String operation, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
+        return new Change(operation, bucketName, key, sourceVersion, origin, target, this);
     }
     
     private TimerTask retryTimer = new TimerTask(){

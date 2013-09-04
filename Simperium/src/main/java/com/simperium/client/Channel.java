@@ -99,21 +99,21 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         // public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data);
         public SerializedQueue<T> restore(Bucket<T> bucket);
         public void reset(Bucket<T> bucket);
-        public void onQueueChange(Change<T> change);
-        public void onDequeueChange(Change<T> change);
-        public void onSendChange(Change<T> change);
-        public void onAcknowledgeChange(Change<T> change);
+        public void onQueueChange(Change change);
+        public void onDequeueChange(Change change);
+        public void onSendChange(Change change);
+        public void onAcknowledgeChange(Change change);
     }
 
     public static class SerializedQueue<T extends Syncable> {
-        final public Map<String,Change<T>> pending;
-        final public List<Change<T>> queued;
+        final public Map<String,Change> pending;
+        final public List<Change> queued;
 
         public SerializedQueue(){
-            this(new HashMap<String, Change<T>>(), new ArrayList<Change<T>>());
+            this(new HashMap<String, Change>(), new ArrayList<Change>());
         }
 
-        public SerializedQueue(Map<String,Change<T>> pendingChanges, List<Change<T>> queuedChanges){
+        public SerializedQueue(Map<String,Change> pendingChanges, List<Change> queuedChanges){
             this.pending = pendingChanges;
             this.queued = queuedChanges;
         }
@@ -179,13 +179,13 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
 
             @Override
-            public Ghost onAcknowledged(RemoteChange remoteChange, Change<T> acknowledgedChange)
+            public Ghost onAcknowledged(RemoteChange remoteChange, Change acknowledgedChange)
             throws RemoteChangeInvalidException {
                 // if this isn't a removal, update the ghost for the relevant object
                 return bucket.acknowledgeChange(remoteChange, acknowledgedChange);
             }
             @Override
-            public void onError(RemoteChange remoteChange, Change<T> erroredChange){
+            public void onError(RemoteChange remoteChange, Change erroredChange){
                 Logger.log(TAG, String.format("We have an error! %s", remoteChange));
             }
             @Override
@@ -225,14 +225,14 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     /**
      * Diffs and object's local modifications and queues up the changes
      */
-    public Change<T> queueLocalChange(T object){
-        Change<T> change = new Change<T>(Change.OPERATION_MODIFY, object);
+    public Change queueLocalChange(T object){
+        Change change = new Change(Change.OPERATION_MODIFY, object);
         changeProcessor.addChange(change);
         return change;
     }
 
-    public Change<T> queueLocalDeletion(T object){
-        Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
+    public Change queueLocalDeletion(T object){
+        Change change = new Change(Change.OPERATION_REMOVE, object);
         changeProcessor.addChange(change);
         return change;
     }
@@ -732,12 +732,12 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         /**
          * Received a remote change that acknowledges local change
          */
-        public Ghost onAcknowledged(RemoteChange remoteChange, Change<T> change)
+        public Ghost onAcknowledged(RemoteChange remoteChange, Change change)
             throws RemoteChangeInvalidException;
         /**
          * Received a remote change indicating an error in change request
          */
-        public void onError(RemoteChange remoteChange, Change<T> change);
+        public void onError(RemoteChange remoteChange, Change change);
         /**
          * Received a remote change that did not originate locally
          */
@@ -758,7 +758,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
-    private class ChangeProcessor implements Runnable, Change.OnRetryListener<T> {
+    private class ChangeProcessor implements Runnable, Change.OnRetryListener {
 
         // public static final Integer CAPACITY = 200;
 
@@ -768,8 +768,8 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         private Thread thread;
 
         private List<Map<String,Object>> remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>(10));
-        private List<Change<T>> localQueue = Collections.synchronizedList(new ArrayList<Change<T>>());
-        private Map<String,Change<T>> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change<T>>());
+        private List<Change> localQueue = Collections.synchronizedList(new ArrayList<Change>());
+        private Map<String,Change> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
         private Timer retryTimer;
         
         private final Object lock = new Object();
@@ -817,9 +817,9 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         public void addChange(Change change){
             synchronized (lock){
                 // compress all changes for this same key
-                Iterator<Change<T>> iterator = localQueue.iterator();
+                Iterator<Change> iterator = localQueue.iterator();
                 while(iterator.hasNext()){
-                    Change<T> queued = iterator.next();
+                    Change queued = iterator.next();
                     if(queued.getKey().equals(change.getKey())){
                         serializer.onDequeueChange(queued);
                         iterator.remove();
@@ -932,7 +932,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                                 Ghost ghost = listener.onAcknowledged(remoteChange, change);
                                 serializer.onAcknowledgeChange(change);
                                 Change compressed = null;
-                                Iterator<Change<T>> queuedChanges = localQueue.iterator();
+                                Iterator<Change> queuedChanges = localQueue.iterator();
                                 while(queuedChanges.hasNext()){
                                     Change queuedChange = queuedChanges.next();
                                     if (queuedChange.getKey().equals(change.getKey())) {
@@ -958,7 +958,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                         }
                     }
                     if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
-                        Iterator<Change<T>> iterator = localQueue.iterator();
+                        Iterator<Change> iterator = localQueue.iterator();
                         while(iterator.hasNext()){
                             Change queuedChange = iterator.next();
                             if (queuedChange.getKey().equals(remoteChange.getKey())) {
@@ -975,7 +975,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 if (localQueue.isEmpty()) {
                     return;
                 }
-                final List<Change<T>> sendLater = new ArrayList<Change<T>>();
+                final List<Change> sendLater = new ArrayList<Change>();
                 // find the first local change whose key does not exist in the pendingChanges and there are no remote changes
                 while(!localQueue.isEmpty() && !Thread.interrupted()){
                     // take the first change of the queue
@@ -1004,11 +1004,11 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         }
 
         @Override
-        public void onRetry(Change<T> change){
+        public void onRetry(Change change){
             sendChange(change);
         }
 
-        private Boolean sendChange(Change<T> change){
+        private Boolean sendChange(Change change){
             // send the change down the socket!
             if (!connected) {
                 // channel is not initialized, send on reconnect

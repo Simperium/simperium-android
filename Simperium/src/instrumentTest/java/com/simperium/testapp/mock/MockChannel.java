@@ -59,7 +59,7 @@ public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
     /**
      * Simulate an acknowledged change
      */
-    protected void acknowledge(Change<T> change)
+    protected void acknowledge(Change change)
     throws RemoteChangeInvalidException {
 
         Integer sourceVersion = change.getVersion();

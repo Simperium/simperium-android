@@ -28,21 +28,21 @@ public class MockChannelSerializer<T extends Syncable> implements Serializer<T> 
         queue = new SerializedQueue<T>();
     }
 
-    public void onQueueChange(Change<T> change){
+    public void onQueueChange(Change change){
         android.util.Log.d("Simperium.Test", String.format("Qeueuing %s", change));
         queue.queued.add(change);
     }
 
-    public void onDequeueChange(Change<T> change){
+    public void onDequeueChange(Change change){
         queue.queued.remove(change);
     }
 
-    public void onSendChange(Change<T> change){
+    public void onSendChange(Change change){
         queue.queued.remove(change);
         queue.pending.put(change.getKey(), change);
     }
 
-    public void onAcknowledgeChange(Change<T> change){
+    public void onAcknowledgeChange(Change change){
         ackCount ++;
         queue.pending.remove(change.getKey());
     }

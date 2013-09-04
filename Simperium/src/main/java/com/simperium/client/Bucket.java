@@ -46,8 +46,8 @@ import android.os.CancellationSignal;
 public class Bucket<T extends Syncable> {
     
     public interface Channel<T extends Syncable> {
-        public Change<T> queueLocalChange(T object);
-        public Change<T> queueLocalDeletion(T object);
+        public Change queueLocalChange(T object);
+        public Change queueLocalDeletion(T object);
         public void start();
         public void stop();
         public void reset();
@@ -179,7 +179,7 @@ public class Bucket<T extends Syncable> {
                 Boolean modified = object.isModified();
                 storage.save(object, schema.indexesFor(object));
 
-                Change<T> change = channel.queueLocalChange(object);
+                Change change = channel.queueLocalChange(object);
 
                 if (modified){
                     // Notify listeners that an object has been saved, this was
@@ -198,7 +198,7 @@ public class Bucket<T extends Syncable> {
         syncService.submit(new Runnable() {
             @Override
             public void run() {
-                Change<T> change = channel.queueLocalDeletion(object);
+                Change change = channel.queueLocalDeletion(object);
                 storage.delete(object);
                 notifyOnDeleteListeners(object);
             }
@@ -620,7 +620,7 @@ public class Bucket<T extends Syncable> {
         return key;
     }
 
-    public Ghost acknowledgeChange(RemoteChange remoteChange, Change<T> change)
+    public Ghost acknowledgeChange(RemoteChange remoteChange, Change change)
     throws RemoteChangeInvalidException {
         Logger.log(TAG, String.format("Acknowleding change %s", change));
         Ghost ghost = null;

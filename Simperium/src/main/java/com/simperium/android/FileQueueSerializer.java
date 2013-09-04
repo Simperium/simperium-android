@@ -46,22 +46,22 @@ public class FileQueueSerializer<T extends Syncable> implements Serializer<T> {
     }
 
     @Override
-    public void onQueueChange(Change<T> object){
+    public void onQueueChange(Change object){
 
     }
 
     @Override
-    public void onDequeueChange(Change<T> object){
+    public void onDequeueChange(Change object){
 
     }
 
     @Override
-    public void onSendChange(Change<T> object){
+    public void onSendChange(Change object){
 
     }
 
     @Override
-    public void onAcknowledgeChange(Change<T> object){
+    public void onAcknowledgeChange(Change object){
 
     }
 
@@ -105,8 +105,8 @@ public class FileQueueSerializer<T extends Syncable> implements Serializer<T> {
      */
     private SerializedQueue<T> restoreFromFile(Bucket<T> bucket) throws java.io.IOException, org.json.JSONException {
         BufferedInputStream stream = null;
-        List<Change<T>> queued = new ArrayList<Change<T>>();
-        Map<String,Change<T>> pending = new HashMap<String,Change<T>>();
+        List<Change> queued = new ArrayList<Change>();
+        Map<String,Change> pending = new HashMap<String,Change>();
         try {
             stream = new BufferedInputStream(mContext.openFileInput(getFileName(bucket)));
             byte[] contents = new byte[1024];
@@ -126,7 +126,7 @@ public class FileQueueSerializer<T extends Syncable> implements Serializer<T> {
                     Map.Entry<String, Map<String,Object>> entry = pendingEntries.next();
                     try {
                         T object = bucket.get(entry.getKey());                                
-                        Change<T> change = Change.buildChange(object, entry.getValue());
+                        Change change = Change.buildChange(object, entry.getValue());
                         pending.put(entry.getKey(), change);
                     } catch (BucketObjectMissingException e) {
                         Logger.log(TAG, String.format("Missing local object for change %s", entry.getKey()));
