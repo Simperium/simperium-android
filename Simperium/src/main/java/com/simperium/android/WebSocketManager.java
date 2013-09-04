@@ -171,7 +171,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     private void sendHearbeat(){
         heartbeatCount ++;
         String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
-        Logger.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), command));
         if(isConnected()) socketClient.send(command);
     }
 
@@ -213,7 +212,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
-        Logger.log(TAG, String.format("%s => %s", Thread.currentThread().getName(), message));
         if(isConnected()) socketClient.send(message);
     }
 
@@ -250,7 +248,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     public void onMessage(String message){
         scheduleHeartbeat();
         int size = message.length();
-        Logger.log(TAG, String.format("%s <= %s", Thread.currentThread().getName(), message));
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);
@@ -265,7 +262,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         }
     }
     public void onMessage(byte[] data){
-        Logger.log(String.format("From socket (data) %s", new String(data)));
     }
     public void onDisconnect(int code, String reason){
         Logger.log(String.format("Disconnect %d %s", code, reason));

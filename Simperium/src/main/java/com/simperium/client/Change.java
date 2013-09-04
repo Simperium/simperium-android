@@ -224,7 +224,6 @@ public class Change {
     }
 
     public Map<String,Object> getDiff(){
-        Logger.log(TAG, String.format("Diffing %s and %s", origin, target));
         return jsondiff.diff(origin, target);
     }
 

@@ -111,7 +111,6 @@ public class GhostStore implements GhostStorageProvider {
         } else {
             database.insert(VERSIONS_TABLE_NAME, null, values);
         }
-        Logger.log(String.format("Set change version to: %s", cv));
     }
 
     @Override
@@ -129,10 +128,8 @@ public class GhostStore implements GhostStorageProvider {
         values.put(PAYLOAD_FIELD, payload);
         if (cursor.getCount() > 0) {
             int count = database.update(GHOSTS_TABLE_NAME, values, where, args);
-            Logger.log(String.format("Updated ghost(%d): %s.%d", count, ghost.getSimperiumKey(), ghost.getVersion()));
         } else {
             long id = database.insertOrThrow(GHOSTS_TABLE_NAME, null, values);
-            Logger.log(String.format("Created ghost(id:%d): %s.%d", id, ghost.getSimperiumKey(), ghost.getVersion()));
         }
         cursor.close();
     }

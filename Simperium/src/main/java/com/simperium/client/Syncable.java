@@ -21,7 +21,6 @@ public abstract class Syncable implements Diffable {
 
     protected void setGhost(Ghost ghost){
         synchronized(this){
-            Logger.log("Simperium.Syncable", String.format("Setting ghost %s %s", getSimperiumKey(), ghost));
             this.ghost = ghost;
         }
     }

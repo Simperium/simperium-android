@@ -171,7 +171,6 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(final T object){
-        Logger.log(TAG, String.format("Syncing object %s", object));
         // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
         syncService.submit(new Runnable(){
             @Override
@@ -259,7 +258,6 @@ public class Bucket<T extends Syncable> {
     }
 
     public void setChangeVersion(String version){
-        Logger.log(TAG, String.format("Updating cv to %s", version));
         ghostStore.setChangeVersion(this, version);
     }
 
@@ -418,7 +416,6 @@ public class Bucket<T extends Syncable> {
     protected void addObjectWithGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Logger.log(TAG, "Built object with ghost, add it");
         addObject(object);
     }
     /**
@@ -428,12 +425,10 @@ public class Bucket<T extends Syncable> {
         setChangeVersion(changeVersion);
         ghostStore.saveGhost(this, ghost);
         T object = buildObject(ghost);
-        Logger.log(TAG, "Built object with ghost, updated it");
         updateObject(object);
     }
     protected void updateGhost(Ghost ghost){
         ghostStore.saveGhost(this, ghost);
-        Logger.log(TAG, "Update the ghost!");
     }
     protected Ghost getGhost(String key) throws GhostMissingException {
         return ghostStore.getGhost(this, key);
@@ -515,7 +510,6 @@ public class Bucket<T extends Syncable> {
 
     public void notifyOnSaveListeners(T object){
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
-        Logger.log(TAG, String.format("%s - Notifying %s OnSaveObjectListener %d", Thread.currentThread().getName(), getName(), notify.size()));
 
         Iterator<OnSaveObjectListener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
@@ -530,7 +524,6 @@ public class Bucket<T extends Syncable> {
 
     public void notifyOnDeleteListeners(T object){
         Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
-        Logger.log(TAG, String.format("%s - Notifying %s OnDeleteObjectListeners %d", Thread.currentThread().getName(), getName(), notify.size()));
         
         Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
         while(iterator.hasNext()) {
@@ -622,7 +615,6 @@ public class Bucket<T extends Syncable> {
 
     public Ghost acknowledgeChange(RemoteChange remoteChange, Change change)
     throws RemoteChangeInvalidException {
-        Logger.log(TAG, String.format("Acknowleding change %s", change));
         Ghost ghost = null;
         if (!remoteChange.isRemoveOperation()) {
             try {
@@ -640,7 +632,6 @@ public class Bucket<T extends Syncable> {
         }
         setChangeVersion(remoteChange.getChangeVersion());
         remoteChange.setApplied();
-        Logger.log(TAG, String.format("Marking change applied %s %b", change, change.isComplete()));
         // TODO: remove changes don't need ghosts, need to rethink this a bit
         return ghost;
     }

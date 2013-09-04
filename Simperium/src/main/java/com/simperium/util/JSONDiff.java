@@ -286,7 +286,6 @@ public class JSONDiff {
         while(keys.hasNext()){
             String key = (String)keys.next();
             Object val = map.get(key);
-            // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
             if (val instanceof Map) {
                 copy.put(key, deepCopy((Map<String,Object>) val));
             } else if (val instanceof List) {

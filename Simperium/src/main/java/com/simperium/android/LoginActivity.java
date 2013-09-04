@@ -15,7 +15,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Looper;
 import android.view.View;
-import android.util.Log;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -31,6 +30,8 @@ import com.simperium.client.User;
 import com.simperium.util.AlertUtil;
 import com.simperium.util.Logger;
 import com.simperium.client.R;
+
+import android.util.Log;
 
 public class LoginActivity extends Activity {
 

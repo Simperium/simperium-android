@@ -206,7 +206,6 @@ public class RemoteChange {
         String id = (String)changeData.get(ID_KEY);
         if (changeData.containsKey(ERROR_KEY)) {
             Integer errorCode = (Integer)changeData.get(ERROR_KEY);
-            Logger.log(String.format("Received error for change: %d", errorCode, changeData));
             return new RemoteChange(client_id, id, ccids, errorCode);
         }
         String operation = (String)changeData.get(OPERATION_KEY);

@@ -10,6 +10,7 @@ import com.simperium.client.Syncable;
 import com.simperium.client.Channel;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.Query;
+import com.simperium.util.Logger;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.database.SQLException;
@@ -30,8 +31,6 @@ import java.util.Collections;
 
 import org.json.JSONObject;
 import org.json.JSONException;
-
-import android.util.Log;
 
 public class PersistentStore implements StorageProvider {
     public static final String TAG="Simperium.Store";
@@ -75,20 +74,18 @@ public class PersistentStore implements StorageProvider {
             reindexThread = new Thread(new Runnable(){
                 @Override
                 public void run(){
-                    Log.d(TAG, String.format("Reindex %s", bucketName));
                     Bucket.ObjectCursor<T> cursor = bucket.allObjects(signal);
                     while(cursor.moveToNext()){
                         try {
                             final T object = cursor.getObject();
                             String key = cursor.getSimperiumKey();
                             if (skipIndexing.contains(key)) {
-                                Log.d(TAG, String.format("Skipped reindexing %s", key));
                                 continue;
                             }
                             index(object, schema.indexesFor(object));
                         } catch (SQLException e) {
                             Thread.currentThread().interrupt();
-                            Log.d(TAG, "Reindexing canceled due to exception", e);
+                            Logger.log(TAG, "Reindexing canceled due to exception", e);
                         }
                         if (Thread.interrupted()) {
                             signal.cancel();
@@ -209,7 +206,6 @@ public class PersistentStore implements StorageProvider {
         protected void index(T object, List<Index> indexValues){
             // delete all current idexes
             deleteIndexes(object);
-            Log.d(TAG, String.format("Index %d values for %s", indexValues.size(), object.getSimperiumKey()));
             Iterator<Index> indexes = indexValues.iterator();
             while(indexes.hasNext()){
                 Index index = indexes.next();
@@ -418,7 +414,6 @@ public class PersistentStore implements StorageProvider {
             statement = String.format("FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
             names.addAll(replacements);
             args = names.toArray(new String[names.size()]);
-            Log.d(TAG, String.format("Query: %s | %s", statement, names));
         }
 
     }

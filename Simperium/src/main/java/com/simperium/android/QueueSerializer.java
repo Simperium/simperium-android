@@ -82,8 +82,6 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
         String[] args = new String[]{ bucket.getName() };
         Cursor items = mDatabase.query(TABLE_NAME, null, QUERY_CLAUSE, args, null, null, null);
 
-        Logger.log(TAG, String.format("Found queue state for %d items in %s", items.getCount(), bucket.getName()));
-
         try {
 
             int bucketColumn = items.getColumnIndexOrThrow(FIELD_BUCKET);
@@ -106,8 +104,6 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
                     key = items.getString(keyColumn);
                     operation = items.getString(operationColumn);
                     status = items.getString(statusColumn);
-
-                    Logger.log(TAG, String.format("Restore an item with status %s", status));
 
                     if (operation.equals(Change.OPERATION_MODIFY)) {
                         origin = Channel.convertJSON(new JSONObject(items.getString(originColumn)));
@@ -146,7 +142,6 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
     @Override
     public void onQueueChange(Change change) {
         // insert the record into the db
-        Logger.log(TAG, String.format("Storing %s for %s", change.getChangeId(), change.getBucketName()));
         insertState(Status.QUEUED, change);
     }
 

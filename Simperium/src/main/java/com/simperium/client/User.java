@@ -192,7 +192,6 @@ public class User {
             @Override
             public void onSuccess(int statusCode, JSONObject response){
                 // parse the response to JSON
-                Logger.log(String.format("Success: %s", response));
                 // user was created, notify of a new user
                 try {
                     userId = response.getString(USERID_KEY);
@@ -206,14 +205,10 @@ public class User {
             }
             @Override
             public void onFailure(Throwable error, JSONObject response){
-                Logger.log(String.format("Error: %s", error));
-                Logger.log(String.format("Reponse: %s", response));
                 handler.onInvalid(user, error, response);
             }
             @Override
             public void onFailure(Throwable error, String response){
-                Logger.log(String.format("Error: %s", error));
-                Logger.log(String.format("Reponse: %s", response));
                 handler.onFailure(user, error, response);
             }
         };
@@ -224,8 +219,6 @@ public class User {
         return new JsonHttpResponseHandler(){
             @Override
             public void onSuccess(int statusCode, JSONObject response){
-                // parse the response to JSON
-                Logger.log(String.format("Success: %s", response));
                 // user was created, notify of a new user
                 try {
                     userId = response.getString(USERID_KEY);
@@ -239,14 +232,10 @@ public class User {
             }
             @Override
             public void onFailure(Throwable error, JSONObject response){
-                Logger.log(String.format("Error: %s", error));
-                Logger.log(String.format("Reponse: %s", response));
                 handler.onInvalid(user, error, response);
             }
             @Override
             public void onFailure(Throwable error, String response){
-                Logger.log(String.format("Error: %s", error));
-                Logger.log(String.format("Reponse: %s", response));
                 handler.onFailure(user, error, response);
             }
         };

@@ -175,7 +175,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         changeProcessor = new ChangeProcessor(new ChangeProcessorListener<T>(){
             @Override
             public void onComplete(){
-                Logger.log(TAG, "Change processor done");
             }
 
             @Override
@@ -186,7 +185,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
             @Override
             public void onError(RemoteChange remoteChange, Change erroredChange){
-                Logger.log(TAG, String.format("We have an error! %s", remoteChange));
+                Logger.log(TAG, String.format("Received error from service %s", remoteChange));
             }
             @Override
             public Ghost onRemote(RemoteChange remoteChange)
@@ -253,7 +252,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         JSONObject index;
         try {
             index = new JSONObject(indexJson);
-        } catch (Exception e) {
+        } catch (JSONException e) {
             Logger.log(TAG, String.format("Index had invalid json: %s", indexJson));
             return;
         }
@@ -274,8 +273,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             indexProcessor.addIndexPage(index);
         } else {
             // received an index page for a different change version
-            // TODO: What do we do now?
-            Logger.log(TAG, "Processing index?");
+            // TODO: reconcile the out of band index cv
         }
 
     }
@@ -283,7 +281,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     private IndexProcessorListener indexProcessorListener = new IndexProcessorListener(){
         @Override
         public void onComplete(String cv){
-            Logger.log(TAG, String.format("Finished downloading index %s", cv));
             haveIndex = true;
             changeProcessor.start();
         }
@@ -306,7 +303,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         // Loop through each change? Convert changes to array list
         List<Object> changeList = Channel.convertJSON(changes);
         changeProcessor.addChanges(changeList);
-        Logger.log(TAG, String.format("Received %d change(s)", changes.length()));
     }
 
     private static final String ENTITY_DATA_KEY = "data";
@@ -433,8 +429,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         if (listener != null) {
             MessageEvent event = new MessageEvent(this, message);
             listener.onMessage(event);
-        } else {
-            Logger.log(TAG, String.format("No one listening to channel %s", this));
         }
     }
 
@@ -493,7 +487,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 Command command = commands.get(name);
                 command.run(params);
             } else {
-                Logger.log(TAG, String.format("Don't know how to run: %s", name));
+                Logger.log(TAG, String.format("Unkown command received: %s", name));
             }
         }
     }
@@ -574,7 +568,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         int indexedCount = 0;
 
         public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener){
-            Logger.log(TAG, String.format("Starting index processor with version: %s for bucket %s", cv, bucket));
             this.bucket = bucket;
             this.cv = cv;
             this.listener = listener;
@@ -600,11 +593,9 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             ObjectVersion objectVersion = new ObjectVersion(key, Integer.parseInt(version));
             synchronized(index){
                 if(!index.remove(objectVersion.toString())){
-                    Logger.log(TAG, String.format("Index didn't have %s", objectVersion));
                     return false;
                 }
             }
-            Logger.log(TAG, String.format("We were waiting for %s.%s", key, version));
 
             JSONObject data = null;
             try {
@@ -654,7 +645,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 Logger.log(TAG, String.format("Index did not have entities: %s", indexPage));
                 return true;
             }
-            Logger.log(TAG, String.format("received %d entities", indexVersions.length()));
+
             if (indexVersions.length() > 0) {
                 // query for each item that we don't have locally in the bucket
                 for (int i=0; i<indexVersions.length(); i++) {
@@ -667,8 +658,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                             // we need to get the remote object
                             index.add(objectVersion.toString());
                             sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
-                        } else {
-                            Logger.log(TAG, String.format("Object is up to date: %s", version));
                         }
 
                     } catch (JSONException e) {
@@ -834,24 +823,9 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         public void start(){
             // channel must be started and have complete index
             if (!started || !haveCompleteIndex()) {
-                Logger.log(
-                    TAG,
-                    String.format(
-                        "Need an index before processing changes %d remote and %d local changes %d pending",
-                        remoteQueue.size(), localQueue.size(), pendingChanges.size()
-                    )
-                );
-                
                 return;
             }
             if (thread == null || thread.getState() == Thread.State.TERMINATED) {
-                Logger.log(
-                    TAG,
-                    String.format(
-                        "Starting up the change processor with %d remote and %d local changes %d pending",
-                        remoteQueue.size(), localQueue.size(), pendingChanges.size()
-                    )
-                );
                 thread = new Thread(this, String.format("simperium.processor.%s", getBucket().getName()));
                 thread.start();
             } else {
@@ -914,7 +888,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 while(remoteQueue.size() > 0 && !Thread.interrupted()){
                     // take an item off the queue
                     RemoteChange remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
-                    Logger.log(TAG, String.format("Received remote change with cv: %s", remoteChange.getChangeVersion()));
                     Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
@@ -937,7 +910,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                                     Change queuedChange = queuedChanges.next();
                                     if (queuedChange.getKey().equals(change.getKey())) {
                                         queuedChanges.remove();
-                                        Logger.log(String.format("Compressed queued local change for %s", queuedChange.getKey()));
                                         compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
                                     }
                                 }
@@ -986,7 +958,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                     if (pendingChanges.containsKey(localChange.getKey())) {
                         // we have a change for this key that has not been acked
                         // so send it later
-                        Logger.log(TAG, String.format("Changes pending for %s re-queueing %s", localChange.getKey(), localChange.getChangeId()));
                         sendLater.add(localChange);
                         // let's get the next change
                     } else {
@@ -1014,10 +985,8 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             // send the change down the socket!
             if (!connected) {
                 // channel is not initialized, send on reconnect
-                Logger.log(TAG, String.format("Abort sending change, channel not initialized: %s", change.getChangeId()));
                 return true;
             }
-            Logger.log(TAG, String.format("send change ccid %s", change.getChangeId()));
 
             Map<String,Object> map = new HashMap<String,Object>(3);
             map.put(Change.ID_KEY, change.getKey());
@@ -1054,7 +1023,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             String key = (String)keys.next();
             try {
                 Object val = json.get(key);
-                // Logger.log(String.format("Hello! %s", json.get(key).getClass().getName()));
                 if (val.getClass().equals(JSONObject.class)) {
                     map.put(key, convertJSON((JSONObject) val));
                 } else if (val.getClass().equals(JSONArray.class)) {
