@@ -3,11 +3,12 @@
   <groupId>com.simperium</groupId>
   <artifactId>simperium-android</artifactId>
   <versioning>
-    <release>1.0.0-ge7778e2</release>
+    <release>1.0.0-gdfb17be</release>
     <versions>
       <version>g0f7b78d</version>
       <version>1.0.0-ge7778e2</version>
+      <version>1.0.0-gdfb17be</version>
     </versions>
-    <lastUpdated>20130831071829</lastUpdated>
+    <lastUpdated>20130904155051</lastUpdated>
   </versioning>
 </metadata>
