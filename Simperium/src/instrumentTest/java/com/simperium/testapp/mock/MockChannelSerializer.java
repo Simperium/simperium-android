@@ -8,6 +8,8 @@ import com.simperium.client.Syncable;
 
 public class MockChannelSerializer<T extends Syncable> implements Serializer<T> {
 
+    public int ackCount = 0;
+
     public SerializedQueue<T> queue = new SerializedQueue<T>();
 
     /**
@@ -41,6 +43,7 @@ public class MockChannelSerializer<T extends Syncable> implements Serializer<T> 
     }
 
     public void onAcknowledgeChange(Change<T> change){
+        ackCount ++;
         queue.pending.remove(change.getKey());
     }
 

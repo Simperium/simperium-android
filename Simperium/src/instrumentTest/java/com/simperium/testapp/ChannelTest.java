@@ -7,6 +7,8 @@ import com.simperium.client.ChannelProvider;
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
+import com.simperium.client.Change;
+import com.simperium.util.Uuid;
 
 import com.simperium.testapp.mock.MockBucket;
 import com.simperium.testapp.mock.MockChannelSerializer;
@@ -14,6 +16,10 @@ import com.simperium.testapp.mock.MockChannelSerializer;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import static android.test.MoreAsserts.*;
 
@@ -31,13 +37,42 @@ public class ChannelTest extends BaseSimperiumTest {
     protected Channel.MessageEvent mLastMessage;
     protected User.Status mAuthStatus;
     private Boolean mOpen = false;
+    protected boolean autoAcknowledge = false;
 
     final private Channel.OnMessageListener mListener = new Channel.OnMessageListener(){
+
 
         @Override
         public void onMessage(Channel.MessageEvent event){
             mMessages.add(event);
             mLastMessage = event;
+
+            if (autoAcknowledge == true && event.message.indexOf("c:") == 0) {
+                try {
+                    JSONObject changeJSON = new JSONObject(event.message.substring(2));
+                    JSONObject ackJSON = new JSONObject();
+                    JSONArray ccids = new JSONArray();
+                    ccids.put(changeJSON.get("ccid"));
+                    ackJSON.put("clientid", mChannel.getSessionId());
+                    ackJSON.put("id", changeJSON.getString("id"));
+                    ackJSON.put("o", changeJSON.getString("o"));
+                    ackJSON.put("v", changeJSON.getJSONObject("v"));
+                    ackJSON.put("ccids", ccids);
+                    ackJSON.put("cv", Uuid.uuid());
+                    int sv = -1;
+                    if (changeJSON.has("sv")) {
+                        sv = changeJSON.getInt("sv");
+                        ackJSON.put("sv", changeJSON.getInt("sv"));
+                    }
+                    ackJSON.put("ev", sv + 1);
+
+                    JSONArray responseJSON = new JSONArray();
+                    responseJSON.put(ackJSON);
+                    sendMessage(String.format("c:%s", responseJSON));
+                } catch (JSONException e) {
+                    throw new RuntimeException(String.format("Couldn't auto-acknowledge %s", event.message), e);
+                }
+            }
         }
 
         @Override
@@ -140,9 +175,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     public void testQueuePendingStatus()
     throws Exception {
-        start();
-        sendEmptyIndex();
-        waitForIndex();
+        startWithEmptyIndex();
 
         Note note = mBucket.newObject();
         note.setTitle("Hola mundo");
@@ -158,6 +191,23 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(1, mChannelSerializer.queue.pending.size());
         // second change is waiting for ack before sending
         assertEquals(1, mChannelSerializer.queue.queued.size());
+    }
+
+    public void testAcknowledgePending()
+    throws Exception {
+
+        startWithEmptyIndex();
+        clearMessages();
+        autoAcknowledge = true;
+
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.save();
+
+        waitForMessage();
+
+        assertEquals(1, mChannelSerializer.ackCount);
+
     }
 
     public void testStartChannel(){
@@ -239,11 +289,22 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.receiveMessage("auth:user@example.com");
     }
 
+    protected void startWithEmptyIndex()
+    throws InterruptedException {
+        start();
+        sendEmptyIndex();
+        waitForIndex();
+    }
+
     /**
      * Simulates a brand new bucket with and empty index
      */
     protected void sendEmptyIndex(){
         mChannel.receiveMessage("i:{\"index\":[]}");
+    }
+
+    protected void sendMessage(String message){
+        mChannel.receiveMessage(message);
     }
 
     /**
