@@ -40,7 +40,7 @@ public class AndroidClient implements ClientFactory {
     @Override
     public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
-        return new WebSocketManager(appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new FileQueueSerializer(mContext));
+        return new WebSocketManager(appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new QueueSerializer(mDatabase));
     }
 
     @Override
