@@ -19,15 +19,17 @@ public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
     private Bucket<T> mBucket;
     private boolean started = false;
 
+    public boolean autoAcknowledge = true;
+
     public MockChannel(Bucket<T> bucket){
         mBucket = bucket;
     }
 
     @Override
-    public Change<T> queueLocalDeletion(T object){
-        Change<T> change = new Change<T>(Change.OPERATION_REMOVE, object);
+    public Change queueLocalDeletion(T object){
+        Change change = new Change(Change.OPERATION_REMOVE, object);
         try {
-            if(started) acknowledge(change);
+            if(started && autoAcknowledge) acknowledge(change);
         } catch (RemoteChangeInvalidException e) {
             throw( new RuntimeException(e));
         }
@@ -35,10 +37,10 @@ public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
     }
 
     @Override
-    public Change<T> queueLocalChange(T object) {
-        Change<T> change = new Change<T>(Change.OPERATION_MODIFY, object);
+    public Change queueLocalChange(T object) {
+        Change change = new Change(Change.OPERATION_MODIFY, object);
         try {
-            if(started) acknowledge(change);
+            if(started && autoAcknowledge) acknowledge(change);
         } catch (RemoteChangeInvalidException e) {
             throw(new RuntimeException(e));
         }
