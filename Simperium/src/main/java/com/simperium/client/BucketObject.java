@@ -21,7 +21,7 @@ public class BucketObject extends Syncable {
         }
 
         public Schema(String name){
-            this.remoteName = remoteName;
+            this.remoteName = name;
         }
 
         public String getRemoteName(){
