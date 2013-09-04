@@ -12,6 +12,7 @@ import com.simperium.util.Uuid;
 
 import com.simperium.testapp.mock.MockBucket;
 import com.simperium.testapp.mock.MockChannelSerializer;
+import com.simperium.testapp.mock.MockChannelListener;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import static android.test.MoreAsserts.*;
+import static com.simperium.testapp.TestHelpers.*;
 
 public class ChannelTest extends BaseSimperiumTest {
 
@@ -33,59 +35,9 @@ public class ChannelTest extends BaseSimperiumTest {
     private Channel<Note> mChannel;
     private MockChannelSerializer<Note> mChannelSerializer;
 
-    protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
-    protected Channel.MessageEvent mLastMessage;
     protected User.Status mAuthStatus;
-    private Boolean mOpen = false;
-    protected boolean autoAcknowledge = false;
 
-    final private Channel.OnMessageListener mListener = new Channel.OnMessageListener(){
-
-
-        @Override
-        public void onMessage(Channel.MessageEvent event){
-            mMessages.add(event);
-            mLastMessage = event;
-
-            if (autoAcknowledge == true && event.message.indexOf("c:") == 0) {
-                try {
-                    JSONObject changeJSON = new JSONObject(event.message.substring(2));
-                    JSONObject ackJSON = new JSONObject();
-                    JSONArray ccids = new JSONArray();
-                    ccids.put(changeJSON.get("ccid"));
-                    ackJSON.put("clientid", mChannel.getSessionId());
-                    ackJSON.put("id", changeJSON.getString("id"));
-                    ackJSON.put("o", changeJSON.getString("o"));
-                    ackJSON.put("v", changeJSON.getJSONObject("v"));
-                    ackJSON.put("ccids", ccids);
-                    ackJSON.put("cv", Uuid.uuid());
-                    int sv = -1;
-                    if (changeJSON.has("sv")) {
-                        sv = changeJSON.getInt("sv");
-                        ackJSON.put("sv", changeJSON.getInt("sv"));
-                    }
-                    ackJSON.put("ev", sv + 1);
-
-                    JSONArray responseJSON = new JSONArray();
-                    responseJSON.put(ackJSON);
-                    sendMessage(String.format("c:%s", responseJSON));
-                } catch (JSONException e) {
-                    throw new RuntimeException(String.format("Couldn't auto-acknowledge %s", event.message), e);
-                }
-            }
-        }
-
-        @Override
-        public void onClose(Channel channel){
-            mOpen = false;
-        }
-
-        @Override
-        public void onOpen(Channel channel){
-            mOpen = true;
-        }
-
-    };
+    final private MockChannelListener mListener = new MockChannelListener();
 
     protected void setUp() throws Exception {
         super.setUp();
@@ -130,7 +82,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertNotNull(mLastMessage);
+        assertNotNull(mListener.lastMessage);
         mChannel.receiveMessage("auth:expired");
 
         // make sure we ignore the auth:expired
@@ -140,7 +92,7 @@ public class ChannelTest extends BaseSimperiumTest {
     public void testFailedAuthMessage(){
         start();
 
-        assertNotNull(mLastMessage);
+        assertNotNull(mListener.lastMessage);
         mChannel.receiveMessage("auth:expired");
         mChannel.receiveMessage("auth:{\"msg\":\"Token invalid\",\"code\":401}");
         assertEquals(User.Status.NOT_AUTHORIZED, mAuthStatus);
@@ -198,7 +150,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         startWithEmptyIndex();
         clearMessages();
-        autoAcknowledge = true;
+        mListener.autoAcknowledge = true;
 
         Note note = mBucket.newObject();
         note.setTitle("Hola mundo");
@@ -218,7 +170,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         // it should be started
         assertTrue(mChannel.isStarted());
-        assertTrue(mOpen);
+        assertTrue(mListener.open);
     }
 
     public void testAutoStartChannel(){
@@ -231,7 +183,7 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.onConnect();
         assertTrue(mChannel.isConnected());
         assertTrue(mChannel.isStarted());
-        assertTrue(mOpen);
+        assertTrue(mListener.open);
     }
 
     public void testInitMessageWithNoChangeVersion(){
@@ -242,8 +194,8 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertNotNull(mLastMessage);
-        assertEquals(initMessage, mLastMessage.toString());
+        assertNotNull(mListener.lastMessage);
+        assertEquals(initMessage, mListener.lastMessage.toString());
     }
 
     public void testInitMessageWithChangeVersion(){
@@ -257,7 +209,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertEquals(initMessage, mLastMessage.toString());
+        assertEquals(initMessage, mListener.lastMessage.toString());
 
     }
 
@@ -275,7 +227,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         waitForMessage();
         // message should be a change message "c:{}"
-        assertMatchesRegex("^c:\\{.*\\}$", mLastMessage.toString());
+        assertMatchesRegex("^c:\\{.*\\}$", mListener.lastMessage.toString());
 
     }
 
@@ -315,17 +267,16 @@ public class ChannelTest extends BaseSimperiumTest {
         waitUntil(new Flag(){
             @Override
             public boolean isComplete(){
-                return mLastMessage != null;
+                return mListener.lastMessage != null;
             }
         }, "No message receieved");
     }
 
     /**
-     * Empties the list of received messages and sets mLastMessage to null
+     * Empties the list of received messages and sets last message to null
      */
     protected void clearMessages(){
-        mLastMessage = null;
-        mMessages.clear();
+        mListener.clearMessages();
     }
 
     protected void waitForIndex()
@@ -336,31 +287,6 @@ public class ChannelTest extends BaseSimperiumTest {
                 return mChannel.haveCompleteIndex();
             }
         }, "Index never received");
-    }
-
-    protected void waitUntil(Flag flag, String message, long timeout)
-    throws InterruptedException {
-        long start = System.currentTimeMillis();
-        while(!flag.isComplete()){
-            Thread.sleep(100);
-            if (System.currentTimeMillis() - start > timeout) {
-                throw(new RuntimeException(message));
-            }
-        }
-    }
-
-    protected void waitUntil(Flag flag, String message)
-    throws InterruptedException {
-        waitUntil(flag, message, 1000);
-    }
-
-    protected void waitUntil(Flag flag)
-    throws InterruptedException {
-        waitUntil(flag, "Wait timed out");
-    }
-
-    private static abstract class Flag {
-        abstract boolean isComplete();
     }
 
 }
