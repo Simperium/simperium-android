@@ -22,9 +22,11 @@ public class AndroidClient implements ClientFactory {
     public static final String DEFAULT_DATABASE_NAME = "simperium-store";
 
     protected Context mContext;
+    protected SQLiteDatabase mDatabase;
 
     public AndroidClient(Context context){
         mContext = context;
+        mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
     }
 
     @Override
@@ -40,12 +42,12 @@ public class AndroidClient implements ClientFactory {
     @Override
     public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
-        return new WebSocketManager(appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new FileQueueSerializer(mContext));
+        return new WebSocketManager(appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new QueueSerializer(mDatabase));
     }
 
     @Override
     public PersistentStore buildStorageProvider(){
-        return new PersistentStore(mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null));
+        return new PersistentStore(mDatabase);
     }
 
     @Override

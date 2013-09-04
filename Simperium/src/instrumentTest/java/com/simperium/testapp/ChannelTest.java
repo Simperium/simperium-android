@@ -8,15 +8,23 @@ import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
 import com.simperium.client.RemoteChange;
+import com.simperium.client.Change;
+import com.simperium.util.Uuid;
 
 import com.simperium.testapp.mock.MockBucket;
 import com.simperium.testapp.mock.MockChannelSerializer;
+import com.simperium.testapp.mock.MockChannelListener;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import static android.test.MoreAsserts.*;
+import static com.simperium.testapp.TestHelpers.*;
 
 public class ChannelTest extends BaseSimperiumTest {
 
@@ -26,31 +34,11 @@ public class ChannelTest extends BaseSimperiumTest {
 
     private MockBucket<Note> mBucket;
     private Channel<Note> mChannel;
+    private MockChannelSerializer<Note> mChannelSerializer;
 
-    protected List<Channel.MessageEvent> mMessages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
-    protected Channel.MessageEvent mLastMessage;
     protected User.Status mAuthStatus;
-    private Boolean mOpen = false;
 
-    final private Channel.OnMessageListener mListener = new Channel.OnMessageListener(){
-
-        @Override
-        public void onMessage(Channel.MessageEvent event){
-            mMessages.add(event);
-            mLastMessage = event;
-        }
-
-        @Override
-        public void onClose(Channel channel){
-            mOpen = false;
-        }
-
-        @Override
-        public void onOpen(Channel channel){
-            mOpen = true;
-        }
-
-    };
+    final private MockChannelListener mListener = new MockChannelListener();
 
     protected void setUp() throws Exception {
         super.setUp();
@@ -58,7 +46,8 @@ public class ChannelTest extends BaseSimperiumTest {
         mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
-                mChannel = new Channel(APP_ID, SESSION_ID, bucket, new MockChannelSerializer<Note>(), mListener);
+                mChannelSerializer = new MockChannelSerializer<Note>();
+                mChannel = new Channel(APP_ID, SESSION_ID, bucket, mChannelSerializer, mListener);
                 return mChannel;
             }
         });
@@ -69,6 +58,7 @@ public class ChannelTest extends BaseSimperiumTest {
                 mAuthStatus = status;
             }
         });
+
     }
 
     protected void tearDown() throws Exception {
@@ -93,7 +83,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertNotNull(mLastMessage);
+        assertNotNull(mListener.lastMessage);
         mChannel.receiveMessage("auth:expired");
 
         // make sure we ignore the auth:expired
@@ -103,10 +93,74 @@ public class ChannelTest extends BaseSimperiumTest {
     public void testFailedAuthMessage(){
         start();
 
-        assertNotNull(mLastMessage);
+        assertNotNull(mListener.lastMessage);
         mChannel.receiveMessage("auth:expired");
         mChannel.receiveMessage("auth:{\"msg\":\"Token invalid\",\"code\":401}");
         assertEquals(User.Status.NOT_AUTHORIZED, mAuthStatus);
+    }
+
+    /**
+     * Simulates saving items
+     */
+    public void testOfflineQueueStatus()
+    throws Exception {
+        // bucket is started and channel is connected
+        start();
+
+        // user if off network (airplane mode or similar)
+        mChannel.onDisconnect();
+
+        // user saves a new note and kills the app
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.setContent("This is a new note!");
+        note.save();
+
+        Note note2 = mBucket.newObject();
+        note2.setTitle("Second note");
+        note2.setContent("This is the second note.");
+        note2.save();
+
+        // two different notes are waiting to be sent
+        assertEquals(2, mChannelSerializer.queue.queued.size());
+
+    }
+
+    public void testQueuePendingStatus()
+    throws Exception {
+        startWithEmptyIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.save();
+
+        clearMessages();
+        waitForMessage();
+
+        note.setTitle("Second change");
+        note.save();
+
+        // first change has been sent and we're waiting to ack
+        assertEquals(1, mChannelSerializer.queue.pending.size());
+        // second change is waiting for ack before sending
+        assertEquals(1, mChannelSerializer.queue.queued.size());
+    }
+
+    public void testAcknowledgePending()
+    throws Exception {
+
+        startWithEmptyIndex();
+        clearMessages();
+        mListener.autoAcknowledge = true;
+
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.save();
+
+        waitForMessage();
+
+        assertEquals(1, mChannelSerializer.ackCount);
+
     }
 
     public void testStartChannel(){
@@ -117,7 +171,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         // it should be started
         assertTrue(mChannel.isStarted());
-        assertTrue(mOpen);
+        assertTrue(mListener.open);
     }
 
     public void testAutoStartChannel(){
@@ -130,7 +184,7 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.onConnect();
         assertTrue(mChannel.isConnected());
         assertTrue(mChannel.isStarted());
-        assertTrue(mOpen);
+        assertTrue(mListener.open);
     }
 
     public void testInitMessageWithNoChangeVersion(){
@@ -141,8 +195,8 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertNotNull(mLastMessage);
-        assertEquals(initMessage, mLastMessage.toString());
+        assertNotNull(mListener.lastMessage);
+        assertEquals(initMessage, mListener.lastMessage.toString());
     }
 
     public void testInitMessageWithChangeVersion(){
@@ -156,7 +210,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertEquals(initMessage, mLastMessage.toString());
+        assertEquals(initMessage, mListener.lastMessage.toString());
 
     }
 
@@ -174,7 +228,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         waitForMessage();
         // message should be a change message "c:{}"
-        assertMatchesRegex("^c:\\{.*\\}$", mLastMessage.toString());
+        assertMatchesRegex("^c:\\{.*\\}$", mListener.lastMessage.toString());
 
     }
 
@@ -206,11 +260,22 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.receiveMessage("auth:user@example.com");
     }
 
+    protected void startWithEmptyIndex()
+    throws InterruptedException {
+        start();
+        sendEmptyIndex();
+        waitForIndex();
+    }
+
     /**
      * Simulates a brand new bucket with and empty index
      */
     protected void sendEmptyIndex(){
         mChannel.receiveMessage("i:{\"index\":[]}");
+    }
+
+    protected void sendMessage(String message){
+        mChannel.receiveMessage(message);
     }
 
     /**
@@ -221,17 +286,16 @@ public class ChannelTest extends BaseSimperiumTest {
         waitUntil(new Flag(){
             @Override
             public boolean isComplete(){
-                return mLastMessage != null;
+                return mListener.lastMessage != null;
             }
         }, "No message receieved");
     }
 
     /**
-     * Empties the list of received messages and sets mLastMessage to null
+     * Empties the list of received messages and sets last message to null
      */
     protected void clearMessages(){
-        mLastMessage = null;
-        mMessages.clear();
+        mListener.clearMessages();
     }
 
     protected void waitForIndex()
@@ -242,31 +306,6 @@ public class ChannelTest extends BaseSimperiumTest {
                 return mChannel.haveCompleteIndex();
             }
         }, "Index never received");
-    }
-
-    protected void waitUntil(Flag flag, String message, long timeout)
-    throws InterruptedException {
-        long start = System.currentTimeMillis();
-        while(!flag.isComplete()){
-            Thread.sleep(100);
-            if (System.currentTimeMillis() - start > timeout) {
-                throw(new RuntimeException(message));
-            }
-        }
-    }
-
-    protected void waitUntil(Flag flag, String message)
-    throws InterruptedException {
-        waitUntil(flag, message, 1000);
-    }
-
-    protected void waitUntil(Flag flag)
-    throws InterruptedException {
-        waitUntil(flag, "Wait timed out");
-    }
-
-    private static abstract class Flag {
-        abstract boolean isComplete();
     }
 
     private static class RemoteChangeFlagger implements MockBucket.RemoteChangeListener {

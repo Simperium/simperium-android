@@ -43,7 +43,7 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
     }
 
     @Override
-    public Ghost acknowledgeChange(RemoteChange remoteChange, Change<T> change)
+    public Ghost acknowledgeChange(RemoteChange remoteChange, Change change)
     throws RemoteChangeInvalidException {
         if (mListener != null) mListener.onAcknowledgeRemoteChange(remoteChange);
         return super.acknowledgeChange(remoteChange, change);

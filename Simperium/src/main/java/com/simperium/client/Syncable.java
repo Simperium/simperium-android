@@ -40,6 +40,13 @@ public abstract class Syncable implements Diffable {
         return !getDiffableValue().equals(ghost.getDiffableValue());
     }
 
+    public String getBucketName(){
+        if (bucket != null) {
+            return bucket.getName();
+        }
+        return null;
+    }
+
     public Bucket getBucket(){
         return bucket;
     }
