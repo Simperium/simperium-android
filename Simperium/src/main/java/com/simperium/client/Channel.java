@@ -778,6 +778,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         public ChangeProcessor(ChangeProcessorListener listener) {
             this.listener = listener;
             this.retryTimer = new Timer();
+            restore();
         }
 
         /**
