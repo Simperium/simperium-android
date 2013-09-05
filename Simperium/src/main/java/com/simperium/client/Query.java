@@ -155,25 +155,17 @@ public class Query<T extends Syncable> {
     }
 
     public Bucket.ObjectCursor<T> execute(){
-        return execute(null);
-    }
-
-    public Bucket.ObjectCursor<T> execute(CancellationSignal cancelSignal){
         if (bucket == null) {
             throw(new RuntimeException("Tried executing a query without a bucket"));
         }
-        return bucket.searchObjects(this, cancelSignal);
+        return bucket.searchObjects(this);
     }
 
-    public int count() {
-        return count(null);
-    }
-
-    public int count(CancellationSignal signal){
+    public int count(){
         if (bucket == null){
             throw(new RuntimeException("TRied executnig a query wihtout a bucket"));
         }
-        return bucket.count(this, signal);
+        return bucket.count(this);
     }
 
     public Query orderByKey(){

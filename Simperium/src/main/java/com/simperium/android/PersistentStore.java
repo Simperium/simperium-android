@@ -74,7 +74,7 @@ public class PersistentStore implements StorageProvider {
             reindexThread = new Thread(new Runnable(){
                 @Override
                 public void run(){
-                    Bucket.ObjectCursor<T> cursor = bucket.allObjects(signal);
+                    Bucket.ObjectCursor<T> cursor = bucket.allObjects();
                     while(cursor.moveToNext()){
                         try {
                             final T object = cursor.getObject();
@@ -174,18 +174,18 @@ public class PersistentStore implements StorageProvider {
          * All objects, returns a cursor for the given bucket
          */
         @Override
-        public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
+        public Bucket.ObjectCursor<T> all(){
             return buildCursor(schema, database.query(false, OBJECTS_TABLE,
                     new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"},
-                    "bucket=?", new String[]{bucketName}, null, null, null, null, cancelSignal));
+                    "bucket=?", new String[]{bucketName}, null, null, null, null));
         }
 
         /**
          * Count for the given query
          */
-        public int count(Query<T> query, CancellationSignal cancelSignal){
+        public int count(Query<T> query){
             QueryBuilder builder = new QueryBuilder(bucketName, query);
-            Cursor cursor = builder.count(database, cancelSignal);
+            Cursor cursor = builder.count(database);
             cursor.moveToFirst();
             int count = cursor.getInt(0);
             cursor.close();
@@ -197,9 +197,9 @@ public class PersistentStore implements StorageProvider {
          * 
          */
         @Override
-        public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal){
+        public Bucket.ObjectCursor<T> search(Query<T> query){
             QueryBuilder builder = new QueryBuilder(bucketName, query);
-            Cursor cursor = builder.query(database, cancelSignal);
+            Cursor cursor = builder.query(database);
             return buildCursor(schema, cursor);
         }
         
@@ -320,13 +320,13 @@ public class PersistentStore implements StorageProvider {
             compileQuery();
         }
 
-        protected Cursor query(SQLiteDatabase database, CancellationSignal cancelSignal){
-            return database.rawQuery(selection.append(statement).toString(), args, cancelSignal);
+        protected Cursor query(SQLiteDatabase database){
+            return database.rawQuery(selection.append(statement).toString(), args);
         }
 
-        protected Cursor count(SQLiteDatabase database, CancellationSignal cancelSignal){
+        protected Cursor count(SQLiteDatabase database){
             selection = new StringBuilder("SELECT count(objects.rowid) as `total` ");
-            return database.rawQuery(selection.append(statement).toString(), args, cancelSignal);
+            return database.rawQuery(selection.append(statement).toString(), args);
         }
 
         private void compileQuery(){

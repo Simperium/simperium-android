@@ -59,7 +59,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Get a cursor to all the objects
      */
     @Override
-    public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
+    public Bucket.ObjectCursor<T> all(){
         return null;
     }
 
@@ -67,7 +67,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Search
      */
     @Override
-    public Bucket.ObjectCursor<T> search(Query query, CancellationSignal cancelSignal){
+    public Bucket.ObjectCursor<T> search(Query query){
         return null;
     }
 
@@ -75,7 +75,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Count
      */
     @Override
-    public int count(Query query, CancellationSignal cancelSignal){
+    public int count(Query query){
         return 0;
     }
 }

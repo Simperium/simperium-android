@@ -148,7 +148,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         note.save();
         note2.save();
         
-        Bucket.ObjectCursor<Note> cursor = mNoteStore.all(null);
+        Bucket.ObjectCursor<Note> cursor = mNoteStore.all();
         assertEquals(2, cursor.getCount());
     }
   
@@ -159,12 +159,12 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         note.setTitle("Booh yah!");
         note.save();
   
-        Bucket.ObjectCursor<Note> cursor = mNoteStore.all(null);
+        Bucket.ObjectCursor<Note> cursor = mNoteStore.all();
         assertEquals(1, cursor.getCount());
   
         mNoteStore.reset();
   
-        cursor = mNoteStore.all(null);
+        cursor = mNoteStore.all();
         assertEquals(0, cursor.getCount());
   
     }
@@ -225,33 +225,33 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
 
         Query<Note> query = new Query<Note>();
         query.where("special", Query.ComparisonType.EQUAL_TO, true);
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(20, cursor.getCount());
 
         query = new Query<Note>();
         query.where("title", Query.ComparisonType.LIKE, "Note 7%");
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(111, cursor.getCount());
         
         query = new Query<Note>();
         query.where("title", Query.ComparisonType.NOT_LIKE, "Note 7%");
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(889, cursor.getCount());
         
         query = new Query<Note>();
         query.where("special", Query.ComparisonType.NOT_EQUAL_TO, true);
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(980, cursor.getCount());
         
         query = new Query<Note>();
         query.where("special", Query.ComparisonType.NOT_EQUAL_TO, false);
         query.where("title", Query.ComparisonType.LIKE, "Note 1%");
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(110, cursor.getCount());
 
         query = new Query<Note>();
         query.where("spanish", Query.ComparisonType.EQUAL_TO, "cuatro");
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(10, cursor.getCount());
     }
 
@@ -271,12 +271,12 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
 
         int count;
 
-        count = store.count(new Query<Note>(), null);
+        count = store.count(new Query<Note>());
         assertEquals(1000, count);
 
         Query<Note> query = new Query<Note>();
         query.where("title", Query.ComparisonType.LIKE, "Note 7%");
-        count = store.count(query, null);
+        count = store.count(query);
         assertEquals(111, count);
 
     }
@@ -309,7 +309,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
 
         Query<Note> query = new Query<Note>();
         query.order("position");
-        Bucket.ObjectCursor<Note> cursor = store.search(query, null);
+        Bucket.ObjectCursor<Note> cursor = store.search(query);
         assertEquals(3, cursor.getCount());
         cursor.moveToFirst();
         Note note = cursor.getObject();
@@ -319,7 +319,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         query = new Query<Note>();
         query.order("title", Query.SortType.DESCENDING);
         query.order("backwards");
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(3, cursor.getCount());
         cursor.moveToFirst();
         note = cursor.getObject();
@@ -331,7 +331,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         query = new Query<Note>();
         query.order("position");
         query.where("position", Query.ComparisonType.GREATER_THAN, 1);
-        cursor = store.search(query, null);
+        cursor = store.search(query);
         assertEquals(2, cursor.getCount());
         cursor.moveToFirst();
         note = cursor.getObject();

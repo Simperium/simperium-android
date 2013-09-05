@@ -48,17 +48,17 @@ public interface StorageProvider {
         /**
          * All objects, returns a cursor for the given bucket
          */
-        public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal);
+        public Bucket.ObjectCursor<T> all();
 
         /**
          * 
          */
-        public Bucket.ObjectCursor<T> search(Query<T> query, CancellationSignal cancelSignal);
+        public Bucket.ObjectCursor<T> search(Query<T> query);
 
         /**
          * Return the count for the given query
          */
-        public int count(Query<T> query, CancellationSignal cancelSignal);
+        public int count(Query<T> query);
 
     }
 

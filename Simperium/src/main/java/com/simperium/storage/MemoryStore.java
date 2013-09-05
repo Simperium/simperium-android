@@ -70,21 +70,21 @@ public class MemoryStore implements StorageProvider {
         /**
          * Get a cursor to all the objects
          */
-        public Bucket.ObjectCursor<T> all(CancellationSignal cancelSignal){
+        public Bucket.ObjectCursor<T> all(){
             return null;
         }
 
         /**
          * Search
          */
-        public Bucket.ObjectCursor<T> search(Query query, CancellationSignal cancelSignal){
+        public Bucket.ObjectCursor<T> search(Query query){
             return null;
         }
 
         /**
          * Count
          */
-        public int count(Query query, CancellationSignal cancelSignal){
+        public int count(Query query){
             return 0;
         }
     }

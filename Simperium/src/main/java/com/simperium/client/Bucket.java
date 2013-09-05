@@ -292,39 +292,25 @@ public class Bucket<T extends Syncable> {
     }
 
     public int count(){
-        return count(query(), null);
+        return count(query());
     }
 
-    public int count(Query<T> query, CancellationSignal cancel){
-        return storage.count(query, cancel);
+    public int count(Query<T> query){
+        return storage.count(query);
     }
 
     /**
      * Find all objects
      */
     public ObjectCursor<T> allObjects(){
-        return allObjects(null);
-    }
-
-    /**
-     * Find all objects and provide a way to cancel query
-     */
-    public ObjectCursor<T> allObjects(CancellationSignal cancel){
-        return new BucketCursor(storage.all(cancel));
+        return new BucketCursor(storage.all());
     }
 
     /**
      * Search using a query
      */
     public ObjectCursor<T> searchObjects(Query<T> query){
-        return searchObjects(query, null);
-    }
-
-    /**
-     * Search using a query and provide a way to cancel query
-     */
-    public ObjectCursor<T> searchObjects(Query<T> query, CancellationSignal cancel){
-        return new BucketCursor(storage.search(query, cancel));
+        return new BucketCursor(storage.search(query));
     }
 
     /**
