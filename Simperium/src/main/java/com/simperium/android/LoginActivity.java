@@ -246,7 +246,6 @@ public class LoginActivity extends Activity {
 		mSimperium.createUser(email, password, new User.AuthResponseHandler() {
 			@Override
 			public void onSuccess(User user) {
-				Log.i(TAG, String.format("Success! %s %s", user.getUserId(), user));
 				if(pd != null ) 
 					pd.dismiss();
 				registerUser(user);
@@ -255,13 +254,11 @@ public class LoginActivity extends Activity {
 			@Override
 			public void onInvalid(User user, Throwable error, JSONObject errors) {
 				showLoginError(errors.toString());
-				Log.i(TAG, String.format("Invalid: %s", errors));
 			}
 
 			@Override
 			public void onFailure(User user, Throwable error, String response) {
 				showLoginError(response);
-				Log.i(TAG, String.format("Failed: %s", response));
 			}
 		});
 	}
@@ -282,7 +279,6 @@ public class LoginActivity extends Activity {
 				new User.AuthResponseHandler() {
 					@Override
 					public void onSuccess(User user) {
-						Log.i(TAG, String.format("Success! %s %s", user.getUserId(), user));
 						if(pd != null) 
 							pd.dismiss();
 						registerUser(user);
@@ -297,7 +293,6 @@ public class LoginActivity extends Activity {
 							else
 								showLoginError(error.toString());
 						}
-						Log.i(TAG, String.format("Invalid: %s", errors));
 					}
 
 					@Override
@@ -309,7 +304,6 @@ public class LoginActivity extends Activity {
 							else
 								showLoginError(response);
 						}
-						Log.i(TAG, String.format("Failed: %s", response));
 					}
 				});
 	}
