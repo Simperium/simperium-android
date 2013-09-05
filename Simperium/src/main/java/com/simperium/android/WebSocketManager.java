@@ -92,6 +92,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
 
     public void connect(){
         // if we have channels, then connect, otherwise wait for a channel
+        cancelReconnect();
         if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
             Logger.log(String.format("Connecting to %s", socketURI));
             setConnectionStatus(ConnectionStatus.CONNECTING);
@@ -103,6 +104,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     public void disconnect(){
         // disconnect the channel
         reconnect = false;
+        cancelReconnect();
         if (isConnected()) {
             setConnectionStatus(ConnectionStatus.DISCONNECTING);
             Logger.log("Disconnecting");
@@ -175,10 +177,15 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     private void cancelReconnect(){
-        if (reconnectTimer != null) reconnectTimer.cancel();
+        if (reconnectTimer != null){
+            reconnectTimer.cancel();
+            reconnectTimer = null;
+        }
     }
 
     private void scheduleReconnect(){
+        // check if we're not already trying to reconnect
+        if (reconnectTimer != null) return;
         reconnectTimer = new Timer();
         // exponential backoff
         long retryIn = nextReconnectInterval();
@@ -237,7 +244,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
      *
      */
     public void onConnect(){
-        Logger.log(String.format("Connected %s", socketURI));
         setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
         heartbeatCount = 0; // reset heartbeat count
@@ -275,7 +281,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
             scheduleReconnect();
-            return;
         }
     }
 
