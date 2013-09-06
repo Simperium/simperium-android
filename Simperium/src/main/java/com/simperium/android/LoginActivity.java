@@ -324,8 +324,8 @@ public class LoginActivity extends Activity {
     };
 
     private void startSignUpOrSignin(final boolean isSignup) {
-        
-        if (mSystemService.getActiveNetworkInfo() == null) {
+        NetworkInfo network = mSystemService.getActiveNetworkInfo();
+        if (network == null || !network.isConnected()) {
             AlertUtil.showAlert(LoginActivity.this, R.string.no_network_title,
                     R.string.no_network_message);
         } else {
