@@ -220,7 +220,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
-        Logger.log(TAG, String.format(" => %s", message));
         if(isConnected()) socketClient.send(message);
     }
 
@@ -284,7 +283,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onError(Exception error) {
-        Logger.log(String.format("Error: %s", error), error);
+        Logger.log(TAG, String.format("Error: %s", error), error);
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
             scheduleReconnect();
