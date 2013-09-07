@@ -30,12 +30,8 @@ public class AndroidClient implements ClientFactory {
     }
 
     @Override
-    public AuthClient buildAuthProvider(String appId, String appSecret){
-        AsyncHttpClient httpClient = new AsyncHttpClient();
-        httpClient.setUserAgent(Simperium.CLIENT_ID);
-        AuthClient client = new AuthClient(appId, appSecret, httpClient);
-        client.context = mContext;
-
+    public VolleyAuthClient buildAuthProvider(String appId, String appSecret){
+        VolleyAuthClient client = new VolleyAuthClient(appId, appSecret, mContext);
         return client;
     }
 

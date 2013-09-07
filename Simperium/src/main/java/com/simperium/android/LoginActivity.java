@@ -28,6 +28,7 @@ import org.json.*;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
 import com.simperium.client.User;
+import com.simperium.client.AuthResponseListener;
 import com.simperium.util.AlertUtil;
 import com.simperium.util.Logger;
 import com.simperium.client.R;
@@ -244,7 +245,8 @@ public class LoginActivity extends Activity {
                 null,
                 getString(R.string.signing_up), true, false);
         
-        mSimperium.createUser(email, password, new User.AuthResponseHandler() {
+        mSimperium.createUser(email, password, new AuthResponseListener() {
+
             @Override
             public void onSuccess(User user) {
                 if(pd != null ) 
@@ -253,14 +255,16 @@ public class LoginActivity extends Activity {
             }
 
             @Override
-            public void onInvalid(User user, Throwable error, JSONObject errors) {
-                showLoginError(errors.toString());
+            public void onFailure(User user, String message) {
+                showLoginError(message);
             }
 
             @Override
-            public void onFailure(User user, Throwable error, String response) {
-                showLoginError(response);
+            public void onError(User user, Throwable error) {
+                // showLoginError(getString(R.string.login_failed_message));
+                showLoginError(error.getMessage());
             }
+
         });
     }
 
@@ -277,7 +281,8 @@ public class LoginActivity extends Activity {
                 getString(R.string.signing_in), true, false);
         
         mSimperium.authorizeUser(email, password,
-                new User.AuthResponseHandler() {
+                new AuthResponseListener() {
+
                     @Override
                     public void onSuccess(User user) {
                         if(pd != null) 
@@ -286,25 +291,13 @@ public class LoginActivity extends Activity {
                     }
 
                     @Override
-                    public void onInvalid(User user, Throwable error, JSONObject errors) {
-                        if(error instanceof org.apache.http.client.HttpResponseException) {
-                            org.apache.http.client.HttpResponseException errorObj = (org.apache.http.client.HttpResponseException) error;
-                            if(errorObj.getStatusCode() == 401)
-                                showLoginError(getString(R.string.login_failed_message));
-                            else
-                                showLoginError(error.toString());
-                        }
+                    public void onFailure(User user, String message) {
+                        showLoginError(message);
                     }
 
                     @Override
-                    public void onFailure(User user, Throwable error, String response) {
-                        if(error instanceof org.apache.http.client.HttpResponseException) {
-                            org.apache.http.client.HttpResponseException errorObj = (org.apache.http.client.HttpResponseException) error;
-                            if(errorObj.getStatusCode() == 401)
-                                showLoginError(getString(R.string.login_failed_message));
-                            else
-                                showLoginError(response);
-                        }
+                    public void onError(User user, Throwable error) {
+                        showLoginError(getString(R.string.login_failed_message));
                     }
                 });
     }
@@ -325,21 +318,19 @@ public class LoginActivity extends Activity {
 
     private void startSignUpOrSignin(final boolean isSignup) {
         NetworkInfo network = mSystemService.getActiveNetworkInfo();
+        if (isSignup == true)
+            signUp();
+        else
+            signIn();
+        if(true) return;
         if (network == null || !network.isConnected()) {
             AlertUtil.showAlert(LoginActivity.this, R.string.no_network_title,
                     R.string.no_network_message);
         } else {
-            Thread action = new Thread() {
-                public void run() {
-                    Looper.prepare();
-                    if (isSignup == true)
-                        signUp();
-                    else
-                        signIn();
-                    Looper.loop();
-                }
-            };
-            action.start();
+            if (isSignup == true)
+                signUp();
+            else
+                signIn();
         }
     }
     

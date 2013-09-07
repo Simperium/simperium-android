@@ -108,7 +108,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         cancelReconnect();
         if (isConnected()) {
             setConnectionStatus(ConnectionStatus.DISCONNECTING);
-            Logger.log("Disconnecting");
+            Logger.log(TAG, "Disconnecting");
             // being told to disconnect so don't automatically reconnect
             socketClient.disconnect();
         }
@@ -220,6 +220,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
+        Logger.log(TAG, String.format(" => %s", message));
         if(isConnected()) socketClient.send(message);
     }
 
@@ -254,6 +255,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onMessage(String message) {
+        Logger.log(TAG, String.format(" <= %s", message));
         scheduleHeartbeat();
         int size = message.length();
         String[] parts = message.split(":", 2);;
