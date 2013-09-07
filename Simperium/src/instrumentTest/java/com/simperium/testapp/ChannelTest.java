@@ -189,7 +189,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     public void testInitMessageWithNoChangeVersion(){
         String initMessage = String.format(
-            "init:{\"clientid\":\"%s\",\"api\":1,\"app_id\":\"%s\",\"cmd\":\"i::::500\",\"token\":\"%s\",\"name\":\"%s\"}",
+            "init:{\"clientid\":\"%s\",\"api\":1,\"app_id\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"name\":\"%s\"}",
             SESSION_ID, APP_ID, mBucket.getUser().getAccessToken(), mBucket.getRemoteName()
         );
 

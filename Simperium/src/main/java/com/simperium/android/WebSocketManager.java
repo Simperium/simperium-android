@@ -95,7 +95,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         // if we have channels, then connect, otherwise wait for a channel
         cancelReconnect();
         if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
-            Logger.log(String.format("Connecting to %s", socketURI));
+            Logger.log(TAG, String.format("Connecting to %s", socketURI));
             setConnectionStatus(ConnectionStatus.CONNECTING);
             reconnect = true;
             socketClient.connect();
@@ -246,6 +246,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
      *
      */
     public void onConnect() {
+        Logger.log(TAG, String.format("Connected"));
         setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
         heartbeatCount = 0; // reset heartbeat count
@@ -255,7 +256,6 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onMessage(String message) {
-        Logger.log(TAG, String.format(" <= %s", message));
         scheduleHeartbeat();
         int size = message.length();
         String[] parts = message.split(":", 2);;
@@ -276,7 +276,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onDisconnect(int code, String reason) {
-        Logger.log(String.format("Disconnect %d %s", code, reason));
+        Logger.log(TAG, String.format("Disconnect %d %s", code, reason));
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         notifyChannelsDisconnected();
         cancelHeartbeat();

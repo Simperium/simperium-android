@@ -70,7 +70,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
 
     // Parameters for querying bucket
-    static final Integer INDEX_PAGE_SIZE  = 500;
+    static final Integer INDEX_PAGE_SIZE  = 50;
     static final Integer INDEX_BATCH_SIZE = 10;
     static final Integer INDEX_QUEUE_SIZE = 5;
 
@@ -259,6 +259,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         // if we don't have a processor or we are getting a different cv
         if (indexProcessor == null || !indexProcessor.addIndexPage(index)) {
             // make sure we're not processing changes and clear pending changes
+            // TODO: pause the change processor instead of clearing it :(
             changeProcessor.reset();
             // start a new index
             String currentIndex;
@@ -270,7 +271,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
 
             indexProcessor = new IndexProcessor(getBucket(), currentIndex, indexProcessorListener);
-            indexProcessor.addIndexPage(index);
+            indexProcessor.start(index);
         } else {
             // received an index page for a different change version
             // TODO: reconcile the out of band index cv
@@ -311,7 +312,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         // we need to parse out the key and version, parse the json payload and
         // retrieve the data
         if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
-          Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
+            Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
         }
 
     }
@@ -530,7 +531,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
     }
 
-    private class ObjectVersion {
+    public static class ObjectVersion {
         private String key;
         private Integer version;
 
@@ -539,13 +540,34 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             this.version = version;
         }
 
+        public String getKey(){
+            return key;
+        }
+
+        public Integer getVersion(){
+            return version;
+        }
+
         public String toString(){
             return String.format("%s.%d", key, version);
         }
+
+        public static ObjectVersion parseString(String versionString)
+        throws java.text.ParseException {
+            int lastDot = versionString.lastIndexOf(".");
+            if (lastDot == -1) {
+                throw new java.text.ParseException(String.format("Missing version string: %s", versionString), versionString.length());
+            }
+            String key = versionString.substring(0, lastDot);
+            String version = versionString.substring(lastDot + 1);
+            return new ObjectVersion(key, Integer.parseInt(version));
+        }
     }
     private interface IndexProcessorListener {
+        
         void onComplete(String cv);
     }
+
     /**
      * When index data is received it should queue up entities in the IndexProcessor.
      * The IndexProcessor then receives the object data and on a seperate thread asks
@@ -562,7 +584,8 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
         final private String cv;
         final private Bucket bucket;
-        private List<String> index = Collections.synchronizedList(new ArrayList<String>());
+        private List<String> queue = Collections.synchronizedList(new ArrayList<String>());
+        private IndexQuery nextQuery;
         private boolean complete = false;
         final private IndexProcessorListener listener;
         int indexedCount = 0;
@@ -572,29 +595,27 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             this.cv = cv;
             this.listener = listener;
         }
+
         public Boolean addObjectData(String versionData){
 
             String[] objectParts = versionData.split("\n");
             String prefix = objectParts[0];
-            int lastDot = prefix.lastIndexOf(".");
-            if (lastDot == -1) {
-                Logger.log(TAG, String.format("Missing version string: %s", prefix));
-                return false;
-            }
-            String key = prefix.substring(0, lastDot);
-            String version = prefix.substring(lastDot + 1);
             String payload = objectParts[1];
 
+            ObjectVersion objectVersion;
+            try {
+                objectVersion = ObjectVersion.parseString(prefix);
+            } catch (java.text.ParseException e) {
+                Logger.log(TAG, "Failed to add object data", e);
+                return false;
+            }
             if (payload.equals(RESPONSE_UNKNOWN)) {
-                Logger.log(TAG, String.format("Object unkown to simperium: %s.%s", key, version));
+                Logger.log(TAG, String.format("Object unkown to simperium: %s", objectVersion));
                 return false;
             }
 
-            ObjectVersion objectVersion = new ObjectVersion(key, Integer.parseInt(version));
-            synchronized(index){
-                if(!index.remove(objectVersion.toString())){
-                    return false;
-                }
+            if (!queue.remove(objectVersion.toString())) {
+                return false;
             }
 
             JSONObject data = null;
@@ -606,20 +627,62 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 return false;
             }
 
-            Integer remoteVersion = Integer.parseInt(version);
             // build the ghost and update
             Map<String,Object> properties = Channel.convertJSON(data);
-            Ghost ghost = new Ghost(key, remoteVersion, properties);
+            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), properties);
             bucket.addObjectWithGhost(ghost);
             indexedCount ++;
-            if (complete && index.size() == 0) {
-                notifyDone();
-            } else if(indexedCount % 10 == 0) {
+
+            // for every 10 items, notify progress
+            if(indexedCount % 10 == 0) {
                 notifyProgress();
             }
-
+            next();
             return true;
         }
+
+        public void start(JSONObject indexPage){
+            addIndexPage(indexPage);
+        }
+
+        public void next(){
+
+            // if queue isn't empty, pull it off the top and send request
+            if (!queue.isEmpty()) {
+                String versionString = queue.get(0);
+                ObjectVersion version;
+                try {
+                    version = ObjectVersion.parseString(versionString);
+                } catch (java.text.ParseException e) {
+                    Logger.log(TAG, "Failed to parse version string, skipping", e);
+                    queue.remove(versionString);
+                    next();
+                    return;
+                }
+
+                if (!bucket.hasKeyVersion(version.getKey(), version.getVersion())) {
+                    sendMessage(String.format("%s:%s", COMMAND_ENTITY, version.toString()));
+                } else {
+                    Logger.log(TAG, String.format("Already have %s requesting next object", version));
+                    queue.remove(versionString);
+                    next();
+                    return;
+                }
+                return;
+            }
+
+            // if index is empty and we have a next request, make the request
+            if (nextQuery != null){
+                sendMessage(nextQuery.toString());
+                return;
+            }
+
+            // no queue, no next query, all done!
+            complete = true;
+            notifyDone();
+
+        }
+
         /**
          * Add the page of data, but only if indexPage cv matches. Detects when it's the
          * last page due to absence of cursor mark
@@ -650,15 +713,17 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 // query for each item that we don't have locally in the bucket
                 for (int i=0; i<indexVersions.length(); i++) {
                     try {
+
                         JSONObject version = indexVersions.getJSONObject(i);
                         String key  = version.getString(INDEX_OBJECT_ID_KEY);
                         Integer versionNumber = version.getInt(INDEX_OBJECT_VERSION_KEY);
                         ObjectVersion objectVersion = new ObjectVersion(key, versionNumber);
-                        if (!bucket.hasKeyVersion(key, versionNumber)) {
-                            // we need to get the remote object
-                            index.add(objectVersion.toString());
-                            sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
-                        }
+                        queue.add(objectVersion.toString());
+                        // if (!bucket.hasKeyVersion(key, versionNumber)) {
+                        //     // we need to get the remote object
+                        //     index.add(objectVersion.toString());
+                        //     // sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
+                        // }
 
                     } catch (JSONException e) {
                         Logger.log(TAG, String.format("Error processing index: %d", i), e);
@@ -667,7 +732,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 }
 
             }
-            //
+
             String nextMark = null;
             if (indexPage.has(INDEX_MARK_KEY)) {
                 try {
@@ -678,26 +743,15 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
 
             if (nextMark != null && nextMark.length() > 0) {
-                IndexQuery nextQuery = new IndexQuery(nextMark);
-                sendMessage(nextQuery.toString());
+                nextQuery = new IndexQuery(nextMark);
+                // sendMessage(nextQuery.toString());
             } else {
-                setComplete();
+                nextQuery = null;
             }
-
+            next();
             return true;
         }
-        /**
-         * Indicates that we have a complete index so when the entities are all populated
-         * we know we have all the data
-         */
-        private void setComplete(){
-            complete = true;
-            // if we have no pending object data
-            if (index.isEmpty()) {
-                // fire off the done listener
-                notifyDone();
-            }
-        }
+
         /**
          * If the index is done processing
          */
@@ -800,6 +854,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
             start();
         }
+
         /**
          * Local change to be queued
          */
