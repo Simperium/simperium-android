@@ -399,10 +399,17 @@ public class Bucket<T extends Syncable> {
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
      */
-    protected void addObjectWithGhost(Ghost ghost){
-        ghostStore.saveGhost(this, ghost);
-        T object = buildObject(ghost);
-        addObject(object);
+    protected void addObjectWithGhost(final Ghost ghost){
+        syncService.submit(new Runnable() {
+
+            @Override
+            public void run(){
+                ghostStore.saveGhost(Bucket.this, ghost);
+                T object = buildObject(ghost);
+                addObject(object);
+            }
+
+        });
     }
     /**
      * Update the ghost data
