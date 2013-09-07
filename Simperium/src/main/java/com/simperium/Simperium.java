@@ -5,13 +5,14 @@ import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
-import com.simperium.client.User.AuthResponseHandler;
 import com.simperium.client.SyncService;
 import com.simperium.client.ClientFactory;
 import com.simperium.client.ClientFactory.*;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.ObjectCacheProvider;
 import com.simperium.client.AuthProvider;
+import com.simperium.client.AuthResponseHandler;
+import com.simperium.client.AuthResponseListener;
 import com.simperium.client.ChannelProvider;
 import com.simperium.client.Channel;
 
@@ -19,6 +20,7 @@ import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
 
 import com.simperium.util.Logger;
+import com.simperium.util.AuthUtil;
 
 import org.json.JSONObject;
 
@@ -170,22 +172,23 @@ public class Simperium implements User.StatusChangeListener {
         }
     }
 
-    public User createUser(String email, String password, final AuthResponseHandler handler){
+    public User createUser(String email, String password, AuthResponseListener listener){
         user.setCredentials(email, password);
-        AuthResponseHandler wrapper = new AuthResponseHandlerWrapper(handler){
+        AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener){
             @Override
             public void onSuccess(User user){
                 super.onSuccess(user);
                 notifyOnUserCreatedListener(user);
             }
         };
-        mAuthProvider.createUser(user, wrapper);
+        mAuthProvider.createUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper));
         return user;
     }
 
-    public User authorizeUser(String email, String password, AuthResponseHandler handler){
+    public User authorizeUser(String email, String password, AuthResponseListener listener){
         user.setCredentials(email, password);
-        mAuthProvider.authorizeUser(user, handler);
+        AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener);
+        mAuthProvider.authorizeUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper));
         return user;
     }
 
@@ -210,27 +213,28 @@ public class Simperium implements User.StatusChangeListener {
         userListener = listener;
     }
 
-    private class AuthResponseHandlerWrapper implements AuthResponseHandler {
+    private class AuthResponseListenerWrapper implements AuthResponseListener {
 
-        final private AuthResponseHandler handler;
+        final private AuthResponseListener mListener;
 
-        public AuthResponseHandlerWrapper(final AuthResponseHandler handler){
-            this.handler = handler;
+        public AuthResponseListenerWrapper(final AuthResponseListener listener){
+            mListener = listener;
         }
 
         @Override
         public void onSuccess(User user) {
-            handler.onSuccess(user);
+            mAuthProvider.saveUser(user);
+            mListener.onSuccess(user);
         }
 
         @Override
-        public void onInvalid(User user, Throwable error, JSONObject validationErrors) {
-            handler.onInvalid(user, error, validationErrors);
+        public void onFailure(User user, String message) {
+            mListener.onFailure(user, message);
         }
 
         @Override
-        public void onFailure(User user, Throwable error, String message) {
-            handler.onFailure(user, error, message);
+        public void onError(User user, Throwable error) {
+            mListener.onError(user, error);
         }
 
     }

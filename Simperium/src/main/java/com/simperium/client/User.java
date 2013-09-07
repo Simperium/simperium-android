@@ -18,17 +18,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.protocol.HTTP;
+// import org.apache.http.HttpEntity;
+// import org.apache.http.NameValuePair;
+// import org.apache.http.client.entity.UrlEncodedFormEntity;
+// import org.apache.http.entity.StringEntity;
+// import org.apache.http.message.BasicNameValuePair;
+// import org.apache.http.protocol.HTTP;
+
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.loopj.android.http.AsyncHttpResponseHandler;
-import com.loopj.android.http.JsonHttpResponseHandler;
 
 public class User {
     /**
@@ -54,20 +52,6 @@ public class User {
     public enum Status {
         AUTHORIZED, NOT_AUTHORIZED, UNKNOWN
     }
-    /**
-     * For use with Simperium.createUser and Simperium.authorizeUser
-     */
-    public interface AuthResponseHandler {
-        public void onSuccess(User user);
-        public void onInvalid(User user, Throwable error, JSONObject validationErrors);
-        public void onFailure(User user, Throwable error, String message);
-    }
-
-    public static final String USERNAME_KEY = "username";
-    public static final String ACCESS_TOKEN_KEY = "access_token";
-    public static final String PASSWORD_KEY = "password";
-    public static final String USERID_KEY = "userid";
-    public static final String PROVIDER_KEY = "provider";
 
     private String email;
     private String password;
@@ -110,7 +94,7 @@ public class User {
         if (this.status != status) {
             this.status = status;
             if (this.listener != null) {
-                listener.onUserStatusChange(this.status);                
+                listener.onUserStatusChange(this.status);
             }
         }
     }
@@ -141,8 +125,16 @@ public class User {
         this.password = password;
     }
 
+    public String getPassword(){
+        return password;
+    }
+
     public String getUserId(){
         return userId;
+    }
+
+    protected void setUserId(String userId){
+        this.userId = userId;
     }
 
     public String getAccessToken(){
@@ -153,106 +145,37 @@ public class User {
         this.accessToken = token;
     }
 
-    public String toString(){
-        return toJSONString();
-    }
+    // public String toJSONString(){
+    //     return toJSONObject().toString();
+    // }
+    // 
+    // public JSONObject toJSONObject(){
+    //     return new JSONObject(toMap());
+    // }
+    // 
+    // public Map<String,String> toMap(){
+    //     HashMap<String,String> fields = new HashMap<String,String>();
+    //     fields.put(USERNAME_KEY, email);
+    //     fields.put(PASSWORD_KEY, password);
+    //     return fields;
+    // }
 
-    public String toJSONString(){
-        return new JSONObject(toMap()).toString();
-    }
+    // public HttpEntity toHttpEntity() throws UnsupportedEncodingException {
+    //     JSONObject json = new JSONObject(toMap());
+    //     return new StringEntity(json.toString());
+    // 
+    // }
+    // 
+    // public HttpEntity toHttpEntity(String authProvider) throws UnsupportedEncodingException {
+    //     if (authProvider == null){
+    //         return toHttpEntity();
+    //     }
+    //     List<NameValuePair> parameters = new ArrayList<NameValuePair>(3);
+    //     parameters.add(new BasicNameValuePair(USERNAME_KEY, email));
+    //     parameters.add(new BasicNameValuePair(PASSWORD_KEY, password));
+    //     parameters.add(new BasicNameValuePair(PROVIDER_KEY, authProvider));
+    //     return new UrlEncodedFormEntity(parameters, HTTP.UTF_8);
+    // }
 
-    private Map<String,String> toMap(){
-        HashMap<String,String> fields = new HashMap<String,String>();
-        fields.put(USERNAME_KEY, email);
-        fields.put(PASSWORD_KEY, password);
-        return fields;
-    }
 
-    public HttpEntity toHttpEntity() throws UnsupportedEncodingException {
-        JSONObject json = new JSONObject(toMap());
-        return new StringEntity(json.toString());
-
-    }
-
-    public HttpEntity toHttpEntity(String authProvider) throws UnsupportedEncodingException {
-        if (authProvider == null){
-            return toHttpEntity();
-        }
-        List<NameValuePair> parameters = new ArrayList<NameValuePair>(3);
-        parameters.add(new BasicNameValuePair(USERNAME_KEY, email));
-        parameters.add(new BasicNameValuePair(PASSWORD_KEY, password));
-        parameters.add(new BasicNameValuePair(PROVIDER_KEY, authProvider));
-        return new UrlEncodedFormEntity(parameters, HTTP.UTF_8);
-    }
-
-    public AsyncHttpResponseHandler getCreateResponseHandler(final User.AuthResponseHandler handler){
-        // returns an AsyncHttpResponseHandlert
-        final User user = this;
-        return new JsonHttpResponseHandler(){
-            @Override
-            public void onSuccess(int statusCode, JSONObject response){
-                // parse the response to JSON
-                // user was created, notify of a new user
-                try {
-                    userId = response.getString(USERID_KEY);
-                    accessToken = response.getString(ACCESS_TOKEN_KEY);
-                } catch(JSONException error){
-                    handler.onFailure(user, error, response.toString());
-                    return;
-                }
-                setStatus(Status.AUTHORIZED);
-                handler.onSuccess(user);
-            }
-            @Override
-            public void onFailure(Throwable error, JSONObject response){
-                handler.onInvalid(user, error, response);
-            }
-            @Override
-            public void onFailure(Throwable error, String response){
-                handler.onFailure(user, error, response);
-            }
-        };
-    }
-
-    public AsyncHttpResponseHandler getAuthorizeResponseHandler(final User.AuthResponseHandler handler){
-        final User user = this;
-        return new JsonHttpResponseHandler(){
-            @Override
-            public void onSuccess(int statusCode, JSONObject response){
-                // user was created, notify of a new user
-                try {
-                    userId = response.getString(USERID_KEY);
-                    accessToken = response.getString(ACCESS_TOKEN_KEY);
-                } catch(JSONException error){
-                    handler.onFailure(user, error, response.toString());
-                    return;
-                }
-                setStatus(Status.AUTHORIZED);
-                handler.onSuccess(user);
-            }
-            @Override
-            public void onFailure(Throwable error, JSONObject response){
-                handler.onInvalid(user, error, response);
-            }
-            @Override
-            public void onFailure(Throwable error, String response){
-                handler.onFailure(user, error, response);
-            }
-        };
-    }
-    
-    public AsyncHttpResponseHandler getUpdateResponseHandler(final User.AuthResponseHandler handler){
-        final User user = this;
-        return new JsonHttpResponseHandler(){
-            @Override
-            public void onSuccess(int statusCode, String response){
-            }
-            @Override
-            public void onFailure(Throwable error, JSONObject response){
-            }
-            @Override
-            public void onFailure(Throwable error, String response){
-            }
-        };
-    }
 }

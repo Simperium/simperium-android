@@ -8,7 +8,7 @@ import com.simperium.client.BucketSchema.Index;
 
 import com.simperium.testapp.mock.MockClient;
 import com.simperium.testapp.mock.MockBucketStore;
-import com.simperium.testapp.mock.MockAuthResponseHandler;
+import com.simperium.testapp.mock.MockAuthResponseListener;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -155,16 +155,16 @@ public class SimperiumTest extends BaseSimperiumTest {
     }
 
     public void testUserCreatedListener(){
-        UserCreatedListener listener = new UserCreatedListener();
-        MockAuthResponseHandler handler = new MockAuthResponseHandler();
+        UserCreatedListener userListener = new UserCreatedListener();
+        MockAuthResponseListener responseListener = new MockAuthResponseListener();
 
-        mSimperium.setOnUserCreatedListener(listener);
+        mSimperium.setOnUserCreatedListener(userListener);
 
-        mSimperium.createUser("test@test.com", "12345", handler);
+        mSimperium.createUser("test@test.com", "12345", responseListener);
 
         // make sure the handler and listener were actually called
-        assertTrue(handler.success);
-        assertTrue(listener.userCreated);
+        assertTrue(responseListener.success);
+        assertTrue(userListener.userCreated);
     }
 
     private static class UserCreatedListener implements Simperium.OnUserCreatedListener {

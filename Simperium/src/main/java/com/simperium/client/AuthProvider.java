@@ -1,18 +1,32 @@
 package com.simperium.client;
 
+import org.json.JSONObject;
+
 public interface AuthProvider {
+
+
+    public static final String USERNAME_KEY = "username";
+    public static final String ACCESS_TOKEN_KEY = "access_token";
+    public static final String PASSWORD_KEY = "password";
+    public static final String USERID_KEY = "userid";
+    public static final String PROVIDER_KEY = "provider";
+
+
     void setAuthProvider(String name);
 
     // attempt to create user
-    void createUser(User user, User.AuthResponseHandler handler);
+    public void createUser(JSONObject userDetails, AuthResponseHandler handler);
 
     // attempt to authorize user
-    void authorizeUser(User user, User.AuthResponseHandler handler);
+    public void authorizeUser(JSONObject userDetails, AuthResponseHandler handler);
+
+    // save this user
+    public void saveUser(User user);
 
     // restore account credentials between sessions
-    void restoreUser(User user);
+    public void restoreUser(User user);
 
     // clear user token/email
-    void deauthorizeUser(User user);
+    public void deauthorizeUser(User user);
 
 }
