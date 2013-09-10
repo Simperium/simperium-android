@@ -934,6 +934,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                     }
                 }
             }
+            retryTimer.cancel();
             Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
         }
 
