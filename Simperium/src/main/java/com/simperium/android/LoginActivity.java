@@ -210,7 +210,9 @@ public class LoginActivity extends Activity {
     }
 
     private void showLoginError(String message) {
-        if(pd != null ) 
+		if (isFinishing())
+			return;
+        if (pd != null ) 
             pd.dismiss();
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
                 LoginActivity.this);
