@@ -18,6 +18,7 @@ import com.simperium.testapp.mock.MockChannelListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Locale;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -62,6 +63,8 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     protected void tearDown() throws Exception {
+        mChannel.stop();
+        mChannel.reset();
         clearMessages();
         super.tearDown();
     }
@@ -188,9 +191,10 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     public void testInitMessageWithNoChangeVersion(){
-        String initMessage = String.format(
-            "init:{\"clientid\":\"%s\",\"api\":1,\"app_id\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"name\":\"%s\"}",
-            SESSION_ID, APP_ID, mBucket.getUser().getAccessToken(), mBucket.getRemoteName()
+        // 
+        String initMessage = String.format(Locale.US,
+            "init:{\"clientid\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"name\":\"%s\",\"library\":\"%s\",\"api\":1,\"app_id\":\"%s\",\"version\":%d}",
+            SESSION_ID, mBucket.getUser().getAccessToken(), mBucket.getRemoteName(), "android", APP_ID, 0
         );
 
         start();
@@ -202,9 +206,10 @@ public class ChannelTest extends BaseSimperiumTest {
     public void testInitMessageWithChangeVersion(){
         // set a fake change version on the bucket
         String cv = "fake-cv";
-        String initMessage = String.format(
-            "init:{\"clientid\":\"%s\",\"api\":1,\"app_id\":\"%s\",\"cmd\":\"cv:%s\",\"token\":\"%s\",\"name\":\"%s\"}",
-            SESSION_ID, APP_ID, cv, mBucket.getUser().getAccessToken(), mBucket.getRemoteName()
+
+        String initMessage = String.format(Locale.US,
+            "init:{\"clientid\":\"%s\",\"cmd\":\"cv:%s\",\"token\":\"%s\",\"name\":\"%s\",\"library\":\"%s\",\"api\":1,\"app_id\":\"%s\",\"version\":%d}",
+            SESSION_ID, cv, mBucket.getUser().getAccessToken(), mBucket.getRemoteName(), "android", APP_ID, 0
         );
         mBucket.setChangeVersion(cv);
 

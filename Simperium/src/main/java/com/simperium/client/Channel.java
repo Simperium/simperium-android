@@ -45,12 +45,17 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
     public static final String TAG="Simperium.Channel";
     // key names for init command json object
-    static final String FIELD_CLIENT_ID   = "clientid";
-    static final String FIELD_API_VERSION = "api";
-    static final String FIELD_AUTH_TOKEN  = "token";
-    static final String FIELD_APP_ID      = "app_id";
-    static final String FIELD_BUCKET_NAME = "name";
-    static final String FIELD_COMMAND     = "cmd";
+    static public final String FIELD_CLIENT_ID       = "clientid";
+    static public final String FIELD_API_VERSION     = "api";
+    static public final String FIELD_AUTH_TOKEN      = "token";
+    static public final String FIELD_APP_ID          = "app_id";
+    static public final String FIELD_BUCKET_NAME     = "name";
+    static public final String FIELD_COMMAND         = "cmd";
+    static public final String FIELD_LIBRARY         = "library";
+    static public final String FIELD_LIBRARY_VERSION = "version";
+
+    static public final String LIBRARY_NAME = "android";
+    static public final Integer LIBRARY_VERSION = 0;
 
     // commands sent over the socket
     public static final String COMMAND_INIT      = "init"; // init:{INIT_PROPERTIES}
@@ -380,6 +385,8 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         init.put(FIELD_AUTH_TOKEN, bucket.getUser().getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
         init.put(FIELD_COMMAND, initialCommand);
+        init.put(FIELD_LIBRARY_VERSION, LIBRARY_VERSION);
+        init.put(FIELD_LIBRARY, LIBRARY_NAME);
         String initParams = new JSONObject(init).toString();
         String message = String.format(COMMAND_FORMAT, COMMAND_INIT, initParams);
         sendMessage(message);
