@@ -966,7 +966,9 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                                     Change queuedChange = queuedChanges.next();
                                     if (queuedChange.getKey().equals(change.getKey())) {
                                         queuedChanges.remove();
-                                        compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
+                                        if (!remoteChange.isRemoveOperation()) {
+                                            compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
+                                        }
                                     }
                                 }
                                 if (compressed != null) {
