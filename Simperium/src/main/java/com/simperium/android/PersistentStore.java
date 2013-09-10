@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.Collections;
+import java.util.Locale;
 
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -287,23 +288,23 @@ public class PersistentStore implements StorageProvider {
         Cursor tableInfo = tableInfo(INDEXES_TABLE);
         if (tableInfo.getCount() == 0) {
             // create the table
-            database.execSQL(String.format("CREATE TABLE %s (bucket, key, name, value)", INDEXES_TABLE));
+            database.execSQL(String.format(Locale.US, "CREATE TABLE %s (bucket, key, name, value)", INDEXES_TABLE));
         }
-        database.execSQL(String.format("CREATE INDEX IF NOT EXISTS index_name ON %s(bucket, key, name)", INDEXES_TABLE));
-        database.execSQL(String.format("CREATE INDEX IF NOT EXISTS index_value ON %s(bucket, key, value)", INDEXES_TABLE));
-        database.execSQL(String.format("CREATE INDEX IF NOT EXISTS index_key ON %s(bucket, key)", INDEXES_TABLE));
+        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_name ON %s(bucket, key, name)", INDEXES_TABLE));
+        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_value ON %s(bucket, key, value)", INDEXES_TABLE));
+        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_key ON %s(bucket, key)", INDEXES_TABLE));
     }
 
     private void configureObjects(){
         Cursor tableInfo = tableInfo(OBJECTS_TABLE);
         if (tableInfo.getCount() == 0) {
-            database.execSQL(String.format("CREATE TABLE %s (bucket, key, data)", OBJECTS_TABLE));
+            database.execSQL(String.format(Locale.US, "CREATE TABLE %s (bucket, key, data)", OBJECTS_TABLE));
         }
-        database.execSQL(String.format("CREATE UNIQUE INDEX IF NOT EXISTS bucket_key ON %s (bucket, key)", OBJECTS_TABLE));
+        database.execSQL(String.format(Locale.US, "CREATE UNIQUE INDEX IF NOT EXISTS bucket_key ON %s (bucket, key)", OBJECTS_TABLE));
     }
 
     private Cursor tableInfo(String tableName){
-        return database.rawQuery(String.format("PRAGMA table_info(%s)", tableName), null);
+        return database.rawQuery(String.format(Locale.US, "PRAGMA table_info(%s)", tableName), null);
     }
 
     private class QueryBuilder {
@@ -355,18 +356,18 @@ public class PersistentStore implements StorageProvider {
                 Query.Comparator condition = conditions.next();
                 String key = condition.getKey();
                 // store which keys have been joined in and which alias
-                includedKeys.put(key, String.format("i%d", i));
+                includedKeys.put(key, String.format(Locale.US, "i%d", i));
                 names.add(condition.getKey());
-                filters.append(String.format(" LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
+                filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                 Object subject = condition.getSubject();
-                String null_condition = condition.includesNull() ? String.format(" i%d.value IS NULL OR", i) : String.format(" i%d.value IS NOT NULL AND", i);
-                where.append(String.format(" AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
+                String null_condition = condition.includesNull() ? String.format(Locale.US, " i%d.value IS NULL OR", i) : String.format(Locale.US, " i%d.value IS NOT NULL AND", i);
+                where.append(String.format(Locale.US, " AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
                 if (subject instanceof Float) {
-                    where.append(String.format(" %f)", (Float)subject));
+                    where.append(String.format(Locale.US, " %f)", (Float)subject));
                 } else if (subject instanceof Integer){
-                    where.append(String.format(" %d)", (Integer)subject));
+                    where.append(String.format(Locale.US, " %d)", (Integer)subject));
                 } else if (subject instanceof Boolean){
-                    where.append(String.format(" %d)", ((Boolean)subject ? 1 : 0)));
+                    where.append(String.format(Locale.US, " %d)", ((Boolean)subject ? 1 : 0)));
                 } else {
                     where.append(" ?)");
                     replacements.add(subject.toString());
@@ -377,12 +378,12 @@ public class PersistentStore implements StorageProvider {
             while(keys.hasNext()){
                 String key = keys.next();
                 if (!includedKeys.containsKey(key)) {
-                    includedKeys.put(key, String.format("i%d", i));
+                    includedKeys.put(key, String.format(Locale.US, "i%d", i));
                     names.add(key);
-                    filters.append(String.format(" LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
+                    filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                     i++;
                 }
-                selection.append(String.format(", %s.value AS `%s`", includedKeys.get(key), key));
+                selection.append(String.format(Locale.US, ", %s.value AS `%s`", includedKeys.get(key), key));
                 
             }
 
@@ -397,21 +398,21 @@ public class PersistentStore implements StorageProvider {
                     Query.Sorter sorter = sorters.next();
                     String sortKey = sorter.getKey();
                     if (sorter instanceof Query.KeySorter) {
-                        order.append(String.format(" objects.key %s", sorter.getType()));
+                        order.append(String.format(Locale.US, " objects.key %s", sorter.getType()));
                     } else if (includedKeys.containsKey(sortKey)) {
-                        order.append(String.format(" %s.value %s", includedKeys.get(sortKey), sorter.getType()));
+                        order.append(String.format(Locale.US, " %s.value %s", includedKeys.get(sortKey), sorter.getType()));
                     } else {
                         // join in the sorting field it wasn't used in a search
-                        filters.append(String.format(" LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
+                        filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                         names.add(sorter.getKey());
-                        order.append(String.format(" i%d.value %s", i, sorter.getType()));
+                        order.append(String.format(Locale.US, " i%d.value %s", i, sorter.getType()));
                         i++;
                     }
                 }
             } else {
                 order.delete(0, order.length());
             }
-            statement = String.format("FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
+            statement = String.format(Locale.US, "FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
             names.addAll(replacements);
             args = names.toArray(new String[names.size()]);
         }
