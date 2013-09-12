@@ -171,10 +171,14 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         }, HEARTBEAT_INTERVAL);
     }
 
-    private void sendHearbeat() {
+    synchronized private void sendHearbeat() {
         heartbeatCount ++;
         String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
-        if(isConnected()) socketClient.send(command);
+
+        if(!isConnected()) return;
+
+        socketClient.send(command);
+
     }
 
     private void cancelReconnect() {
@@ -220,7 +224,10 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
         String message = String.format("%d:%s", channelId, event.getMessage());
-        if(isConnected()) socketClient.send(message);
+
+        if(isConnected()){
+            socketClient.send(message);
+        }
     }
 
     public void onClose(Channel fromChannel) {
@@ -237,6 +244,10 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
 
     public void onOpen(Channel fromChannel) {
         connect();
+    }
+
+    public void onIdle(Channel fromChannel){
+        // no-op
     }
 
     /**
