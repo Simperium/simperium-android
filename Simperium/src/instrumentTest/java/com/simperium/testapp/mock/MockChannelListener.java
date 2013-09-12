@@ -14,7 +14,7 @@ import java.util.Collections;
 
 public class MockChannelListener implements Channel.OnMessageListener {
 
-    public boolean open = false, autoAcknowledge;
+    public boolean open = false, autoAcknowledge = false;
     public List<Channel.MessageEvent> messages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     public Channel.MessageEvent lastMessage;
 
