@@ -978,16 +978,15 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                     Change change = null;
                     change = pendingChanges.get(remoteChange.getKey());
                     if (remoteChange.isAcknowledgedBy(change)) {
+                        serializer.onAcknowledgeChange(change);
                         // change is no longer pending so remove it
                         pendingChanges.remove(change.getKey());
                         if (remoteChange.isError()) {
                             Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
-                            // TODO: determine if we can retry this change by reapplying
-                            listener.onError(remoteChange, change);
+                            onError(remoteChange, change);
                         } else {
                             try {
-                                Ghost ghost = listener.onAcknowledged(remoteChange, change);
-                                serializer.onAcknowledgeChange(change);
+                                Ghost ghost = onAcknowledged(remoteChange, change);
                                 Change compressed = null;
                                 Iterator<Change> queuedChanges = localQueue.iterator();
                                 while(queuedChanges.hasNext()){
