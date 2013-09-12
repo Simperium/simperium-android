@@ -90,7 +90,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
-    protected boolean started = false, connected = false, startOnConnect = false, stopOnIdle = false;
+    protected boolean started = false, connected = false, startOnConnect = false, idle = true;
     private boolean haveIndex = false;
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
@@ -177,28 +177,26 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
         });
 
-        changeProcessor = new ChangeProcessor(new ChangeProcessorListener<T>(){
-            @Override
-            public void onComplete(){
-            }
+        changeProcessor = new ChangeProcessor();
+    }
 
-            @Override
-            public Ghost onAcknowledged(RemoteChange remoteChange, Change acknowledgedChange)
-            throws RemoteChangeInvalidException {
-                // if this isn't a removal, update the ghost for the relevant object
-                return bucket.acknowledgeChange(remoteChange, acknowledgedChange);
-            }
-            @Override
-            public void onError(RemoteChange remoteChange, Change erroredChange){
-                Logger.log(TAG, String.format("Received error from service %s", remoteChange));
-            }
-            @Override
-            public Ghost onRemote(RemoteChange remoteChange)
-            throws RemoteChangeInvalidException {
-                return bucket.applyRemoteChange(remoteChange);
-            }
-            
-        });
+    public String toString(){
+        return String.format("%s<%s>", super.toString(), bucket.getName());
+    }
+
+    protected Ghost onAcknowledged(RemoteChange remoteChange, Change acknowledgedChange)
+    throws RemoteChangeInvalidException {
+        // if this isn't a removal, update the ghost for the relevant object
+        return bucket.acknowledgeChange(remoteChange, acknowledgedChange);
+    }
+
+    protected void onError(RemoteChange remoteChange, Change erroredChange){
+        Logger.log(TAG, String.format("Received error from service %s", remoteChange));
+    }
+
+    protected Ghost onRemote(RemoteChange remoteChange)
+    throws RemoteChangeInvalidException {
+        return bucket.applyRemoteChange(remoteChange);
     }
 
     @Override
@@ -288,7 +286,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         @Override
         public void onComplete(String cv){
             haveIndex = true;
-            changeProcessor.start();
         }
     };
 
@@ -343,6 +340,13 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     }
 
     /**
+     * ChangeProcessor has no work to do
+     */
+    public boolean isIdle(){
+        return idle;
+    }
+
+    /**
      * Send Bucket's init message to start syncing changes.
      */
     @Override
@@ -364,7 +368,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         }
 
         started = true;
-        stopOnIdle = false;
 
         Object initialCommand;
         if (!hasChangeVersion()) {
@@ -399,9 +402,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     public void stop(){
         startOnConnect = false;
         started = false;
-        if (changeProcessor != null) {
-            changeProcessor.stop();
-        }
+        changeProcessor.stop();
         if (listener != null) {
             listener.onClose(this);
         }
@@ -410,13 +411,14 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     // websocket
     public void onConnect(){
         connected = true;
+        Logger.log(TAG, String.format("onConnect autoStart? %b", startOnConnect));
         if(startOnConnect) start();
     }
 
     public void onDisconnect(){
-        changeProcessor.stop();
-        connected = false;
         started = false;
+        connected = false;
+        changeProcessor.stop();
     }
     /**
      * Receive a message from the WebSocketManager which already strips the channel
@@ -777,27 +779,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         }
     }
 
-    private interface ChangeProcessorListener<T extends Syncable> {
-        /**
-         * Received a remote change that acknowledges local change
-         */
-        public Ghost onAcknowledged(RemoteChange remoteChange, Change change)
-            throws RemoteChangeInvalidException;
-        /**
-         * Received a remote change indicating an error in change request
-         */
-        public void onError(RemoteChange remoteChange, Change change);
-        /**
-         * Received a remote change that did not originate locally
-         */
-        public Ghost onRemote(RemoteChange change)
-            throws RemoteChangeInvalidException;
-        /**
-         * All changes have been processed and entering idle state
-         */
-        public void onComplete();
-    }
-    
     public boolean haveCompleteIndex(){
         return haveIndex;
     }
@@ -813,7 +794,6 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
 
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
-        private ChangeProcessorListener listener;
         private Thread thread;
 
         private List<Map<String,Object>> remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>(10));
@@ -824,9 +804,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         private final Object lock = new Object();
         public Object runLock = new Object();
 
-        public ChangeProcessor(ChangeProcessorListener listener) {
-            this.listener = listener;
-            this.retryTimer = new Timer();
+        public ChangeProcessor() {
             restore();
         }
 
@@ -842,17 +820,19 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                 SerializedQueue<T> serialized = serializer.restore(bucket);
                 localQueue.addAll(serialized.queued);
                 pendingChanges.putAll(serialized.pending);
+                resendPendingChanges();
             }
         }
 
         public void addChanges(List<Object> changes){
+            Logger.log(TAG, String.format("Add remote changes to processor %d", changes.size()));
             synchronized(lock){
                 Iterator iterator = changes.iterator();
                 while(iterator.hasNext()){
                     remoteQueue.add((Map<String,Object>)iterator.next());
                 }
+                start();
             }
-            start();
         }
 
         public void addChange(Map<String,Object> change){
@@ -884,8 +864,11 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
         public void start(){
             // channel must be started and have complete index
-            if (!started || !haveCompleteIndex()) {
+            if (!started) {
                 return;
+            }
+            if (retryTimer == null) {
+                retryTimer = new Timer();
             }
             if (thread == null || thread.getState() == Thread.State.TERMINATED) {
                 thread = new Thread(this, String.format("simperium.processor.%s", getBucket().getName()));
@@ -918,6 +901,26 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             stop();
         }
 
+        /**
+         * Check if we have changes we can send out
+         */
+        protected boolean hasQueuedChanges(){
+            synchronized(lock){
+                Logger.log(TAG, String.format("Checking for queued changes %d", localQueue.size()));
+                // if we have have any remote changes to process we have work to do
+                if (!remoteQueue.isEmpty()) return true;
+                // if our local queue is empty we don't have work to do
+                if (localQueue.isEmpty()) return false;
+                // if we have queued changes, if there's no corresponding pending change then there's still work to do
+                Iterator<Change> changes = localQueue.iterator();
+                while(changes.hasNext()){
+                    Change change = changes.next();
+                    if (!pendingChanges.containsKey(change.getKey())) return true;
+                }
+                return false;
+            }
+        }
+
         protected boolean hasPendingChanges(){
             synchronized(lock){
                 return !pendingChanges.isEmpty() || !localQueue.isEmpty();
@@ -925,30 +928,48 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         }
 
         public void run(){
+            if(!haveCompleteIndex()) return;
+            idle = false;
             Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
-            while(true && !Thread.interrupted()){
-                // TODO: only process one remote change at a time
-                processRemoteChanges();
-                // TODO: only process one local change at a time
-                processLocalChanges();
-                if(!hasPendingChanges()){
+            while(true){
+                try {
+                    processRemoteChanges();
+                    processLocalChanges();
+                } catch (InterruptedException e) {
+                    // shut down
+                    break;
+                }
+                if(!hasQueuedChanges()){
+                    // we've sent out every change that we can so far, if nothing is pending we can disconnect
+                    if (pendingChanges.isEmpty()) {
+                        idle = true;
+                    }
+
                     synchronized(runLock){
                         try {
+                            Logger.log(TAG, String.format("Waiting <%s> idle? %b", bucket.getName(), idle));
                             runLock.wait();
                         } catch (InterruptedException e) {
                             break;
                         }
+                        Logger.log(TAG, "Waking change processor");
                     }
                 }
             }
             retryTimer.cancel();
+            retryTimer = null;
             Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
         }
 
-        private void processRemoteChanges(){
+        private void processRemoteChanges()
+        throws InterruptedException {
             synchronized(lock){
+                Logger.log(TAG, String.format("Processing remote changes %d", remoteQueue.size()));
                 // bail if thread is interrupted
-                while(remoteQueue.size() > 0 && !Thread.interrupted()){
+                while(remoteQueue.size() > 0){
+                    if (Thread.interrupted()) {
+                        throw new InterruptedException();
+                    }
                     // take an item off the queue
                     RemoteChange remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
                     Boolean acknowledged = false;
@@ -990,7 +1011,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                             Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
                         } else {
                             try {
-                                listener.onRemote(remoteChange);
+                                onRemote(remoteChange);
                             } catch (RemoteChangeInvalidException e) {
                                 Logger.log(TAG, "Remote change could not be applied", e);
                             }
@@ -1009,14 +1030,20 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
         }
         
-        public void processLocalChanges(){
+        public void processLocalChanges()
+        throws InterruptedException {
             synchronized(lock){
                 if (localQueue.isEmpty()) {
                     return;
                 }
                 final List<Change> sendLater = new ArrayList<Change>();
                 // find the first local change whose key does not exist in the pendingChanges and there are no remote changes
-                while(!localQueue.isEmpty() && !Thread.interrupted()){
+                while(!localQueue.isEmpty()){
+                    if (Thread.interrupted()) {
+                        localQueue.addAll(0, sendLater);
+                        throw new InterruptedException();
+                    }
+
                     // take the first change of the queue
                     Change localChange = localQueue.remove(0);
                         // check if there's a pending change with the same key
@@ -1033,11 +1060,25 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                             pendingChanges.put(localChange.getKey(), localChange);
                             localChange.setOnRetryListener(this);
                             // starts up the timer
-                            this.retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
+                            retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
                         }
                     }
                 }
                 localQueue.addAll(0, sendLater);
+            }
+        }
+
+        private void resendPendingChanges(){
+            if (retryTimer == null) {
+                retryTimer = new Timer();
+            }
+            synchronized(lock){
+                // resend all pending changes
+                for (Map.Entry<String, Change> entry : pendingChanges.entrySet()) {
+                    Change change = entry.getValue();
+                    change.setOnRetryListener(this);
+                    retryTimer.scheduleAtFixedRate(change.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
+                }
             }
         }
 
