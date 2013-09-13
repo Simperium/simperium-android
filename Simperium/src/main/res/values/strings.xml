@@ -38,7 +38,6 @@
     <string name="task_label_hint">Describe task</string>
     <string name="or">or</string>
     <string name="no_account">Don\'t have an account yet?</string>
-    <string name="sign_up">Sign Up</string>
     <string name="have_account">Already have an account?</string>
 
 </resources>
