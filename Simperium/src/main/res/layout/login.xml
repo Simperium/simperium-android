@@ -124,7 +124,7 @@
                 android:layout_marginLeft="8dp"
                 android:textSize="16sp"
                 android:textColor="#3489d6"
-                android:text="@string/sign_up"
+                android:text="@string/signup_label"
                 android:visibility="gone"/>
 
         <TextView
