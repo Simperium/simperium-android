@@ -11,6 +11,7 @@ import com.simperium.client.ClientFactory.*;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.ObjectCacheProvider;
 import com.simperium.client.AuthProvider;
+import com.simperium.client.AuthException;
 import com.simperium.client.AuthResponseHandler;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.ChannelProvider;
@@ -228,13 +229,8 @@ public class Simperium implements User.StatusChangeListener {
         }
 
         @Override
-        public void onFailure(User user, String message) {
-            mListener.onFailure(user, message);
-        }
-
-        @Override
-        public void onError(User user, Throwable error) {
-            mListener.onError(user, error);
+        public void onFailure(User user, AuthException error) {
+            mListener.onFailure(user, error);
         }
 
     }

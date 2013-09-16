@@ -1,6 +1,7 @@
 package com.simperium.android;
 
 import com.simperium.client.AuthProvider;
+import com.simperium.client.AuthException;
 import com.simperium.client.AuthResponseHandler;
 import com.simperium.client.User;
 import com.simperium.util.Logger;
@@ -10,6 +11,7 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.NetworkResponse;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
@@ -123,8 +125,12 @@ public class VolleyAuthClient implements AuthProvider {
 
             @Override
             public void onErrorResponse(VolleyError error){
-                Logger.log(TAG, String.format("Failed auth request: %s", error.getMessage()), error);
-                handler.onError(error);
+                if (error.networkResponse != null) {
+                    handler.onError(
+                        AuthException.exceptionForStatusCode(error.networkResponse.statusCode));
+                } else {
+                    handler.onError(AuthException.defaultException());
+                }
             }
 
         };
