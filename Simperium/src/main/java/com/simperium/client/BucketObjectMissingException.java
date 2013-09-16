@@ -1,6 +1,8 @@
 package com.simperium.client;
 
-public class BucketObjectMissingException extends Exception {
+import com.simperium.SimperiumException;
+
+public class BucketObjectMissingException extends SimperiumException {
     public BucketObjectMissingException() { super(); }
     public BucketObjectMissingException(String message) { super(message); }
     public BucketObjectMissingException(String message, Throwable cause) { super(message, cause); }

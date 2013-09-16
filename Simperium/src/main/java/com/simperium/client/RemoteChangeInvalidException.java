@@ -1,6 +1,8 @@
 package com.simperium.client;
 
-public class RemoteChangeInvalidException extends Exception {
+import com.simperium.SimperiumException;
+
+public class RemoteChangeInvalidException extends SimperiumException {
   public RemoteChangeInvalidException() { super(); }
   public RemoteChangeInvalidException(String message) { super(message); }
   public RemoteChangeInvalidException(String message, Throwable cause) { super(message, cause); }

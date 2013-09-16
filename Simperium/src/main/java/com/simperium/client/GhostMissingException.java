@@ -1,6 +1,8 @@
 package com.simperium.client;
 
-public class GhostMissingException extends Exception {
+import com.simperium.SimperiumException;
+
+public class GhostMissingException extends SimperiumException {
   public GhostMissingException() { super(); }
   public GhostMissingException(String message) { super(message); }
   public GhostMissingException(String message, Throwable cause) { super(message, cause); }

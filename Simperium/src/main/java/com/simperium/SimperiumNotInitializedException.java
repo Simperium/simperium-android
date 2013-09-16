@@ -1,6 +1,6 @@
 package com.simperium;
 
-public class SimperiumNotInitializedException extends Exception {
+public class SimperiumNotInitializedException extends SimperiumException {
 
 	public SimperiumNotInitializedException(String string) {
 		super(string);
