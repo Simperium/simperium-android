@@ -2,16 +2,16 @@ package com.simperium.testapp.mock;
 
 import com.simperium.client.User;
 import com.simperium.client.AuthResponseListener;
+import com.simperium.client.AuthException;
 
 import org.json.JSONObject;
 
 public class MockAuthResponseListener implements AuthResponseListener {
 
-    public boolean success = false, error = false, failure = false;
+    public boolean success = false, failure = false;
 
     public User user;
-    public Throwable throwable;
-    public String message;
+    public AuthException exception;
 
     @Override
     public void onSuccess(User user){
@@ -20,17 +20,10 @@ public class MockAuthResponseListener implements AuthResponseListener {
     }
 
     @Override
-    public void onFailure(User user, String message){
+    public void onFailure(User user, AuthException exception){
         failure = true;
         this.user = user;
-        this.message = message;
-    }
-
-    @Override
-    public void onError(User user, Throwable throwable){
-        error = true;
-        this.user = user;
-        this.throwable = throwable;
+        this.exception = exception;
     }
 
 }
