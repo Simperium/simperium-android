@@ -24,6 +24,7 @@
     <string name="signing_in">Signing in...</string>
     <string name="agree_terms_of_service">By signing up, you agree to our <u>Terms of Service.</u></string>
     <string name="login_failed_message">Could not login with the provided email address and password.</string>
+    <string name="login_failed_account_exists">An account with this email already exists.</string>
     <string name="create_account">Create a New Account</string>
     <string name="forgot_password">Forgot your password?</string>
     

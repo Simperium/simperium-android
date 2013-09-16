@@ -29,6 +29,7 @@ import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
 import com.simperium.client.User;
 import com.simperium.client.AuthResponseListener;
+import com.simperium.client.AuthException;
 import com.simperium.util.AlertUtil;
 import com.simperium.util.Logger;
 import com.simperium.client.R;
@@ -43,7 +44,6 @@ public class LoginActivity extends Activity {
     private static final String URL_FORGOT_PASSWORD = "https://simple-note.appspot.com/forgot/";
 
     private ConnectivityManager mSystemService;
-    private ProgressDialog pd;
 
     public static final String EMAIL_EXTRA = "email";
 
@@ -61,6 +61,9 @@ public class LoginActivity extends Activity {
     private Button signinButton;
 
     private Simperium mSimperium;
+
+
+    protected ProgressDialog mProgressDialog;
 
     public void setSimperium(Simperium simperium){
         mSimperium = simperium;
@@ -212,8 +215,8 @@ public class LoginActivity extends Activity {
     private void showLoginError(String message) {
 		if (isFinishing())
 			return;
-        if (pd != null ) 
-            pd.dismiss();
+        if (mProgressDialog != null )
+            mProgressDialog.dismiss();
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(
                 LoginActivity.this);
         dialogBuilder.setTitle(getString(R.string.error));
@@ -227,6 +230,30 @@ public class LoginActivity extends Activity {
         dialogBuilder.setCancelable(true);
         dialogBuilder.create().show();
     }
+
+    private AuthResponseListener mAuthListener = new AuthResponseListener() {
+        @Override
+        public void onSuccess(User user) {
+            if(mProgressDialog != null )
+                mProgressDialog.dismiss();
+            registerUser(user);
+        }
+
+        @Override
+        public void onFailure(User user, AuthException error) {
+            String message;
+            switch (error.failureType) {
+                case EXISTING_ACCOUNT:
+                    message = getString(R.string.login_failed_account_exists);
+                    break;
+                case INVALID_ACCOUNT:
+                default:
+                    message = getString(R.string.login_failed_message);
+            }
+            showLoginError(message);
+        }
+
+    };
 
     private void signUp() {
         // try to create the user
@@ -243,31 +270,11 @@ public class LoginActivity extends Activity {
             return;
         }
 
-        pd = ProgressDialog.show(LoginActivity.this,
+        mProgressDialog = ProgressDialog.show(LoginActivity.this,
                 null,
                 getString(R.string.signing_up), true, false);
         
-        mSimperium.createUser(email, password, new AuthResponseListener() {
-
-            @Override
-            public void onSuccess(User user) {
-                if(pd != null ) 
-                    pd.dismiss();
-                registerUser(user);
-            }
-
-            @Override
-            public void onFailure(User user, String message) {
-                showLoginError(message);
-            }
-
-            @Override
-            public void onError(User user, Throwable error) {
-                // showLoginError(getString(R.string.login_failed_message));
-                showLoginError(error.getMessage());
-            }
-
-        });
+        mSimperium.createUser(email, password, mAuthListener);
     }
 
     private void signIn() {
@@ -278,30 +285,11 @@ public class LoginActivity extends Activity {
             return;
 
         
-        pd = ProgressDialog.show(LoginActivity.this,
+        mProgressDialog = ProgressDialog.show(LoginActivity.this,
                 null,
                 getString(R.string.signing_in), true, false);
         
-        mSimperium.authorizeUser(email, password,
-                new AuthResponseListener() {
-
-                    @Override
-                    public void onSuccess(User user) {
-                        if(pd != null) 
-                            pd.dismiss();
-                        registerUser(user);
-                    }
-
-                    @Override
-                    public void onFailure(User user, String message) {
-                        showLoginError(message);
-                    }
-
-                    @Override
-                    public void onError(User user, Throwable error) {
-                        showLoginError(getString(R.string.login_failed_message));
-                    }
-                });
+        mSimperium.authorizeUser(email, password, mAuthListener);
     }
 
     View.OnClickListener signupClickListener = new View.OnClickListener() {
