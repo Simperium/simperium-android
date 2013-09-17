@@ -5,6 +5,7 @@ import static com.simperium.testapp.TestHelpers.*;
 import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketObjectNameInvalid;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.User;
@@ -47,23 +48,47 @@ public class BucketTest extends BaseSimperiumTest {
         mBucket.start();
     }
 
-    public void testBucketName(){
+    public void testBucketName()
+    throws Exception {
         assertEquals(BUCKET_NAME, mBucket.getName());
         assertEquals(mSchema.getRemoteName(), mBucket.getRemoteName());
     }
 
-    public void testBuildObject(){
+    public void testBuildObject()
+    throws Exception {
         Note note = mBucket.newObject();
         assertTrue(note.isNew());
     }
 
-    public void testSaveObject(){
+    public void testSaveObject()
+    throws Exception {
         Note note = mBucket.newObject();
         note.setTitle("Hello World");
         assertTrue(note.isNew());
         note.save();
-        // acknowledge(note.save());
+
         assertFalse(note.isNew());
+    }
+
+    public void testInvalidObjectNameThrowsException()
+    throws Exception {
+        BucketObjectNameInvalid exception = null;
+        try {
+            mBucket.newObject("bad name");
+        } catch (BucketObjectNameInvalid e) {
+            exception = e;
+        }
+
+        assertNotNull(exception);
+    }
+
+    public void testTrimObjectNameWhiteSpace()
+    throws Exception {
+        BucketObjectNameInvalid exception = null;
+        Note note = mBucket.newObject("  whitespace ");
+
+        assertEquals("whitespace", note.getSimperiumKey());
+
     }
 
 }

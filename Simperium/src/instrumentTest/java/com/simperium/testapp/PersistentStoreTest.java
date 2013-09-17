@@ -86,12 +86,14 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         super.tearDown();
     }
 
-    public void testDatabaseTables(){
+    public void testDatabaseTables()
+    throws Exception {
         assertTableExists(mDatabase, "objects");
         assertTableExists(mDatabase, "indexes");
     }
   
-    public void testSavingObject(){
+    public void testSavingObject()
+    throws Exception {
         String bucketName = BUCKET_NAME;
         String key = "test";
         Note note = mBucket.newObject(key);// new Note(key, new HashMap<String,Object>());
@@ -108,7 +110,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals("{\"tags\":[],\"deleted\":false,\"title\":\"Hola Mundo!\"}", cursor.getString(3));
     }
   
-    public void testDeletingObject(){
+    public void testDeletingObject()
+    throws Exception {
         String bucketName = BUCKET_NAME;
         String key = "test";
         Note note = mBucket.newObject(key);
@@ -121,7 +124,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals(0, cursor.getCount());
     }
   
-    public void testGettingObject() throws BucketObjectMissingException {
+    public void testGettingObject()
+    throws Exception {
         String bucketName = BUCKET_NAME;
         String key = "test";
         
@@ -136,7 +140,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals(note.getTitle(), restored.getTitle());
     }
   
-    public void testObjectCursor(){
+    public void testObjectCursor()
+    throws Exception {
         String bucketName = BUCKET_NAME;
   
         Note note = mBucket.newObject("note-1");
@@ -152,7 +157,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals(2, cursor.getCount());
     }
   
-    public void testResetData(){
+    public void testResetData()
+    throws Exception {
         String bucketName = BUCKET_NAME;
   
         Note note = mBucket.newObject("note-1");
@@ -169,7 +175,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
   
     }
   
-    public void testIndexObject(){
+    public void testIndexObject()
+    throws Exception {
         String bucketName = BUCKET_NAME;
         List<String> list = new ArrayList<String>();
         list.add("uno");
@@ -207,7 +214,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals("dos", cursor.getString(3));
     }
 
-    public void testObjectSearching(){
+    public void testObjectSearching()
+    throws Exception {
         // clear out the database
         mActivity.deleteDatabase(mDatabaseName);
         
@@ -255,7 +263,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals(10, cursor.getCount());
     }
 
-    public void testCounts(){
+    public void testCounts()
+    throws Exception {
         // clear out the database
         mActivity.deleteDatabase(mDatabaseName);
         
@@ -281,7 +290,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
 
     }
 
-    public void testObjectSorting(){
+    public void testObjectSorting()
+    throws Exception {
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
@@ -341,7 +351,8 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
     /**
      * Tests pulling indexed values from the cursor for performance.
      */
-    public void testSelectIndexValues(){
+    public void testSelectIndexValues()
+    throws Exception {
         Note note = mBucket.newObject("thing");
         note.setContent("Lol");
         note.save();

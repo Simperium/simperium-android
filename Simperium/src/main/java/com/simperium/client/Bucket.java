@@ -362,27 +362,35 @@ public class Bucket<T extends Syncable> {
      * Returns a new objecty tracked by this bucket
      */
     public T newObject(){
-        return newObject(uuid());
+        try {
+            return newObject(uuid());
+        } catch (BucketObjectNameInvalid e) {
+            throw new RuntimeException();
+        }
     }
 
     /**
      * Returns a new object with the given uuid
      * return null if the uuid exists?
      */
-    public T newObject(String key){
+    public T newObject(String key)
+    throws BucketObjectNameInvalid {
         return insertObject(key, new HashMap<String,Object>());
     }
 
     /**
      * 
      */
-    public T insertObject(String key, Map<String,Object> properties){
-        T object = buildObject(key, properties);
+    public T insertObject(String key, Map<String,Object> properties)
+    throws BucketObjectNameInvalid {
+        String name = key.trim();
+        validateObjectName(name);
+        T object = buildObject(name, properties);
         object.setBucket(this);
-        Ghost ghost = new Ghost(key, 0, new HashMap<String,Object>());
+        Ghost ghost = new Ghost(name, 0, new HashMap<String,Object>());
         object.setGhost(ghost);
         ghostStore.saveGhost(this, ghost);
-        cache.put(key, object);
+        cache.put(name, object);
         return object;
     }
 
@@ -665,6 +673,9 @@ public class Bucket<T extends Syncable> {
             } catch(BucketObjectMissingException e) {
                 Logger.log(TAG, "Unable to apply remote change", e);
                 throw(new RemoteChangeInvalidException(e));
+            } catch (BucketObjectNameInvalid e) {
+                Logger.log(TAG, "Remote change had invalid key", e);
+                throw(new RemoteChangeInvalidException(e));
             }
         }
         setChangeVersion(change.getChangeVersion());
@@ -674,6 +685,13 @@ public class Bucket<T extends Syncable> {
         return ghost;
     }
 
+    static public final String BUCKET_OBJECT_NAME_REGEX = "^[a-zA-Z0-9_\\.\\-%@]{1,256}$";
 
+    public static void validateObjectName(String name)
+    throws BucketObjectNameInvalid {
+        if (!name.matches(BUCKET_OBJECT_NAME_REGEX)) {
+            throw new BucketObjectNameInvalid(name);
+        }
+    }
 
 }

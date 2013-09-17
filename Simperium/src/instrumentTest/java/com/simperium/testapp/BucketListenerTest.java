@@ -32,7 +32,8 @@ public class BucketListenerTest extends TestCase {
         mListener = new BucketListener();
     }
 
-    public void testOnSaveListener(){
+    public void testOnSaveListener()
+    throws Exception {
         mBucket.addOnSaveObjectListener(mListener);
         Note note = mBucket.newObject("listener-test");
         note.setTitle("Hola Mundo");
@@ -41,7 +42,8 @@ public class BucketListenerTest extends TestCase {
         assertTrue(mListener.saved);
     }
 
-    public void testRemoveOnSaveListener(){
+    public void testRemoveOnSaveListener()
+    throws Exception {
         mBucket.addOnSaveObjectListener(mListener);
         Note note = mBucket.newObject("listener-test");
         note.setTitle("Hola Mundo");
