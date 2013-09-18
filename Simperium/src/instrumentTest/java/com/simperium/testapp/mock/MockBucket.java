@@ -1,6 +1,7 @@
 package com.simperium.testapp.mock;
 
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.Bucket.Channel;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
@@ -27,7 +28,8 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
         public void onAcknowledgeRemoteChange(RemoteChange change);
     }
 
-    public MockBucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache){
+    public MockBucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache)
+    throws BucketNameInvalid {
         super(syncService, name, schema, user, storage, ghostStore, cache);
     }
 
@@ -54,7 +56,8 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
      * mock instances of a Bucket's depenencies for testing objects that
      * interface with a bucket.
      */
-    public static <T extends Syncable> MockBucket<T> buildBucket(BucketSchema<T> schema){
+    public static <T extends Syncable> MockBucket<T> buildBucket(BucketSchema<T> schema)
+    throws BucketNameInvalid {
         return buildBucket(schema, new MockChannelProvider());
     }
 
@@ -63,7 +66,8 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
      * Sets up a bucket instance with the provided BucketSchema and configures
      * the ChannelProvider to be used with the bucket.
      */
-    public static <T extends Syncable> MockBucket<T> buildBucket(BucketSchema<T> schema, ChannelProvider provider){
+    public static <T extends Syncable> MockBucket<T> buildBucket(BucketSchema<T> schema, ChannelProvider provider)
+    throws BucketNameInvalid {
         User user = MockUser.buildUser();
         StorageProvider storage = new MemoryStore();
         BucketStore<T> store = storage.createStore(schema.getRemoteName(), schema);

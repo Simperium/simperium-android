@@ -101,7 +101,9 @@ public class Bucket<T extends Syncable> {
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache){
+    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user,
+        BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache)
+    throws BucketNameInvalid {
         this.syncService = syncService;
         this.name = name;
         this.user = user;
@@ -109,6 +111,7 @@ public class Bucket<T extends Syncable> {
         this.ghostStore = ghostStore;
         this.schema = schema;
         this.cache = cache;
+        validateBucketName(name);
     }
     /**
      * Return the user for this bucket
@@ -691,6 +694,15 @@ public class Bucket<T extends Syncable> {
     throws BucketObjectNameInvalid {
         if (!name.matches(BUCKET_OBJECT_NAME_REGEX)) {
             throw new BucketObjectNameInvalid(name);
+        }
+    }
+
+    static public final String BUCKET_NAME_REGEX = "^[a-zA-Z0-9_\\.\\-%]{1,64}$";
+
+    public static void validateBucketName(String name)
+    throws BucketNameInvalid {
+        if (!name.matches(BUCKET_NAME_REGEX)) {
+            throw new BucketNameInvalid(name);
         }
     }
 

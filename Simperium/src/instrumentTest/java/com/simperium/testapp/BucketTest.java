@@ -5,6 +5,7 @@ import static com.simperium.testapp.TestHelpers.*;
 import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.BucketObjectNameInvalid;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
@@ -89,6 +90,18 @@ public class BucketTest extends BaseSimperiumTest {
 
         assertEquals("whitespace", note.getSimperiumKey());
 
+    }
+
+    public void testValidateBucketName()
+    throws Exception {
+        BucketNameInvalid exception = null;
+        try {
+            Bucket.validateBucketName("hello world");
+        } catch (BucketNameInvalid e) {
+            exception = e;
+        }
+
+        assertNotNull(exception);
     }
 
 }

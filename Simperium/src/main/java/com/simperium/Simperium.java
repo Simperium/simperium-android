@@ -1,6 +1,7 @@
 package com.simperium;
 
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.Syncable;
@@ -119,14 +120,16 @@ public class Simperium implements User.StatusChangeListener {
      *
      * @param bucketName the namespace to store the data in simperium
      */
-    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema){
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema)
+    throws BucketNameInvalid {
         return bucket(bucketName, schema, mStorageProvider.createStore(bucketName, schema));
     }
 
     /**
      * Allow alternate storage mechanisms
      */
-    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema, BucketStore<T> storage){
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema, BucketStore<T> storage)
+    throws BucketNameInvalid {
 
         // initialize the bucket
         ObjectCacheProvider.ObjectCache<T> cache = mObjectCacheProvider.buildCache();
@@ -149,13 +152,16 @@ public class Simperium implements User.StatusChangeListener {
      *
      * @param bucketName namespace to store the data in simperium
      */
-    public Bucket<BucketObject> bucket(String bucketName){
+    public Bucket<BucketObject> bucket(String bucketName)
+    throws BucketNameInvalid {
         return bucket(bucketName, new BucketObject.Schema(bucketName));
     }
+
     /**
      * Creates a bucket and uses the Schema remote name as the bucket name.
      */
-    public <T extends Syncable> Bucket<T> bucket(BucketSchema<T> schema){
+    public <T extends Syncable> Bucket<T> bucket(BucketSchema<T> schema)
+    throws BucketNameInvalid {
         return bucket(schema.getRemoteName(), schema);
     }
 
