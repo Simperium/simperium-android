@@ -67,7 +67,6 @@ public class PersistentStore implements StorageProvider {
         }
 
         public void reindex(final Bucket<T> bucket){
-            final CancellationSignal signal = new CancellationSignal();
             if (reindexThread != null && reindexThread.isAlive()) {
                 return;
             }
@@ -75,28 +74,35 @@ public class PersistentStore implements StorageProvider {
             reindexThread = new Thread(new Runnable(){
                 @Override
                 public void run(){
-                    Bucket.ObjectCursor<T> cursor = bucket.allObjects();
-                    while(cursor.moveToNext()){
-                        try {
-                            final T object = cursor.getObject();
-                            String key = cursor.getSimperiumKey();
-                            if (skipIndexing.contains(key)) {
-                                continue;
+                    Bucket.ObjectCursor<T> cursor = null;
+                    try {
+                        cursor = bucket.allObjects();
+                        if (Thread.interrupted())
+                            throw new InterruptedException();
+                        while(cursor.moveToNext()){
+                            try {
+                                final T object = cursor.getObject();
+                                String key = cursor.getSimperiumKey();
+                                Logger.log(TAG, String.format("Reindexing %s", key));
+                                if (skipIndexing.contains(key)) {
+                                    continue;
+                                }
+                                index(object, schema.indexesFor(object));
+                            } catch (SQLException e) {
+                                Thread.currentThread().interrupt();
+                                Logger.log(TAG, "Reindexing canceled due to exception", e);
                             }
-                            index(object, schema.indexesFor(object));
-                        } catch (SQLException e) {
-                            Thread.currentThread().interrupt();
-                            Logger.log(TAG, "Reindexing canceled due to exception", e);
+                            if (Thread.interrupted())
+                                throw new InterruptedException();
+                            Thread.sleep(1);
                         }
-                        if (Thread.interrupted()) {
-                            signal.cancel();
-                            cursor.close();
-                            skipIndexing.clear();
-                            return;
-                        }
+                    } catch (InterruptedException e) {
+                        Logger.log(TAG, "Reindexing canceled due to interruption", e);
                     }
-                    cursor.close();
+
+                    if (cursor != null) cursor.close();
                     skipIndexing.clear();
+
                     notifier.post(new Runnable(){
                         @Override
                         public void run(){
@@ -106,12 +112,13 @@ public class PersistentStore implements StorageProvider {
                     
                 }
             });
+            reindexThread.setPriority(Thread.MIN_PRIORITY);
             reindexThread.start();
         }
 
         @Override
         public void prepare(Bucket<T> bucket){
-            // reindex(bucket);
+            reindex(bucket);
         }
 
         /**
@@ -322,7 +329,9 @@ public class PersistentStore implements StorageProvider {
         }
 
         protected Cursor query(SQLiteDatabase database){
-            return database.rawQuery(selection.append(statement).toString(), args);
+            String query = selection.append(statement).toString();
+            android.util.Log.d(TAG, String.format("Query: %s Args: %s", query, args));
+            return database.rawQuery(query, args);
         }
 
         protected Cursor count(SQLiteDatabase database){
