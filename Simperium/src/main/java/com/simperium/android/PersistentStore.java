@@ -341,7 +341,7 @@ public class PersistentStore implements StorageProvider {
 
         private void compileQuery(){
             // turn comparators into where statements, each comparator joins
-            Iterator<Query.Comparator> conditions = query.getConditions().iterator();
+            Iterator<Query.Condition> conditions = query.getConditions().iterator();
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
             Iterator<String> keys = query.getKeys().iterator();
 
@@ -362,7 +362,7 @@ public class PersistentStore implements StorageProvider {
             }
 
             while(conditions.hasNext()){
-                Query.Comparator condition = conditions.next();
+                Query.Condition condition = conditions.next();
                 String key = condition.getKey();
                 // store which keys have been joined in and which alias
                 includedKeys.put(key, String.format(Locale.US, "i%d", i));

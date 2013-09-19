@@ -7,7 +7,7 @@ import android.os.CancellationSignal;
 
 public class Query<T extends Syncable> {
 
-    public interface Comparator {
+    public interface Condition {
         public Object getSubject();
         public String getKey();
         public ComparisonType getComparisonType();
@@ -42,13 +42,13 @@ public class Query<T extends Syncable> {
         }
     }
 
-    public static class BasicComparator implements Comparator {
+    public static class BasicCondition implements Condition {
 
         private String key;
         private ComparisonType type;
         private Object subject;
 
-        public BasicComparator(String key, Query.ComparisonType type, Object subject){
+        public BasicCondition(String key, Query.ComparisonType type, Object subject){
             this.key = key;
             this.type = type;
             this.subject = subject;
@@ -120,7 +120,7 @@ public class Query<T extends Syncable> {
     }
 
     private Bucket<T> bucket;
-    private List<Comparator> conditions = new ArrayList<Comparator>();
+    private List<Condition> conditions = new ArrayList<Condition>();
     private List<Sorter> sorters = new ArrayList<Sorter>();
     private List<String> keys = new ArrayList<String>();
 
@@ -132,17 +132,17 @@ public class Query<T extends Syncable> {
         bucket = null;
     }
 
-    public Query where(Comparator condition){
+    public Query where(Condition condition){
         conditions.add(condition);
         return this;
     }
 
     public Query where(String key, ComparisonType type, Object subject){
-        where(new BasicComparator(key, type, subject));
+        where(new BasicCondition(key, type, subject));
         return this;
     }
 
-    public List<Comparator> getConditions(){
+    public List<Condition> getConditions(){
         return conditions;
     }
 
