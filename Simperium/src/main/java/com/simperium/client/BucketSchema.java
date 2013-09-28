@@ -49,6 +49,7 @@ public abstract class BucketSchema<T extends Syncable> {
 
     private List<Indexer<T>> indexers = Collections.synchronizedList(new ArrayList<Indexer<T>>());
     private Map<String,Object> defaultValues = new HashMap<String,Object>();
+    private FullTextIndex mFullTextIndex;
 
     public T buildWithDefaults(String key, Map<String,Object> properties) {
         updateDefaultValues(properties);
@@ -98,6 +99,19 @@ public abstract class BucketSchema<T extends Syncable> {
         indexers.add(0, new AutoIndexer<T>());
     }
 
+    public FullTextIndex setupFullTextIndex(String ... indexNames){
+        mFullTextIndex = new FullTextIndex<T>(indexNames);
+        return mFullTextIndex;
+    }
+
+    public boolean hasFullTextIndex(){
+        return mFullTextIndex != null;
+    }
+
+    public FullTextIndex<T> getFullTextIndex(){
+        return mFullTextIndex;
+    }
+
     private static class AutoIndexer<S extends Syncable> implements Indexer<S> {
 
         public List<Index> index(S object){
@@ -122,6 +136,7 @@ public abstract class BucketSchema<T extends Syncable> {
                 indexes.add(new Index(key, value));
             }
         }
+
     }
 
 }

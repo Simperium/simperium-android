@@ -8,6 +8,7 @@ import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Syncable;
 import com.simperium.client.Channel;
+import com.simperium.client.FullTextIndex;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.Query;
 import com.simperium.util.Logger;
@@ -73,6 +74,7 @@ public class PersistentStore implements StorageProvider {
 
         @Override
         public void prepare(Bucket<T> bucket){
+            setupFullText();
             reindex(bucket);
         }
 
@@ -93,7 +95,6 @@ public class PersistentStore implements StorageProvider {
             } else {
                 database.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{bucketName, key});
             }
-            skipIndexing.add(key);
             index(object, indexes);
         }
 
@@ -201,6 +202,11 @@ public class PersistentStore implements StorageProvider {
                     values.put(key, value.toString());
                 }
                 database.insertOrThrow(INDEXES_TABLE, null, values);
+            }
+
+            // If we have a fulltext index, let's add a record
+            if (schema.hasFullTextIndex()) {
+                schema.getFullTextIndex().index();
             }
         }
 
@@ -406,7 +412,7 @@ public class PersistentStore implements StorageProvider {
 
         protected Cursor query(SQLiteDatabase database){
             String query = selection.append(statement).toString();
-            android.util.Log.d(TAG, String.format("Query: %s Args: %s", query, args));
+            // android.util.Log.d(TAG, String.format("Query: %s Args: %s", query, args));
             return database.rawQuery(query, args);
         }
 
@@ -503,5 +509,6 @@ public class PersistentStore implements StorageProvider {
         }
 
     }
+
 
 }

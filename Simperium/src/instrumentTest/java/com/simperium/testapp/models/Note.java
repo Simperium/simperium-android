@@ -19,6 +19,7 @@ public class Note extends BucketObject {
         public Schema(){
             autoIndex();
             addIndex(contentIndexer);
+            setupFullTextIndex("tags", "content");
             setDefault("tags", new ArrayList<Object>());
             setDefault("deleted", false);
         }

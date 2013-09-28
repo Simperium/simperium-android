@@ -91,6 +91,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
     throws Exception {
         assertTableExists(mDatabase, "objects");
         assertTableExists(mDatabase, "indexes");
+        assertTableExists(mDatabase, "bucket_ft");
     }
   
     public void testSavingObject()
