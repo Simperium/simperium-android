@@ -377,7 +377,7 @@ public class PersistentStore implements StorageProvider {
                     where.append(String.format(Locale.US, " %d)", (Integer)subject));
                 } else if (subject instanceof Boolean){
                     where.append(String.format(Locale.US, " %d)", ((Boolean)subject ? 1 : 0)));
-                } else {
+                } else if (subject != null){
                     where.append(" ?)");
                     replacements.add(subject.toString());
                 }
