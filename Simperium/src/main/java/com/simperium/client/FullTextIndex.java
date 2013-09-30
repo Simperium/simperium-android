@@ -23,7 +23,7 @@ public class FullTextIndex<T extends Syncable> {
                 for (String key : keys) {
                     Object value = values.get(key);
                     if (value != null) {
-                        values.put(key, value.toString());
+                        indexValues.put(key, value.toString());
                     }
                 }
                 return indexValues;
@@ -39,6 +39,10 @@ public class FullTextIndex<T extends Syncable> {
 
     public String[] getKeys(){
         return mKeys;
+    }
+
+    public ContentValues index(T object){
+        return mIndexer.index(mKeys, object);
     }
 
 }
