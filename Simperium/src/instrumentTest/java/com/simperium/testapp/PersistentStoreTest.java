@@ -373,19 +373,24 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
     public void testFullTextSearching()
     throws Exception {
         Note note = mBucket.newObject("ftsearch");
-        note.setContent("Hello world. Town hall is starting in two minutes.");
+        note.setContent("Hello world. Town hall is starting in four minutes.");
         note.addTags("one", "two", "three");
         note.save();
 
         note = mBucket.newObject("ftsearch2");
-        note.setContent("It was the best of times, it was the worst of times");
+        note.setContent("It was the best of times, it was the worst of times. two.");
         note.addTags("red", "green", "blue", "yellow");
         note.save();
 
-        Query<Note> query = mBucket.query().where("content", Query.ComparisonType.MATCH, "town hall");
-        Bucket.ObjectCursor<Note> cursor = query.execute();
+        note = mBucket.newObject("ftsearch3");
+        note.setContent("lorem ipsum dolor whatever");
+        note.addTags("literature");
 
-        assertEquals(1, cursor.getCount());
+        assertEquals(1, mBucket.query().where(new Query.FullTextMatch("town hall")).count());
+
+        assertEquals(2, mBucket.query().where(new Query.FullTextMatch("two")).count());
+
+        assertEquals(1, mBucket.query().where(new Query.FullTextMatch("tags:two")).count());
 
     }
 

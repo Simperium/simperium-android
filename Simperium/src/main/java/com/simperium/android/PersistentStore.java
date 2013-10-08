@@ -59,7 +59,7 @@ public class PersistentStore implements StorageProvider {
     private class DataStore<T extends Syncable> implements BucketStore<T> {
 
         private BucketSchema<T> schema;
-        private String bucketName;
+        protected String bucketName;
         private Reindexer mReindexer;
 
         DataStore(String bucketName, BucketSchema<T> schema){
@@ -150,7 +150,7 @@ public class PersistentStore implements StorageProvider {
          * Count for the given query
          */
         public int count(Query<T> query){
-            QueryBuilder builder = new QueryBuilder(bucketName, query);
+            QueryBuilder builder = new QueryBuilder(this, query);
             Cursor cursor = builder.count(database);
             cursor.moveToFirst();
             int count = cursor.getInt(0);
@@ -164,7 +164,7 @@ public class PersistentStore implements StorageProvider {
          */
         @Override
         public Bucket.ObjectCursor<T> search(Query<T> query){
-            QueryBuilder builder = new QueryBuilder(bucketName, query);
+            QueryBuilder builder = new QueryBuilder(this, query);
             Cursor cursor = builder.query(database);
             return buildCursor(schema, cursor);
         }
@@ -261,13 +261,12 @@ public class PersistentStore implements StorageProvider {
                         fields.append("`");
                     }
                     String query = String.format(Locale.US, "CREATE VIRTUAL TABLE `%s` USING fts3(%s)", tableName, fields.toString());
-                    Logger.log("Simperium.FullText", String.format("Rebuilding full text index: %s", query));
                     database.execSQL(query);
                 }
             }
         }
 
-        private String getFullTextTableName(){
+        protected String getFullTextTableName(){
             return String.format(Locale.US, "%s_ft", bucketName);
         }
 
@@ -407,17 +406,16 @@ public class PersistentStore implements StorageProvider {
         private StringBuilder selection;
         private String statement;
         private String[] args;
-        private String bucketName;
+        private DataStore mDataStore;
 
-        QueryBuilder(String bucketName, Query query){
-            this.bucketName = bucketName;
+        QueryBuilder(DataStore store, Query query){
+            this.mDataStore = store;
             this.query = query;
             compileQuery();
         }
 
         protected Cursor query(SQLiteDatabase database){
             String query = selection.append(statement).toString();
-            // android.util.Log.d(TAG, String.format("Query: %s Args: %s", query, args));
             return database.rawQuery(query, args);
         }
 
@@ -431,6 +429,7 @@ public class PersistentStore implements StorageProvider {
             Iterator<Query.Condition> conditions = query.getConditions().iterator();
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
             Iterator<String> keys = query.getKeys().iterator();
+            String bucketName = mDataStore.bucketName;
 
             selection = new StringBuilder("SELECT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
             StringBuilder filters = new StringBuilder();
@@ -444,6 +443,8 @@ public class PersistentStore implements StorageProvider {
 
             List<String> sortKeys = new ArrayList<String>();
             Map<String,String> includedKeys = new HashMap<String,String>();
+            Boolean includedFullText = false;
+
             while(sorters.hasNext()){
                 sortKeys.add(sorters.next().getKey());
             }
@@ -453,6 +454,14 @@ public class PersistentStore implements StorageProvider {
                 String key = condition.getKey();
 
                 if (condition.getComparisonType() == Query.ComparisonType.MATCH) {
+                    // include the full text index table if not already included
+                    String ftName = mDataStore.getFullTextTableName();
+                    if(!includedFullText)
+                        filters.append(String.format(Locale.US, " JOIN `%s` ON objects.key = `%s`.`key` ", ftName, ftName));
+                    // add the condition and argument to the where statement
+                    String field = key == null ? ftName : String.format(Locale.US, "`%s`.`%s`", ftName, condition.getKey());
+                    where.append(String.format(Locale.US, " AND ( %s %s ? )", field, condition.getComparisonType()));
+                    replacements.add(condition.getSubject().toString());
                     continue;
                 }
 

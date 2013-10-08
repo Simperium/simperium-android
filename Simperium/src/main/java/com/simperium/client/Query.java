@@ -43,6 +43,42 @@ public class Query<T extends Syncable> {
         }
     }
 
+    public static class FullTextMatch implements Condition {
+
+        private Object mSubject;
+        private String mKey;
+
+        public FullTextMatch(Object subject) {
+            this(null, subject);
+        }
+
+        public FullTextMatch(String field, Object subject) {
+            mKey = field;
+            mSubject = subject;
+        }
+
+        @Override
+        public Object getSubject() {
+            return mSubject;
+        }
+
+        @Override
+        public String getKey() {
+            return mKey;
+        }
+
+        @Override
+        public ComparisonType getComparisonType() {
+            return ComparisonType.MATCH;
+        }
+
+        @Override
+        public Boolean includesNull(){
+            return false;
+        }
+
+    }
+
     public static class BasicCondition implements Condition {
 
         private String key;
@@ -55,6 +91,7 @@ public class Query<T extends Syncable> {
             this.subject = subject;
         }
 
+        @Override
         public Object getSubject(){
             return subject;
         }
@@ -72,6 +109,11 @@ public class Query<T extends Syncable> {
         @Override
         public Boolean includesNull(){
             return type.includesNull();
+        }
+
+        @Override
+        public String toString(){
+            return String.format("%s %s %s", key, type, subject);
         }
     }
 
