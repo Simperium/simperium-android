@@ -430,6 +430,7 @@ public class PersistentStore implements StorageProvider {
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
             Iterator<Query.Field> fields = query.getFields().iterator();
             String bucketName = mDataStore.bucketName;
+            String ftName = mDataStore.getFullTextTableName();
 
             selection = new StringBuilder("SELECT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
             StringBuilder filters = new StringBuilder();
@@ -455,7 +456,6 @@ public class PersistentStore implements StorageProvider {
 
                 if (condition.getComparisonType() == Query.ComparisonType.MATCH) {
                     // include the full text index table if not already included
-                    String ftName = mDataStore.getFullTextTableName();
                     if(!includedFullText)
                         filters.append(String.format(Locale.US, " JOIN `%s` ON objects.key = `%s`.`key` ", ftName, ftName));
                     // add the condition and argument to the where statement
@@ -487,6 +487,11 @@ public class PersistentStore implements StorageProvider {
 
             while(fields.hasNext()){
                 Query.Field field = fields.next();
+                if (field instanceof Query.FullTextSnippet) {
+                    selection.append(String.format(Locale.US, ", snippet(`%s`) AS %s ", ftName, field.getName()));
+                    continue;
+                }
+
                 String fieldName = field.getName();
                 if (!includedKeys.containsKey(fieldName)) {
                     includedKeys.put(fieldName, String.format(Locale.US, "i%d", i));
@@ -523,7 +528,7 @@ public class PersistentStore implements StorageProvider {
             } else {
                 order.delete(0, order.length());
             }
-            statement = String.format(Locale.US, "FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
+            statement = String.format(Locale.US, " FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
             names.addAll(replacements);
             args = names.toArray(new String[names.size()]);
         }

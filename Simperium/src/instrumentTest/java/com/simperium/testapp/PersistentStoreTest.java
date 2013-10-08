@@ -394,6 +394,23 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
 
     }
 
+    public void testFullTextSnippet()
+    throws Exception {
+        Note note = mBucket.newObject("ftsnippet");
+        note.setContent("Hello world. Hola mundo. The world is your oyster.");
+        note.addTag("world");
+        note.save();
+
+        Query query = mBucket.query().where(new Query.FullTextMatch("world"));
+        query.include(new Query.FullTextSnippet("match"));
+
+        Cursor cursor = query.execute();
+        cursor.moveToFirst();
+
+        assertEquals("Hello <b>world</b>. Hola mundo. The <b>world</b> is your oyster.", cursor.getString(cursor.getColumnIndexOrThrow("match")));
+
+    }
+
     public static void assertTableExists(SQLiteDatabase database, String tableName){
         Cursor cursor = database.query(MASTER_TABLE, new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
         assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());

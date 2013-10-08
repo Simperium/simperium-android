@@ -28,7 +28,7 @@ public class Query<T extends Syncable> {
 
     public static class FullTextSnippet extends BasicField {
 
-        FullTextSnippet(String name){
+        public FullTextSnippet(String name){
             super(name);
         }
 
@@ -279,4 +279,17 @@ public class Query<T extends Syncable> {
         }
         return this;
     }
+
+    public Query include(Field field){
+        mFields.add(field);
+        return this;
+    }
+
+    public Query include(Field ... fields){
+        for(Field field : fields){
+            mFields.add(field);
+        }
+        return this;
+    }
+
 }
