@@ -233,7 +233,7 @@ public class Query<T extends Syncable> {
 
     public int count(){
         if (bucket == null){
-            throw(new RuntimeException("TRied executnig a query wihtout a bucket"));
+            throw(new RuntimeException("Tried executing a query wihtout a bucket"));
         }
         return bucket.count(this);
     }
