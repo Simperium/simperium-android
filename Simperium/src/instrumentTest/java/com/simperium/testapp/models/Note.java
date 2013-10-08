@@ -56,6 +56,18 @@ public class Note extends BucketObject {
         super(key, properties);
     }
 
+    public void addTag(String tag){
+        List tags = (List) get("tags");
+        tags.add(tag);
+    }
+
+    public void addTags(String ... newTags){
+        List tags = (List) get("tags");
+        for(String tag : newTags){
+            tags.add(tag);
+        }
+    }
+
     public void setTitle(String title){
         put("title", title);
     }

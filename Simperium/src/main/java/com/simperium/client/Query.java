@@ -18,7 +18,8 @@ public class Query<T extends Syncable> {
         EQUAL_TO("="), NOT_EQUAL_TO("!=", true),
         LESS_THAN("<"), LESS_THAN_OR_EQUAL("<="),
         GREATER_THAN(">"), GREATER_THAN_OR_EQUAL(">="),
-        LIKE("LIKE"), NOT_LIKE("NOT LIKE", true);
+        LIKE("LIKE"), NOT_LIKE("NOT LIKE", true),
+        MATCH("MATCH");
 
         private final String operator;
         private final Boolean includesNull;

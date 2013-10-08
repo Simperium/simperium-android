@@ -451,6 +451,11 @@ public class PersistentStore implements StorageProvider {
             while(conditions.hasNext()){
                 Query.Condition condition = conditions.next();
                 String key = condition.getKey();
+
+                if (condition.getComparisonType() == Query.ComparisonType.MATCH) {
+                    continue;
+                }
+
                 // store which keys have been joined in and which alias
                 includedKeys.put(key, String.format(Locale.US, "i%d", i));
                 names.add(condition.getKey());

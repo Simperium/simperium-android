@@ -370,6 +370,25 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals("Lol", cursor.getString(4));
     }
 
+    public void testFullTextSearching()
+    throws Exception {
+        Note note = mBucket.newObject("ftsearch");
+        note.setContent("Hello world. Town hall is starting in two minutes.");
+        note.addTags("one", "two", "three");
+        note.save();
+
+        note = mBucket.newObject("ftsearch2");
+        note.setContent("It was the best of times, it was the worst of times");
+        note.addTags("red", "green", "blue", "yellow");
+        note.save();
+
+        Query<Note> query = mBucket.query().where("content", Query.ComparisonType.MATCH, "town hall");
+        Bucket.ObjectCursor<Note> cursor = query.execute();
+
+        assertEquals(1, cursor.getCount());
+
+    }
+
     public static void assertTableExists(SQLiteDatabase database, String tableName){
         Cursor cursor = database.query(MASTER_TABLE, new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
         assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());
