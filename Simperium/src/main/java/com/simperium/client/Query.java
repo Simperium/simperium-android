@@ -7,6 +7,33 @@ import android.os.CancellationSignal;
 
 public class Query<T extends Syncable> {
 
+    public interface Field {
+        public String getName();
+    }
+
+    public static class BasicField implements Field {
+
+        private String mName;
+
+        public BasicField(String name) {
+            mName = name;
+        }
+
+        @Override
+        public String getName(){
+            return mName;
+        }
+
+    }
+
+    public static class FullTextSnippet extends BasicField {
+
+        FullTextSnippet(String name){
+            super(name);
+        }
+
+    }
+
     public interface Condition {
         public Object getSubject();
         public String getKey();
@@ -165,7 +192,7 @@ public class Query<T extends Syncable> {
     private Bucket<T> bucket;
     private List<Condition> conditions = new ArrayList<Condition>();
     private List<Sorter> sorters = new ArrayList<Sorter>();
-    private List<String> keys = new ArrayList<String>();
+    private List<Field> mFields = new ArrayList<Field>();
 
     public Query(Bucket<T> bucket){
         this.bucket = bucket;
@@ -193,8 +220,8 @@ public class Query<T extends Syncable> {
         return sorters;
     }
 
-    public List<String> getKeys(){
-        return keys;
+    public List<Field> getFields(){
+        return mFields;
     }
 
     public Bucket.ObjectCursor<T> execute(){
@@ -242,13 +269,13 @@ public class Query<T extends Syncable> {
 
     public Query include(String key){
         // we want to include some indexed values
-        keys.add(key);
+        mFields.add(new BasicField(key));
         return this;
     }
 
     public Query include(String ... keys){
         for (String key : keys) {
-            this.keys.add(key);
+            mFields.add(new BasicField(key));
         }
         return this;
     }

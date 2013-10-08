@@ -428,7 +428,7 @@ public class PersistentStore implements StorageProvider {
             // turn comparators into where statements, each comparator joins
             Iterator<Query.Condition> conditions = query.getConditions().iterator();
             Iterator<Query.Sorter> sorters = query.getSorters().iterator();
-            Iterator<String> keys = query.getKeys().iterator();
+            Iterator<Query.Field> fields = query.getFields().iterator();
             String bucketName = mDataStore.bucketName;
 
             selection = new StringBuilder("SELECT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
@@ -485,15 +485,16 @@ public class PersistentStore implements StorageProvider {
                 i++;
             }
 
-            while(keys.hasNext()){
-                String key = keys.next();
-                if (!includedKeys.containsKey(key)) {
-                    includedKeys.put(key, String.format(Locale.US, "i%d", i));
-                    names.add(key);
+            while(fields.hasNext()){
+                Query.Field field = fields.next();
+                String fieldName = field.getName();
+                if (!includedKeys.containsKey(fieldName)) {
+                    includedKeys.put(fieldName, String.format(Locale.US, "i%d", i));
+                    names.add(fieldName);
                     filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                     i++;
                 }
-                selection.append(String.format(Locale.US, ", %s.value AS `%s`", includedKeys.get(key), key));
+                selection.append(String.format(Locale.US, ", %s.value AS `%s`", includedKeys.get(fieldName), fieldName));
                 
             }
 
