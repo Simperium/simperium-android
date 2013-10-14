@@ -397,7 +397,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
     public void testFullTextSnippet()
     throws Exception {
         Note note = mBucket.newObject("ftsnippet");
-        note.setContent("Hello world. Hola mundo. The world is your oyster.");
+        note.setContent("Hello world. Hola mundo. The world is your oyster. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.");
         note.addTag("world");
         note.save();
 
@@ -407,7 +407,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         Cursor cursor = query.execute();
         cursor.moveToFirst();
 
-        assertEquals("Hello <b>world</b>. Hola mundo. The <b>world</b> is your oyster.", cursor.getString(cursor.getColumnIndexOrThrow("match")));
+        assertEquals("Hello <match>world</match>. Hola mundo. The <match>world</match> is your oyster. Lorem ipsum dolor sit amet, consectetur\u2026", cursor.getString(cursor.getColumnIndexOrThrow("match")));
 
     }
 
