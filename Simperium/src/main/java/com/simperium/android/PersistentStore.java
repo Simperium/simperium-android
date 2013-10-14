@@ -399,6 +399,7 @@ public class PersistentStore implements StorageProvider {
         }
         tableInfo.close();
         database.execSQL(String.format(Locale.US, "CREATE UNIQUE INDEX IF NOT EXISTS bucket_key ON %s (bucket, key)", OBJECTS_TABLE));
+        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS object_key ON %s (key)", OBJECTS_TABLE));
 
         database.execSQL("CREATE TABLE IF NOT EXISTS reindex_queue (bucket, key)");
         database.execSQL("CREATE INDEX IF NOT EXISTS reindex_bucket ON reindex_queue(bucket)");
