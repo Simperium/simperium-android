@@ -28,7 +28,26 @@ public class Query<T extends Syncable> {
 
     public static class FullTextSnippet extends BasicField {
 
-        public FullTextSnippet(String name){
+        private String mColumnName = null;
+
+        public FullTextSnippet(String name) {
+            this(name, null);
+        }
+
+        public FullTextSnippet(String name, String columnName){
+            super(name);
+            mColumnName = columnName;
+        }
+
+        public String getColumnName(){
+            return mColumnName;
+        }
+
+    }
+
+    public static class FullTextOffsets extends BasicField {
+
+        public FullTextOffsets(String name) {
             super(name);
         }
 

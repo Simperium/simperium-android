@@ -507,8 +507,14 @@ public class PersistentStore implements StorageProvider {
 
             while(fields.hasNext()){
                 Query.Field field = fields.next();
+
                 if (field instanceof Query.FullTextSnippet) {
-                    selection.append(String.format(Locale.US, ", snippet(`%s`) AS %s ", ftName, field.getName()));
+                    Query.FullTextSnippet snippet = (Query.FullTextSnippet) field;
+                    int ftColumnIndex = mDataStore.schema.getFullTextIndex().getColumnIndex(snippet.getColumnName());
+                    selection.append(String.format(Locale.US, ", snippet(`%s`, '<match>', '</match>', '\u2026', %d) AS %s", ftName, ftColumnIndex, field.getName()));
+                    continue;
+                } else if (field instanceof Query.FullTextOffsets){
+                    selection.append(String.format(", offsets(`%s`) AS %s", ftName, field.getName()));
                     continue;
                 }
 
