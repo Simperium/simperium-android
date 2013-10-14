@@ -27,4 +27,9 @@ public class FullTextIndex<T extends Syncable> {
         return mIndexer.index(mKeys, object);
     }
 
+    public int getColumnIndex(String columnName){
+        if (columnName == null) return -1;
+        return Arrays.asList(mKeys).indexOf(columnName);
+    }
+
 }
