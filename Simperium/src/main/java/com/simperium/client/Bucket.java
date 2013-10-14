@@ -113,6 +113,14 @@ public class Bucket<T extends Syncable> {
         this.cache = cache;
         validateBucketName(name);
     }
+
+    /**
+     * Return the instance of this bucket's schema
+     */
+    public BucketSchema<T> getSchema(){
+        return schema;
+    }
+
     /**
      * Return the user for this bucket
      */
