@@ -255,13 +255,13 @@ public class PersistentStore implements StorageProvider {
 
                 if (rebuild) {
                     database.execSQL(String.format(Locale.US, "DROP TABLE IF EXISTS `%s`", tableName));
-                    StringBuilder fields = new StringBuilder("`key`");
+                    StringBuilder fields = new StringBuilder();
                     for (String key : keys) {
-                        fields.append(", ");
                         fields.append("`");
                         fields.append(key);
-                        fields.append("`");
+                        fields.append("`, ");
                     }
+                    fields.append("`key`");
                     String query = String.format(Locale.US, "CREATE VIRTUAL TABLE `%s` USING fts3(%s)", tableName, fields.toString());
                     database.execSQL(query);
                 }
