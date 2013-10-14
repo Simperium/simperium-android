@@ -465,6 +465,7 @@ public class PersistentStore implements StorageProvider {
                 sortKeys.add(sorters.next().getKey());
             }
 
+            String fullTextFilter = null;
             while(conditions.hasNext()){
                 Query.Condition condition = conditions.next();
                 String key = condition.getKey();
@@ -472,7 +473,9 @@ public class PersistentStore implements StorageProvider {
                 if (condition.getComparisonType() == Query.ComparisonType.MATCH) {
                     // include the full text index table if not already included
                     if(!includedFullText)
-                        filters.append(String.format(Locale.US, " JOIN `%s` ON objects.key = `%s`.`key` ", ftName, ftName));
+                        fullTextFilter = String.format(Locale.US, " JOIN `%s` ON objects.key = `%s`.`key` ", ftName, ftName);
+
+                    includedFullText = true;
                     // add the condition and argument to the where statement
                     String field = key == null ? ftName : String.format(Locale.US, "`%s`.`%s`", ftName, condition.getKey());
                     where.append(String.format(Locale.US, " AND ( %s %s ? )", field, condition.getComparisonType()));
@@ -499,6 +502,8 @@ public class PersistentStore implements StorageProvider {
                 }
                 i++;
             }
+
+            if(includedFullText) filters.insert(0, fullTextFilter);
 
             while(fields.hasNext()){
                 Query.Field field = fields.next();
