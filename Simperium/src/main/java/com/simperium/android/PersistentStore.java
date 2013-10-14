@@ -342,19 +342,26 @@ public class PersistentStore implements StorageProvider {
         
         private BucketSchema<T> schema;
 
+        int mObjectKeyColumn;
+        int mObjectDataColumn;
+
         ObjectCursor(BucketSchema<T> schema, Cursor cursor){
             super(cursor);
             this.schema = schema;
+            mObjectKeyColumn = getColumnIndexOrThrow("object_key");
+            mObjectDataColumn = getColumnIndexOrThrow("object_data");
         }
 
+        @Override
         public String getSimperiumKey(){
-            return getString(getColumnIndexOrThrow("object_key"));
+            return super.getString(mObjectKeyColumn);
         }
 
+        @Override
         public T getObject(){
             String key = getSimperiumKey();
             try {
-                JSONObject data = new JSONObject(getString(getColumnIndex("object_data")));
+                JSONObject data = new JSONObject(super.getString(mObjectDataColumn));
                 return schema.buildWithDefaults(key, Channel.convertJSON(data));
             } catch (org.json.JSONException e) {
                 return schema.buildWithDefaults(key, new HashMap<String,Object>());
@@ -418,6 +425,11 @@ public class PersistentStore implements StorageProvider {
 
         protected Cursor query(SQLiteDatabase database){
             String query = selection.append(statement).toString();
+            if (this.query.hasLimit()) {
+                query += String.format(Locale.US, " LIMIT %d", this.query.getLimit());
+                if (this.query.hasOffset())
+                    query += String.format(Locale.US, ", %d", this.query.getOffset());
+            }
             return database.rawQuery(query, args);
         }
 

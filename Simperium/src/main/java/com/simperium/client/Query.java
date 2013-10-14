@@ -193,6 +193,8 @@ public class Query<T extends Syncable> {
     private List<Condition> conditions = new ArrayList<Condition>();
     private List<Sorter> sorters = new ArrayList<Sorter>();
     private List<Field> mFields = new ArrayList<Field>();
+    private int mLimit = -1;
+    private int mOffset = -1;
 
     public Query(Bucket<T> bucket){
         this.bucket = bucket;
@@ -200,6 +202,40 @@ public class Query<T extends Syncable> {
 
     public Query(){
         bucket = null;
+    }
+
+    public boolean hasLimit(){
+        return mLimit != -1;
+    }
+
+    public int getLimit(){
+        return mLimit;
+    }
+
+    public Query limit(int limit) {
+        mLimit = limit;
+        return this;
+    }
+
+    public Query clearLimit() {
+        return limit(-1);
+    }
+
+    public boolean hasOffset(){
+        return mOffset != -1;
+    }
+
+    public int getOffset(){
+        return mOffset;
+    }
+
+    public Query offset(int offset) {
+        mOffset = offset;
+        return this;
+    }
+
+    public Query clearOffset() {
+        return offset(-1);
     }
 
     public Query where(Condition condition){
