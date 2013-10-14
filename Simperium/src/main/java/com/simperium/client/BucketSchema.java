@@ -11,6 +11,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 
+import android.content.ContentValues;
+
 /**
  * An interface to allow applications to provide a schema for a bucket and a way
  * instatiate custom BucketObject instances
@@ -99,8 +101,30 @@ public abstract class BucketSchema<T extends Syncable> {
         indexers.add(0, new AutoIndexer<T>());
     }
 
-    public FullTextIndex setupFullTextIndex(String ... indexNames){
-        mFullTextIndex = new FullTextIndex<T>(indexNames);
+    public FullTextIndex<T> setupFullTextIndex(String ... indexNames){
+
+        FullTextIndex.Indexer<T> indexer = new FullTextIndex.Indexer<T>() {
+
+            @Override
+            public ContentValues index(String[] keys, T object){
+                ContentValues indexValues = new ContentValues(keys.length);
+                Map<String,Object> values = object.getDiffableValue();
+                for (String key : keys) {
+                    Object value = values.get(key);
+                    if (value != null) {
+                        indexValues.put(key, value.toString());
+                    }
+                }
+                return indexValues;
+            }
+
+        };
+
+        return setupFullTextIndex(indexer, indexNames);
+    }
+
+    public FullTextIndex<T> setupFullTextIndex(FullTextIndex.Indexer<T> indexer, String ... indexNames){
+        mFullTextIndex = new FullTextIndex<T>(indexer, indexNames);
         return mFullTextIndex;
     }
 
