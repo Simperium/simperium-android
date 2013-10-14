@@ -58,7 +58,7 @@ public class PersistentStore implements StorageProvider {
 
     private class DataStore<T extends Syncable> implements BucketStore<T> {
 
-        private BucketSchema<T> schema;
+        protected BucketSchema<T> schema;
         protected String bucketName;
         private Reindexer mReindexer;
 
@@ -116,6 +116,8 @@ public class PersistentStore implements StorageProvider {
         public void reset(){
             if (mReindexer != null) mReindexer.stop();
             database.delete(OBJECTS_TABLE, "bucket=?", new String[]{bucketName});
+            if (schema.hasFullTextIndex())
+                database.delete(getFullTextTableName(), null, null);
             deleteAllIndexes();
         }
 
