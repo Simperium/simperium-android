@@ -2,7 +2,7 @@ package com.simperium.client;
 
 import com.simperium.util.Logger;
 
-import java.util.Map;
+import org.json.JSONObject;
 
 /**
  * An object that can be diffed and changes sent
@@ -57,7 +57,7 @@ public abstract class Syncable implements Diffable {
     /**
      * Returns the object as it should appear on the server
      */
-    public Map<String, Object>getUnmodifiedValue(){
+    public JSONObject getUnmodifiedValue(){
         return getGhost().getDiffableValue();
     }
 

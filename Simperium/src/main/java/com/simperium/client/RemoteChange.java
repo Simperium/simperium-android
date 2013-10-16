@@ -7,6 +7,10 @@ import com.simperium.util.Logger;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 /**
  * Encapsulates parsing and logic for remote changes
  */
@@ -30,18 +34,20 @@ public class RemoteChange {
     private Integer entityVersion;
     private String changeVersion;
     private String operation;
-    private Map<String,Object> value;
+    private JSONObject value;
     private Integer errorCode;
     private boolean applied = false;
     private Change change;
     private JSONDiff jsondiff = new JSONDiff();
+
     /**
      * All remote changes include clientid, key and ccids then these differences:
      * - errors have error key
      * - changes with operation "-" do not have a value
      * - changes with operation "M" have a v (value), ev (entity version) and if not a new object an sv (source version)
      */
-    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion, Integer sourceVersion, Integer entityVersion, String operation, Map<String,Object> value){
+    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion,
+        Integer sourceVersion, Integer entityVersion, String operation, JSONObject value) {
         this.clientid = clientid;
         this.key = key;
         this.ccids = ccids;
@@ -52,8 +58,12 @@ public class RemoteChange {
         this.changeVersion = changeVersion;
     }
 
-    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion, Integer sourceVersion, Integer entityVersion, Map<String,Object> diff){
-        this(clientid, key, ccids, changeVersion, sourceVersion, entityVersion, (String) diff.get(JSONDiff.DIFF_OPERATION_KEY), (Map<String,Object>)diff.get(JSONDiff.DIFF_VALUE_KEY));
+    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion,
+        Integer sourceVersion, Integer entityVersion, JSONObject diff)
+        throws JSONException {
+        this(clientid, key, ccids, changeVersion, sourceVersion, entityVersion,
+            diff.getString(JSONDiff.DIFF_OPERATION_KEY),
+            diff.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
     }
 
     public RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
@@ -85,8 +95,14 @@ public class RemoteChange {
             throw(new RemoteChangeInvalidException(
                     String.format("Local instance has version greater than 0 with remote add operation")));
         }
-        Map<String,Object> properties = jsondiff.apply(ghost.getDiffableValue(), getPatch());
-        return new Ghost(getKey(), getObjectVersion(), properties);
+
+        try {
+            JSONObject properties = jsondiff.apply(ghost.getDiffableValue(), getPatch());
+            return new Ghost(getKey(), getObjectVersion(), properties);
+        } catch (JSONException e) {
+            throw new RemoteChangeInvalidException("Unable to apply diff", e);
+        }
+
     }
 
     public boolean isAcknowledged(){
@@ -173,7 +189,7 @@ public class RemoteChange {
         return changeVersion;
     }
 
-    public Map<String,Object> getPatch(){
+    public JSONObject getPatch(){
         return value;
     }
 
@@ -197,22 +213,23 @@ public class RemoteChange {
         }
     }
 
-    public static RemoteChange buildFromMap(Map<String,Object> changeData){
+    public static RemoteChange buildFromMap(JSONObject changeData)
+    throws JSONException {
         // get the list of ccids that this applies to
         List<String> ccids = (List<String>)changeData.get(CHANGE_IDS_KEY);
         // get the client id
         String client_id = (String)changeData.get(CLIENT_KEY);
         // get the id of the object it applies to
         String id = (String)changeData.get(ID_KEY);
-        if (changeData.containsKey(ERROR_KEY)) {
-            Integer errorCode = (Integer)changeData.get(ERROR_KEY);
+        if (changeData.has(ERROR_KEY)) {
+            int errorCode = changeData.getInt(ERROR_KEY);
             return new RemoteChange(client_id, id, ccids, errorCode);
         }
-        String operation = (String)changeData.get(OPERATION_KEY);
-        Integer sourceVersion = (Integer)changeData.get(SOURCE_VERSION_KEY);
-        Integer objectVersion = (Integer)changeData.get(ENTITY_VERSION_KEY);
-        Map<String,Object> patch = (Map<String,Object>)changeData.get(VALUE_KEY);
-        String changeVersion = (String)changeData.get(CHANGE_VERSION_KEY);
+        String operation = changeData.getString(OPERATION_KEY);
+        Integer sourceVersion = changeData.getInt(SOURCE_VERSION_KEY);
+        Integer objectVersion = changeData.getInt(ENTITY_VERSION_KEY);
+        JSONObject patch = changeData.getJSONObject(VALUE_KEY);
+        String changeVersion = changeData.getString(CHANGE_VERSION_KEY);
 
         return new RemoteChange(client_id, id, ccids, changeVersion, sourceVersion, objectVersion, operation, patch);
 

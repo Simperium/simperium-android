@@ -1,28 +1,25 @@
 package com.simperium.client;
 
-import java.util.Map;
-import java.util.HashMap;
-
 import com.simperium.util.JSONDiff;
 
-/**
- *
- */
+import org.json.JSONObject;
+
 public class Ghost implements Diffable {
+
     private String key;
     private Integer version = 0;
-    private Map<String,Object> properties;
+    private JSONObject properties;
 
     public Ghost(String key){
-        this(key, 0, new HashMap<String,Object>());
+        this(key, 0, new JSONObject());
     }
 
-    public Ghost(String key, Integer version, Map<String,Object> properties){
+    public Ghost(String key, Integer version, JSONObject properties){
         super();
         this.key = key;
         this.version = version;
         // copy the properties
-        this.properties = JSONDiff.deepCopy(properties);
+        this.properties = properties;
     }
     public String getSimperiumKey(){
         return key;
@@ -30,7 +27,7 @@ public class Ghost implements Diffable {
     public Integer getVersion(){
         return version;
     }
-    public Map<String,Object> getDiffableValue(){
+    public JSONObject getDiffableValue(){
         return properties;
     }
     public String getVersionId(){

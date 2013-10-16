@@ -8,6 +8,8 @@ import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 import static com.simperium.util.Uuid.uuid;
 
+import org.json.JSONObject;
+import org.json.JSONException;
 
 public class Change {
 
@@ -28,8 +30,8 @@ public class Change {
     private String operation;
     private String key, bucketName;
     private Integer version;
-    private Map<String,Object> origin;
-    private Map<String,Object> target;
+    private JSONObject origin;
+    private JSONObject target;
     private String ccid;
     private boolean pending = true, acknowledged = false, sent = false;
     private OnRetryListener retryListener;
@@ -51,27 +53,28 @@ public class Change {
     /**
      * Constructs a change object from a map of values
      */
-    public static Change buildChange(Syncable object, Map<String,Object> properties){
+    public static Change buildChange(Syncable object, JSONObject properties)
+    throws JSONException {
         return new Change(
-            (String)  properties.get(OPERATION_KEY),
+            properties.getString(OPERATION_KEY),
             object.getBucketName(),
             object.getSimperiumKey(),
-            (Integer) properties.get(SOURCE_VERSION_KEY),
-            (Map<String,Object>) properties.get(ORIGIN_KEY),
-            (Map<String,Object>) properties.get(TARGET_KEY)
+            properties.getInt(SOURCE_VERSION_KEY),
+            properties.getJSONObject(ORIGIN_KEY),
+            properties.getJSONObject(TARGET_KEY)
         );
     }
 
-    public static Change buildChange(String operation, String ccid, String bucketName, String key, Integer version, Map<String,Object> origin, Map<String,Object> target){
+    public static Change buildChange(String operation, String ccid, String bucketName, String key, Integer version, JSONObject origin, JSONObject target){
         return new Change(operation, ccid, bucketName, key, version, origin, target);
     }
 
-    private Change(String operation, Syncable object, Map<String,Object> origin){
+    private Change(String operation, Syncable object, JSONObject origin){
         this(operation, object.getBucketName(), object.getSimperiumKey(), object.getVersion(),
             origin, object.getDiffableValue());
     }
 
-    private Change(String operation, String bucketName, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target, Change compressed){
+    private Change(String operation, String bucketName, String key, Integer sourceVersion, JSONObject origin, JSONObject target, Change compressed){
         this(operation, bucketName, key, sourceVersion, origin, target);
         this.compressed = compressed;
     }
@@ -80,11 +83,11 @@ public class Change {
         this(operation, object, object.getUnmodifiedValue());
     }
 
-    protected Change(String operation, String bucketName, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
+    protected Change(String operation, String bucketName, String key, Integer sourceVersion, JSONObject origin, JSONObject target){
         this(operation, uuid(), bucketName, key, sourceVersion, origin, target);
     }
 
-    protected Change(String operation, String ccid, String bucketName, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
+    protected Change(String operation, String ccid, String bucketName, String key, Integer sourceVersion, JSONObject origin, JSONObject target){
         this.operation = operation;
         this.ccid = ccid;
         this.bucketName = bucketName;
@@ -160,11 +163,11 @@ public class Change {
         return this.ccid;
     }
 
-    public Map<String,Object> getOrigin(){
+    public JSONObject getOrigin(){
         return origin;
     }
 
-    public Map<String,Object> getTarget(){
+    public JSONObject getTarget(){
         return target;
     }
 
@@ -223,14 +226,18 @@ public class Change {
         return operation.equals(OPERATION_MODIFY);
     }
 
-    public Map<String,Object> getDiff(){
-        return jsondiff.diff(origin, target);
+    public JSONObject getDiff(){
+        try {
+            return jsondiff.diff(origin, target);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
      * Creates a new change with the given sourceVersion and origin
      */
-    protected Change reapplyOrigin(Integer sourceVersion, Map<String,Object> origin){
+    protected Change reapplyOrigin(Integer sourceVersion, JSONObject origin){
         // protected Change(String operation, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
         return new Change(operation, bucketName, key, sourceVersion, origin, target, this);
     }

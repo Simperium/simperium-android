@@ -11,6 +11,10 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import android.content.ContentValues;
 
 /**
@@ -19,9 +23,11 @@ import android.content.ContentValues;
  */
 public abstract class BucketSchema<T extends Syncable> {
 
+    static public final String TAG = "Simperium";
+
     public abstract String getRemoteName();
-    public abstract T build(String key, Map<String,Object>properties);
-    public abstract void update(T object, Map<String,Object>properties);
+    public abstract T build(String key, JSONObject properties);
+    public abstract void update(T object, JSONObject properties);
 
     public interface Indexer<S extends Syncable> {
         public List<Index> index(S object);
@@ -53,12 +59,12 @@ public abstract class BucketSchema<T extends Syncable> {
     private Map<String,Object> defaultValues = new HashMap<String,Object>();
     private FullTextIndex mFullTextIndex;
 
-    public T buildWithDefaults(String key, Map<String,Object> properties) {
+    public T buildWithDefaults(String key, JSONObject properties) {
         updateDefaultValues(properties);
         return build(key, properties);
     }
 
-    public void updateWithDefaults(T object, Map<String,Object> properties){
+    public void updateWithDefaults(T object, JSONObject properties){
         updateDefaultValues(properties);
         update(object, properties);
     }
@@ -67,14 +73,18 @@ public abstract class BucketSchema<T extends Syncable> {
         defaultValues.put(key, value);
     }
 
-    protected void updateDefaultValues(Map<String,Object> properties){
+    protected void updateDefaultValues(JSONObject properties){
         Set<Entry<String,Object>> defaults = defaultValues.entrySet();
         Iterator<Entry<String,Object>> iterator = defaults.iterator();
         while(iterator.hasNext()){
             Entry<String,Object> entry = iterator.next();
             String key = entry.getKey();
-            if (!properties.containsKey(key)) {
-                properties.put(key, JSONDiff.deepCopy(entry.getValue()));
+            if (!properties.has(key)) {
+                try {
+                    properties.put(key, JSONDiff.deepCopy(entry.getValue()));
+                } catch (JSONException e) {
+                    android.util.Log.e(TAG, "Could not assign default value " + key, e);
+                }
             }
         }
     }
@@ -108,11 +118,15 @@ public abstract class BucketSchema<T extends Syncable> {
             @Override
             public ContentValues index(String[] keys, T object){
                 ContentValues indexValues = new ContentValues(keys.length);
-                Map<String,Object> values = object.getDiffableValue();
+                JSONObject values = object.getDiffableValue();
                 for (String key : keys) {
-                    Object value = values.get(key);
-                    if (value != null) {
-                        indexValues.put(key, value.toString());
+                    try {
+                        Object value = values.get(key);
+                        if (value != null) {
+                            indexValues.put(key, value.toString());
+                        }
+                    } catch (JSONException e) {
+                        android.util.Log.e(TAG, "Could not index value for " + key, e);
                     }
                 }
                 return indexValues;
@@ -139,22 +153,33 @@ public abstract class BucketSchema<T extends Syncable> {
     private static class AutoIndexer<S extends Syncable> implements Indexer<S> {
 
         public List<Index> index(S object){
-            Set<Entry<String,Object>> entries = object.getDiffableValue().entrySet();
-            List<Index> indexes = new ArrayList<Index>(entries.size());
-            Iterator<Entry<String,Object>> iterator = entries.iterator();
-            while(iterator.hasNext()){
-                Entry<String,Object> entry = iterator.next();
-                addIndex(indexes, entry.getKey(), entry.getValue());
+
+            JSONObject values = object.getDiffableValue();
+            List<Index> indexes = new ArrayList<Index>(values.length());
+            Iterator keys = values.keys();
+
+            while (keys.hasNext()) {
+                String key = keys.next().toString();
+                try {
+                    addIndex(indexes, key, values.get(key));
+                } catch (JSONException e) {
+                    android.util.Log.e(TAG, "Unable to index " + key, e);
+                }
             }
+
             return indexes;
         }
 
         private void addIndex(List<Index> indexes, String key, Object value){
-            if (value instanceof List) {
-                List list = (List) value;
-                Iterator<Object> values = list.iterator();
-                while(values.hasNext()){
-                    addIndex(indexes, key, values.next());
+            if (value instanceof JSONArray) {
+                JSONArray list = (JSONArray) value;
+                int length = list.length();
+                for (int i = 0; i < length; i++) {
+                    try {
+                        addIndex(indexes, key, list.get(i));
+                    } catch (JSONException e) {
+                        android.util.Log.e(TAG, "Unable to index array", e);
+                    }
                 }
             } else {
                 indexes.add(new Index(key, value));

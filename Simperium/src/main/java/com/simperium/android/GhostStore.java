@@ -170,21 +170,20 @@ public class GhostStore implements GhostStorageProvider {
     }
 
     private String serializeGhostData(Ghost ghost) {
-        JSONObject json = serializeJSON(ghost.getDiffableValue());
+        JSONObject json = ghost.getDiffableValue();
         if (json != null) {
             return json.toString();
         }
         return null;
     }
 
-    private Map<String,Object> deserializeGhostData(String data) {
-        Map<String,Object> properties = null;
+    private JSONObject deserializeGhostData(String data) {
         try {
-            properties = convertJSON(new org.json.JSONObject(data));
+            return new JSONObject(data);
         } catch (org.json.JSONException e) {
             Logger.log(String.format("Failed to deserialize ghost data %s", data), e);
+            return null;
         }
-        return properties;
     }
 
 }

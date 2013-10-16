@@ -39,6 +39,8 @@ import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 import com.simperium.util.JSONDiff;
 
+import org.json.JSONObject;
+
 import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.os.CancellationSignal;
@@ -170,7 +172,7 @@ public class Bucket<T extends Syncable> {
                 Ghost ghost = ghostStore.getGhost(Bucket.this, key);
                 object.setGhost(ghost);
             } catch (GhostMissingException e) {
-                object.setGhost(new Ghost(key, 0, new HashMap<String,Object>()));
+                object.setGhost(new Ghost(key, 0, new JSONObject()));
             }
             object.setBucket(Bucket.this);
             cache.put(key, object);
@@ -286,13 +288,13 @@ public class Bucket<T extends Syncable> {
         // TODO: sync the object over the socket
     }
 
-    protected T buildObject(String key, Map<String,java.lang.Object> properties){
+    protected T buildObject(String key, JSONObject properties){
         return buildObject(new Ghost(key, 0, properties));
     }
 
 
     protected T buildObject(String key){
-        return buildObject(key, new HashMap<String,java.lang.Object>());
+        return buildObject(key, new JSONObject());
     }
     
     protected T buildObject(Ghost ghost){
@@ -386,19 +388,19 @@ public class Bucket<T extends Syncable> {
      */
     public T newObject(String key)
     throws BucketObjectNameInvalid {
-        return insertObject(key, new HashMap<String,Object>());
+        return insertObject(key, new JSONObject());
     }
 
     /**
      * 
      */
-    public T insertObject(String key, Map<String,Object> properties)
+    public T insertObject(String key, JSONObject properties)
     throws BucketObjectNameInvalid {
         String name = key.trim();
         validateObjectName(name);
         T object = buildObject(name, properties);
         object.setBucket(this);
-        Ghost ghost = new Ghost(name, 0, new HashMap<String,Object>());
+        Ghost ghost = new Ghost(name, 0, new JSONObject());
         object.setGhost(ghost);
         ghostStore.saveGhost(this, ghost);
         cache.put(name, object);
@@ -457,7 +459,7 @@ public class Bucket<T extends Syncable> {
      */
     protected void addObject(T object){
         if (object.getGhost() == null) {
-            object.setGhost(new Ghost(object.getSimperiumKey(), 0, new HashMap<String, java.lang.Object>()));
+            object.setGhost(new Ghost(object.getSimperiumKey()));
         }
         
         // Allows the storage provider to persist the object

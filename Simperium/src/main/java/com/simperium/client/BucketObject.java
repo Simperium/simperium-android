@@ -5,11 +5,16 @@ import java.util.HashMap;
 
 import com.simperium.util.JSONDiff;
 
+import org.json.JSONObject;
+import org.json.JSONException;
+
 /**
  * A generic object used to represent a single object from a bucket
  */
 public class BucketObject extends Syncable {
-    
+
+    static public final String TAG = "Simperium";
+
     /**
      * Basic implementation of BucketSchema for BucketObject
      */
@@ -35,11 +40,11 @@ public class BucketObject extends Syncable {
             return remoteName;
         }
 
-        public BucketObject build(String key, Map<String,Object> properties){
+        public BucketObject build(String key, JSONObject properties){
             return new BucketObject(key, properties);
         }
 
-        public void update(BucketObject object, Map<String,Object> properties){
+        public void update(BucketObject object, JSONObject properties){
             object.properties = properties;
         }
 
@@ -47,23 +52,32 @@ public class BucketObject extends Syncable {
 
     private String simperiumKey;
 
-    protected Map<String,Object> properties;
+    protected JSONObject properties;
 
-    public BucketObject(String key, Map<String,Object> properties){
+    public BucketObject(String key, JSONObject properties){
         this.simperiumKey = key;
         this.properties = JSONDiff.deepCopy(properties);
     }
 
     public BucketObject(String key){
-        this(key, new HashMap<String,Object>());
+        this(key, new JSONObject());
     }
 
     public Object getProperty(String key){
-        return properties.get(key);
+        try {
+            return properties.get(key);
+        } catch (JSONException e) {
+            android.util.Log.e(TAG, "Could not get key " + key, e);
+            return null;
+        }
     }
 
     public void setProperty(String key, Object value){
-        properties.put(key, value);
+        try {
+            properties.put(key, value);
+        } catch (JSONException e) {
+            android.util.Log.e(TAG, "Could not set key" + key, e);
+        }
     }
 
     public String getSimperiumKey(){
@@ -77,9 +91,9 @@ public class BucketObject extends Syncable {
         return String.format("%s - %s", getBucket().getName(), getVersionId());
     }
 
-    public Map<String,Object> getDiffableValue(){
+    public JSONObject getDiffableValue(){
         if (properties == null) {
-            properties = new HashMap<String,Object>();
+            properties = new JSONObject();
         }
         return properties;
     }

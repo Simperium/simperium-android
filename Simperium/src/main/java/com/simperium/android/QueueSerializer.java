@@ -96,8 +96,8 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
             String key = null;
             String operation = null;
             String status = null;
-            Map<String,Object> origin = null;
-            Map<String,Object> target = null;
+            JSONObject origin = null;
+            JSONObject target = null;
 
             while(items.moveToNext()){
                 try {
@@ -106,8 +106,8 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
                     status = items.getString(statusColumn);
 
                     if (operation.equals(Change.OPERATION_MODIFY)) {
-                        origin = Channel.convertJSON(new JSONObject(items.getString(originColumn)));
-                        target = Channel.convertJSON(new JSONObject(items.getString(targetColumn)));
+                        origin = new JSONObject(items.getString(originColumn));
+                        target = new JSONObject(items.getString(targetColumn));
                     } else {
                         origin = null;
                         target = null;
@@ -173,8 +173,8 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
         values.put(FIELD_OPERATION, change.getOperation());
         values.put(FIELD_CCID, change.getChangeId());
         if (change.isModifyOperation()) {
-            values.put(FIELD_ORIGIN, Channel.serializeJSON(change.getOrigin()).toString());
-            values.put(FIELD_TARGET, Channel.serializeJSON(change.getTarget()).toString());
+            values.put(FIELD_ORIGIN, change.getOrigin().toString());
+            values.put(FIELD_TARGET, change.getTarget().toString());
         }
 
         try {

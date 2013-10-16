@@ -304,8 +304,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             return;
         }
         // Loop through each change? Convert changes to array list
-        List<Object> changeList = Channel.convertJSON(changes);
-        changeProcessor.addChanges(changeList);
+        changeProcessor.addChanges(changes);
     }
 
     private static final String ENTITY_DATA_KEY = "data";
@@ -637,8 +636,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
 
             // build the ghost and update
-            Map<String,Object> properties = Channel.convertJSON(data);
-            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), properties);
+            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), data);
             bucket.addObjectWithGhost(ghost);
             indexedCount ++;
 
@@ -796,7 +794,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
         private Thread thread;
 
-        private List<Map<String,Object>> remoteQueue = Collections.synchronizedList(new ArrayList<Map<String,Object>>(10));
+        private List<JSONObject> remoteQueue = Collections.synchronizedList(new ArrayList<JSONObject>(10));
         private List<Change> localQueue = Collections.synchronizedList(new ArrayList<Change>());
         private Map<String,Change> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
         private Timer retryTimer;
@@ -824,19 +822,22 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             }
         }
 
-        public void addChanges(List<Object> changes){
-            Logger.log(TAG, String.format("Add remote changes to processor %d", changes.size()));
+        public void addChanges(JSONArray changes) {
             synchronized(lock){
-                Iterator iterator = changes.iterator();
-                while(iterator.hasNext()){
-                    remoteQueue.add((Map<String,Object>)iterator.next());
+                int length = changes.length();
+                Logger.log(TAG, String.format("Add remote changes to processor %d", length));
+                for (int i = 0; i < length; i++) {
+                    JSONObject change = changes.optJSONObject(i);
+                    if (change != null) {
+                        remoteQueue.add(change);
+                    }
                 }
                 start();
             }
         }
 
-        public void addChange(Map<String,Object> change){
-            synchronized(lock){                
+        public void addChange(JSONObject change) {
+            synchronized(lock){
                 remoteQueue.add(change);
             }
             start();
@@ -971,7 +972,13 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
                         throw new InterruptedException();
                     }
                     // take an item off the queue
-                    RemoteChange remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
+                    RemoteChange remoteChange = null;
+                    try {
+                        remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
+                    } catch (JSONException e) {
+                        Logger.log(TAG, "Failed to build remote change", e);
+                        continue;
+                    }
                     Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
@@ -1086,37 +1093,44 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
             sendChange(change);
         }
 
-        private Boolean sendChange(Change change){
+        private Boolean sendChange(Change change) {
             // send the change down the socket!
             if (!connected) {
                 // channel is not initialized, send on reconnect
                 return true;
             }
 
-            Map<String,Object> map = new HashMap<String,Object>(3);
-            map.put(Change.ID_KEY, change.getKey());
-            map.put(Change.CHANGE_ID_KEY, change.getChangeId());
-            map.put(JSONDiff.DIFF_OPERATION_KEY, change.getOperation());
-            Integer version = change.getVersion();
-            if (version != null && version > 0) {
-                map.put(Change.SOURCE_VERSION_KEY, version);
-            }
+            try {
+                JSONObject map = new JSONObject();
+                map.put(Change.ID_KEY, change.getKey());
+                map.put(Change.CHANGE_ID_KEY, change.getChangeId());
+                map.put(JSONDiff.DIFF_OPERATION_KEY, change.getOperation());
 
-            if (change.requiresDiff()) {
-                Map<String,Object> diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
-                if (diff.isEmpty()) {
-                    Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
-                    change.setComplete();
-                    return false;
+                Integer version = change.getVersion();
+                if (version != null && version > 0) {
+                    map.put(Change.SOURCE_VERSION_KEY, version);
                 }
-                map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
-            }
-            JSONObject changeJSON = Channel.serializeJSON(map);
 
-            sendMessage(String.format("c:%s", changeJSON.toString()));
-            serializer.onSendChange(change);
-            change.setSent();
-            return true;
+                if (change.requiresDiff()) {
+                    JSONObject diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
+                    if (diff.length() == 0) {
+                        Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
+                        change.setComplete();
+                        return false;
+                    }
+                    map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
+                }
+               //  JSONObject changeJSON = Channel.serializeJSON(map);
+
+                sendMessage(String.format("c:%s", map.toString()));
+                serializer.onSendChange(change);
+                change.setSent();
+                return true;
+            } catch (JSONException e) {
+                android.util.Log.e(TAG, "Could not send change", e);
+                return false;
+            }
+
         }
 
     }

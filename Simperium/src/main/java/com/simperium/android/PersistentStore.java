@@ -88,7 +88,7 @@ public class PersistentStore implements StorageProvider {
             ContentValues values = new ContentValues();
             values.put("bucket", bucketName);
             values.put("key", key);
-            values.put("data", Channel.serializeJSON(object.getDiffableValue()).toString());
+            values.put("data", object.getDiffableValue().toString());
             Cursor cursor = queryObject(bucketName, key);
             if (cursor.getCount() == 0) {
                 database.insert(OBJECTS_TABLE, null, values);
@@ -362,9 +362,9 @@ public class PersistentStore implements StorageProvider {
             String key = getSimperiumKey();
             try {
                 JSONObject data = new JSONObject(super.getString(mObjectDataColumn));
-                return schema.buildWithDefaults(key, Channel.convertJSON(data));
+                return schema.buildWithDefaults(key, data);
             } catch (org.json.JSONException e) {
-                return schema.buildWithDefaults(key, new HashMap<String,Object>());
+                return schema.buildWithDefaults(key, new JSONObject());
             }
         }
 
