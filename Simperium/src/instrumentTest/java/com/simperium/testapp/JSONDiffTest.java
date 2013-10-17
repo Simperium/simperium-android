@@ -1,295 +1,300 @@
 package com.simperium.testapp;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.simperium.util.JSONDiff;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Iterator;
-
-import java.util.Set;
-import java.util.Collection;
 
 import junit.framework.*;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONException;
-
 public class JSONDiffTest extends TestCase {
 
-	JSONDiff jsondiff;
 
-	public void setUp(){
-		jsondiff = new JSONDiff();
-	}
+    public void setUp(){
+        JSONDiff.enableArrayDiff = false;
+    }
 
     public void testCommonPrefix()
     throws Exception {
-        assertEquals(3, jsondiff.commonPrefix(array(1,2,3), array(1,2,3,4)));
-        assertEquals(1, jsondiff.commonPrefix(array(1), array(1,2,3,4)));
-        assertEquals(0, jsondiff.commonPrefix(array(2,3), array(1,2,3,4)));
+        assertEquals(3, JSONDiff.commonPrefix(list(1,2,3), list(1,2,3,4)));
+        assertEquals(1, JSONDiff.commonPrefix(list(1), list(1,2,3,4)));
+        assertEquals(0, JSONDiff.commonPrefix(list(2,3), list(1,2,3,4)));
     }
 
     public void testCommonSuffix()
     throws Exception {
-        assertEquals(3, jsondiff.commonSuffix(array(0,2,3,4), array(1,2,3,4)));
-        assertEquals(1, jsondiff.commonSuffix(array(1,4), array(1,2,3,4)));
-        assertEquals(0, jsondiff.commonSuffix(array(1,4,5), array(1,2,3,4)));
+        assertEquals(3, JSONDiff.commonSuffix(list(0,2,3,4), list(1,2,3,4)));
+        assertEquals(1, JSONDiff.commonSuffix(list(1,4), list(1,2,3,4)));
+        assertEquals(0, JSONDiff.commonSuffix(list(1,4,5), list(1,2,3,4)));
     }
 
     public void testReplace()
     throws Exception {
-		Map<String,Object> replaced = object("a","b");
-		Map<String,Object> expected = op(JSONDiff.OPERATION_REPLACE, replaced);
-		Map<String,Object> diff = jsondiff.diff(list(1), replaced);
+        JSONObject replaced = object("a","b");
+        JSONObject expected = op(JSONDiff.OPERATION_REPLACE, replaced);
+        JSONObject diff = JSONDiff.diff(list(1), replaced);
 
-		assertEquals(expected, diff);
-	}
+        assertEquals(expected, diff);
+    }
 
     public void testListAppend()
     throws Exception {
-		// Buildint Java representation of {"o": "L", "v": {"1": {"o":"+", "v":4}}}
-		List<Object> origin = list(1);
-		List<Object> target = list(1,4);
-		Map<String,Object> expected = list_op(object(
-			"1",
-			op(JSONDiff.OPERATION_INSERT, new Integer(4))
-		));
+        // Buildint Java representation of {"o": "L", "v": {"1": {"o":"+", "v":4}}}
+        JSONArray origin = list(1);
+        JSONArray target = list(1,4);
 
-		// Generating diff of [1] and [1,4]
-		Map<String,Object> diff = jsondiff.diff(origin, target);
+        JSONObject expected = list_op(object(
+            "1",
+            op(JSONDiff.OPERATION_INSERT, new Integer(4))
+        ));
 
-		assertEquals(expected, diff);
-		List<Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        // Generating diff of [1] and [1,4]
+        JSONObject diff = JSONDiff.diff(origin, target);
+
+        assertEquals(expected, diff);
+        JSONArray transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
+    }
 
     public void testListRemoveLast()
     throws Exception {
-		Map<String,Map>  diffs = new HashMap<String,Map>();
-		diffs.put("1", op(JSONDiff.OPERATION_REMOVE));
-		Map<String,Object> expected = list_op(diffs);
+        JSONObject diffs = new JSONObject();
+        diffs.put("1", op(JSONDiff.OPERATION_REMOVE));
+        JSONObject expected = list_op(diffs);
 
-		List<Object> origin = list(1,4);
-		List<Object> target = list(1);
-		Map<String,Object> diff = jsondiff.diff(origin, target);
+        JSONArray origin = list(1,4);
+        JSONArray target = list(1);
+        JSONObject diff = JSONDiff.diff(origin, target);
 
-		assertEquals(expected, diff);
-		List<Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
+        assertEquals(expected, diff);
+        JSONArray transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
 
-	}
+    }
 
     public void testListRemoveFirst()
     throws Exception {
-		Map<String,Object> diffs = new HashMap<String,Object>();
-		diffs.put("0", op(JSONDiff.OPERATION_REMOVE));
-		Map<String,Object> expected = list_op(diffs);
-		List<Object> origin = list(1,4);
-		List<Object> target = list(4);
+        JSONObject diffs = new JSONObject();
+        diffs.put("0", op(JSONDiff.OPERATION_REMOVE));
+        JSONObject expected = list_op(diffs);
+        JSONArray origin = list(1,4);
+        JSONArray target = list(4);
 
-		Map<String,Object> diff = jsondiff.diff(origin, target);
-		assertEquals(expected, diff);
-		List<Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
+        JSONObject diff = JSONDiff.diff(origin, target);
+        assertEquals(expected, diff);
+        JSONArray transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
 
-	}
+    }
 
     public void testListRemove2Items()
     throws Exception {
-		Map<String,Object> diffs = new HashMap<String,Object>();
-		diffs.put("0", op(JSONDiff.OPERATION_REPLACE, new Integer(2)));
-		diffs.put("1", op(JSONDiff.OPERATION_REMOVE));
-		diffs.put("2", op(JSONDiff.OPERATION_REMOVE));
+        JSONObject diffs = new JSONObject();
+        diffs.put("0", op(JSONDiff.OPERATION_REPLACE, new Integer(2)));
+        diffs.put("1", op(JSONDiff.OPERATION_REMOVE));
+        diffs.put("2", op(JSONDiff.OPERATION_REMOVE));
 
-		Map<String,Object> expected = list_op(diffs);
-		List<Object> origin = list(1,2,3,4);
-		List<Object> target = list(2,4);
-		Map<String,Object> diff = jsondiff.diff(origin, target);
-		assertEquals(expected, diff);
-		List<Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        JSONObject expected = list_op(diffs);
+        JSONArray origin = list(1,2,3,4);
+        JSONArray target = list(2,4);
+        JSONObject diff = JSONDiff.diff(origin, target);
+        JSONArray transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+
+        assertEquals(expected, diff);
+        assertEquals(target, transformed);
+    }
 
     public void testListRemoveFirstInsertMiddleAppend()
     throws Exception {
-		Map<String,Object> diffs = new HashMap<String,Object>();
-		diffs.put("0", op(JSONDiff.OPERATION_REPLACE, new Integer(2)));
-		diffs.put("1", op(JSONDiff.OPERATION_REPLACE, new Integer(6)));
-		diffs.put("4", op(JSONDiff.OPERATION_INSERT, new Integer(5)));
-		Map<String,Object> expected = list_op(diffs);
-		List<Object> origin = list(1,2,3,4);
-		List<Object> target = list(2,6,3,4,5);
+        JSONObject diffs = new JSONObject();
+        diffs.put("0", op(JSONDiff.OPERATION_REPLACE, new Integer(2)));
+        diffs.put("1", op(JSONDiff.OPERATION_REPLACE, new Integer(6)));
+        diffs.put("4", op(JSONDiff.OPERATION_INSERT, new Integer(5)));
+        JSONObject expected = list_op(diffs);
+        JSONArray origin = list(1,2,3,4);
+        JSONArray target = list(2,6,3,4,5);
 
-		Map<String,Object> diff = jsondiff.diff(origin, target);
-		assertEquals(expected, diff);
-		List<Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
+        JSONObject diff = JSONDiff.diff(origin, target);
+        assertEquals(expected, diff);
+        JSONArray transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
 
-	}
+    }
 
     public void testObjectChangeKeyString()
     throws Exception {
-		Map<String,Object> origin = object("a","b");
-		Map<String,Object> target = object("a","c");
-		Map<String,Object> diffs = new HashMap<String,Object>();
-		Map<String,Object> expected = object_op(object(
-			"a",
-			op(JSONDiff.OPERATION_DIFF, "-1\t+c")
-		));
-		Map<String,Object> diff = jsondiff.diff(origin, target);
-		assertEquals(expected, diff);
-		Map<String,Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        JSONObject origin = object("a","b");
+        JSONObject target = object("a","c");
+        JSONObject diffs = new JSONObject();
+        JSONObject expected = object_op(object(
+            "a",
+            op(JSONDiff.OPERATION_DIFF, "-1\t+c")
+        ));
+        JSONObject diff = JSONDiff.diff(origin, target);
+        assertEquals(expected, diff);
+        JSONObject transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
+    }
 
     public void testObjectChangekeyStringToInt()
     throws Exception {
-		Map<String,Object> origin = object("a","b");
-		Map<String,Object> target = object("a", new Integer(7));
-		Map<String,Object> diffs = new HashMap<String,Object>();
-		Map<String,Object> expected = object_op(object(
-			"a",
-			op(JSONDiff.OPERATION_REPLACE, target.get("a"))
-		));
+        JSONObject origin = object("a","b");
+        JSONObject target = object("a", new Integer(7));
+        JSONObject diffs = new JSONObject();
+        JSONObject expected = object_op(object(
+            "a",
+            op(JSONDiff.OPERATION_REPLACE, target.get("a"))
+        ));
 
-		Map<String,Object> diff = jsondiff.diff(origin, target);
-		assertEquals(expected, diff);
-		Map<String,Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        JSONObject diff = JSONDiff.diff(origin, target);
+        assertEquals(expected, diff);
+        JSONObject transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
+    }
 
     public void testObjectAddKey()
     throws Exception {
-		Map<String,Object> origin = object("a","b");
-		Map<String,Object> target = object("a","b","e","d");
-		Map<String,Object> expected = object_op(object(
-			"e",
-			op(JSONDiff.OPERATION_INSERT, target.get("e"))
-		));
+        JSONObject origin = object("a","b");
+        JSONObject target = object("a","b","e","d");
+        JSONObject expected = object_op(object(
+            "e",
+            op(JSONDiff.OPERATION_INSERT, target.get("e"))
+        ));
 
-		Map<String,Object> diff = jsondiff.diff(origin,target);
-		assertEquals(expected, diff);
-		Map<String,Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        JSONObject diff = JSONDiff.diff(origin,target);
+        JSONObject transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+
+        assertEquals(expected, diff);
+        assertEquals(target, transformed);
+    }
 
     public void testObjectRemoveKey()
     throws Exception {
-		Map<String,Object> origin = object("a","b","e","d");
-		Map<String,Object> target = object("a","b");
-		Map<String,Object> expected = object_op(object(
-			"e",
-			op(JSONDiff.OPERATION_REMOVE)
-		));
+        JSONObject origin = object("a","b","e","d");
+        JSONObject target = object("a","b");
+        JSONObject expected = object_op(object(
+            "e",
+            op(JSONDiff.OPERATION_REMOVE)
+        ));
 
-		Map<String,Object> diff = jsondiff.diff(origin,target);
-		assertEquals(expected, diff);
-		Map<String,Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        JSONObject diff = JSONDiff.diff(origin, target);
+        JSONObject transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+
+        assertEquals(expected, diff);
+        assertEquals(target, transformed);
+    }
 
     public void testObjectAppendListItem()
     throws Exception {
-		Map<String,Object> origin = object("a", list(1));
-		Map<String,Object> target = object("a", list(1,4));
-		Map<String,Object> expected = object_op(
-			object(
-				"a",
-				list_op(
-					object(
-						"1",
-						op(
-							JSONDiff.OPERATION_INSERT,
-							new Integer(4)
-						)
-					)
-				)
-			)
-		);
 
-		Map<String,Object> diff = jsondiff.diff(origin, target);
-		Map<String,Object> transformed = jsondiff.apply(origin, (Map<String,Object>)expected.get(JSONDiff.DIFF_VALUE_KEY));
-		assertEquals(target, transformed);
-	}
+        JSONObject origin = object("a", list(1));
+        JSONObject target = object("a", list(1,4));
+        JSONObject expected = object_op(
+            object(
+                "a",
+                list_op(
+                    object(
+                        "1",
+                        op(
+                            JSONDiff.OPERATION_INSERT,
+                            new Integer(4)
+                        )
+                    )
+                )
+            )
+        );
+
+        JSONObject diff = JSONDiff.diff(origin, target);
+        JSONObject transformed = JSONDiff.apply(origin, expected.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+        assertEquals(target, transformed);
+    }
 
     public void testSliceJSONArray()
     throws Exception {
         JSONArray a = new JSONArray("[1,\"a\",3,4,5]");
-        JSONArray sub = jsondiff.sliceJSONArray(a, 1, 5);
+        JSONArray sub = JSONDiff.sliceJSONArray(a, 1, 5);
 
         JSONArray expected = new JSONArray("[\"a\",3,4,5]");
         assertEquals(expected, sub);
 
     }
 
-    // public void testNestedArrayAndHash(){
-    //     // {"a":[{"a":"b","c":"d"},[{"a":"b"},"2","3","4"]]}}
-    //     Map<String,Object> origin = object(
-    //         "a",
-    //         (Object)list(
-    //             (Object)object("a", "b", "c", "d")
-    //         )
-    //     );
-    //     // {"a":[{"a":"b","c":"e"}, ["1",{"a":"b"},"2","3","4","5"]]}
-    //     Map<String,Object> target = object(
-    //         "a",
-    //         (Object)list(
-    //             (Object)object("a", "b", "c", "e") // { "a":"b", "c":"d" }
-    //         )
-    //     );
-    //     Map<String,Object> expected = object_op(
-    //         (Object)object( "a", list_op(
-    //             (Object)object(
-    //                 "0", (Object)object_op( object("c", op(JSONDiff.OPERATION_DIFF, "-1\t+e")) )
-    //             )
-    //         ))
-    //     );
-    //     assertEquals(expected, jsondiff.diff(origin,target));
-    //     assertEquals(target, jsondiff.apply((Object)origin,expected));
-    // }
+    public void testNestedArrayAndHash()
+    throws Exception {
 
-    // public void testRemoveArrayItemsThatAreSame(){
-    //     List<String> origin = list("a", "a", "a");
-    //     List<String> target = list("a");
-    //     Map<String,Object> operations = object("1", op(JSONDiff.OPERATION_REMOVE));
-    //     operations.put("2", op(JSONDiff.OPERATION_REMOVE));
-    //     Map<String,Object> expected = list_op(operations);
-    //     assertEquals(expected, jsondiff.diff(origin,target));
-    //     assertEquals(target, jsondiff.apply((Object) origin, expected));
-    // }
+        JSONDiff.enableArrayDiff = true;
 
-    // public void testAddArrayItemsThatAreSame(){
-    //     List<String> origin = list("a");
-    //     List<String> target = list("a", "a", "a");
-    //     Map<String,Object> operations = object("1", op(JSONDiff.OPERATION_INSERT, "a"));
-    //     operations.put("2", op(JSONDiff.OPERATION_INSERT, "a"));
-    //     Map<String,Object> expected = list_op(operations);
-    //     assertEquals(expected, jsondiff.diff(origin,target));
-    //     assertEquals(target, jsondiff.apply((Object) origin, expected));
-    // }
+        // {"a":[{"a":"b","c":"d"},[{"a":"b"},"2","3","4"]]}}
+        JSONObject origin = object(
+            "a",
+            (Object)list(
+                (Object)object("a", "b", "c", "d")
+            )
+        );
 
-	/*
-	 * Convenient object building methods for test use
-	 *
-	 **/
-	public List list(int... args){
-		List<Integer> a = new ArrayList<Integer>();
-		for (int i : args ) {
-			a.add(new Integer(i));
-		}
-		return a;
-	}
+        // {"a":[{"a":"b","c":"e"}, ["1",{"a":"b"},"2","3","4","5"]]}
+        JSONObject target = object(
+            "a",
+            (Object)list(
+                (Object)object("a", "b", "c", "e") // { "a":"b", "c":"d" }
+            )
+        );
 
-	public List list(Object... args){
-		List<Object> a = new ArrayList<Object>();
-		for (Object i : args ) {
-			a.add(i);
-		}
-		return a;
-	}
+        JSONObject expected = object_op(
+            (Object)object( "a", list_op(
+                (Object)object(
+                    "0", (Object)object_op( object("c", op(JSONDiff.OPERATION_DIFF, "-1\t+e")) )
+                )
+            ))
+        );
+        assertEquals(expected, JSONDiff.diff(origin,target));
+        assertEquals(target, (JSONObject) JSONDiff.apply((Object) origin, expected));
+    }
+
+    public void testRemoveArrayItemsThatAreSame()
+    throws Exception {
+        JSONArray origin = list("a", "a", "a");
+        JSONArray target = list("a");
+        JSONObject operations = object("1", op(JSONDiff.OPERATION_REMOVE));
+        operations.put("2", op(JSONDiff.OPERATION_REMOVE));
+        JSONObject expected = list_op(operations);
+        assertEquals(expected, JSONDiff.diff(origin,target));
+        assertEquals(target, JSONDiff.apply((Object) origin, expected));
+    }
+
+    public void testAddArrayItemsThatAreSame()
+    throws Exception {
+        JSONArray origin = list("a");
+        JSONArray target = list("a", "a", "a");
+        JSONObject operations = object("1", op(JSONDiff.OPERATION_INSERT, "a"));
+        operations.put("2", op(JSONDiff.OPERATION_INSERT, "a"));
+        JSONObject expected = list_op(operations);
+        assertEquals(expected, JSONDiff.diff(origin,target));
+        assertEquals(target, JSONDiff.apply((Object) origin, expected));
+    }
+
+    /*
+     * Convenient object building methods for test use
+     *
+     **/
+    public JSONArray list(int... args)
+    throws JSONException {
+        JSONArray a = new JSONArray();
+        for (int i : args) {
+            a.put(i);
+        }
+        return a;
+    }
+
+    public JSONArray list(Object... args)
+    throws JSONException {
+        JSONArray a = new JSONArray();
+        for (Object i : args) {
+            a.put(i);
+        }
+        return a;
+    }
 
     public JSONArray array(Object ... args)
     throws Exception {
@@ -300,41 +305,60 @@ public class JSONDiffTest extends TestCase {
         return a;
     }
 
-	public Map<String,Object> list_op(Object value){
-		Map<String,Object> o = op(JSONDiff.OPERATION_LIST);
-		o.put(JSONDiff.DIFF_VALUE_KEY, value);
-		return o;
-	}
+    public JSONObject list_op(Object value)
+    throws JSONException {
+        JSONObject o = op(JSONDiff.OPERATION_LIST);
+        o.put(JSONDiff.DIFF_VALUE_KEY, value);
+        return o;
+    }
 
-	public Map<String,Object> object_op(Object value){
-		Map<String,Object> o = op(JSONDiff.OPERATION_OBJECT);
-		o.put(JSONDiff.DIFF_VALUE_KEY, value);
-		return o;
-	}
+    public JSONObject object_op(Object value)
+    throws JSONException {
+        JSONObject o = op(JSONDiff.OPERATION_OBJECT);
+        o.put(JSONDiff.DIFF_VALUE_KEY, value);
+        return o;
+    }
 
-	public Map<String,Object> object(String... args){
-		Map <String,Object> o = new HashMap<String,Object>();
-		for(int i=0;i<args.length;i+=2){
-			o.put(args[i], args[i+1]);
-		}
-		return o;
-	}
+    public JSONObject object(String... args)
+    throws JSONException {
+        JSONObject o = new JSONObject();
+        for(int i=0; i<args.length; i+=2){
+            o.put(args[i], args[i+1]);
+        }
+        return o;
+    }
 
-	public Map<String,Object> object(String key, Object value){
-		Map <String,Object> o = new HashMap<String,Object>();
-		o.put(key, value);
-		return o;
-	}
+    public JSONObject object(String key, Object value)
+    throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put(key, value);
+        return o;
+    }
 
-	public Map<String,Object> op(String operation, Object value){
-		Map<String,Object> o = op(operation);
-		o.put(JSONDiff.DIFF_VALUE_KEY, value);
-		return o;
-	}
-	public Map<String,Object> op(String operation){
-		Map<String,Object> o = new HashMap<String,Object>();
-		o.put(JSONDiff.DIFF_OPERATION_KEY, operation);
-		return o;
-	}
+    public JSONObject op(String operation, Object value)
+    throws JSONException {
+        JSONObject o = op(operation);
+        o.put(JSONDiff.DIFF_VALUE_KEY, value);
+        return o;
+    }
+
+    public JSONObject op(String operation)
+    throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put(JSONDiff.DIFF_OPERATION_KEY, operation);
+        return o;
+    }
+
+    public static void assertEquals(JSONObject a, JSONObject b) {
+        assertNotNull(a);
+        assertNotNull(b);
+        assertEquals(a.toString(), b.toString());
+    }
+
+    public static void assertEquals(JSONArray a, JSONArray b) {
+        assertNotNull(a);
+        assertNotNull(b);
+        assertEquals(a.toString(), b.toString());
+    }
 
 }

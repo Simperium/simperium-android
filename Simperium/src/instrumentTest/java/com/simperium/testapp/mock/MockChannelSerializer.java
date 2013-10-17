@@ -29,7 +29,6 @@ public class MockChannelSerializer<T extends Syncable> implements Serializer<T> 
     }
 
     public void onQueueChange(Change change){
-        android.util.Log.d("Simperium.Test", String.format("Qeueuing %s", change));
         queue.queued.add(change);
     }
 

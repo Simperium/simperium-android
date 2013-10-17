@@ -18,6 +18,8 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
 public class JSONDiff {
 
+    static public boolean enableArrayDiff = false;
+
     static public final String TAG = "JSONDiff";
 
     public static final String DIFF_VALUE_KEY     = "v";
@@ -34,6 +36,9 @@ public class JSONDiff {
 
     public static JSONObject diff(JSONArray a, JSONArray b)
     throws JSONException {
+
+        if (!enableArrayDiff) diff((Object) a, (Object) b);
+
         // HashMap<String,Object> list_diff = new HashMap<String,Object>();
         JSONObject list_diff = new JSONObject();
         list_diff.put(DIFF_OPERATION_KEY, OPERATION_LIST);
@@ -45,9 +50,8 @@ public class JSONDiff {
         int size_b = b.length();
 
         int prefix_length = commonPrefix(a, b);
+
         // remove the prefixes
-        // a = a.subList(prefix_length, size_a);
-        // b = b.subList(prefix_length, size_b);
         a = sliceJSONArray(a, prefix_length, size_a);
         b = sliceJSONArray(b, prefix_length, size_b);
 
@@ -58,13 +62,11 @@ public class JSONDiff {
 
         int suffix_length = commonSuffix(a, b);
 
-        // List<Object> a_trimmed = a.subList(0, size_a-suffix_length);
-        // List<Object> b_trimmed = b.subList(0, size_b-suffix_length);
         size_a -= suffix_length;
         size_b -= suffix_length;
 
         a = sliceJSONArray(a, 0, size_a);
-        b = sliceJSONArray(a, 0, size_b);
+        b = sliceJSONArray(b, 0, size_b);
 
         int max = Math.max(size_a, size_b);
 
@@ -134,59 +136,54 @@ public class JSONDiff {
         return diff;
 	}
 
-    public static Map<String,Object> diff(Object a, Object b)
+    public static JSONObject diff(Object a, Object b)
     throws JSONException {
-		HashMap<String,Object> m = new HashMap<String,Object>();
-		if (a==null || b==null) {
-			
-		}
-		if (a.equals(b)) {
-			return m;
-		}
-		Class a_class = a.getClass();
-		Class b_class = b.getClass();
-		if ( !a_class.isAssignableFrom(b_class) ) {
-			m.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
-			m.put(DIFF_VALUE_KEY, b);
-			return m;
-		}
-		// a and b are the same type
+        JSONObject m = new JSONObject();
+        if (a==null || b==null) {
+            return m;
+        }
+        if (a.equals(b)) {
+            return m;
+        }
 
-        if(JSONObject.class.isInstance(a)){
-            diff((JSONObject) a, (JSONObject) b);
-        } else if (JSONArray.class.isInstance(a)) {
-            diff((JSONArray) a, (JSONArray) b);
-        } else if (String.class.isInstance(a)){
-			// diff match patch
-			return diff((String)a, (String)b);
-        // } else if(Map.class.isInstance(a)){
-        //     Map<String,Object> a_map = (Map<String,Object>)a;
-        //     Map<String,Object> b_map = (Map<String,Object>)b;
-        //     return diff(a_map, b_map);
-        // } else if(List.class.isInstance(a)){
-        //     List<Object> a_list = (List<Object>)a;
-        //     List<Object> b_list = (List<Object>)b;
-        //     return diff(a_list, b_list);
-		} else {
-			m.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
-			m.put(DIFF_VALUE_KEY, b);
-		}
+        Class a_class = a.getClass();
+        Class b_class = b.getClass();
 
-		return m;
+        if ( !a_class.isAssignableFrom(b_class) ) {
+            m.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
+            m.put(DIFF_VALUE_KEY, b);
+            return m;
+        }
+
+        // a and b are the same type
+        if (String.class.isInstance(a)) {
+            // diff match patch
+            return diff((String)a, (String)b);
+        } else if(JSONObject.class.isInstance(a)){
+            return diff((JSONObject) a, (JSONObject) b);
+        } else if (JSONArray.class.isInstance(a) && enableArrayDiff) {
+            return diff((JSONArray) a, (JSONArray) b);
+        } else {
+            m.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
+            m.put(DIFF_VALUE_KEY, b);
+        }
+
+        return m;
 	}
 
-	public static Map<String,Object> diff(String origin, String target){
-		Map<String,Object> m = new HashMap<String,Object>();
-		LinkedList diffs = dmp.diff_main((String)origin, (String)target);
-		if(diffs.size() > 2){
-			dmp.diff_cleanupEfficiency(diffs);
-		}
-		if(diffs.size() > 0){
-			m.put(DIFF_OPERATION_KEY, OPERATION_DIFF);
-			m.put(DIFF_VALUE_KEY, dmp.diff_toDelta(diffs));
-		}
-		return m;
-	}
+    public static JSONObject diff(String origin, String target)
+    throws JSONException {
+        JSONObject m = new JSONObject();
+        LinkedList diffs = dmp.diff_main(origin, target);
+        if(diffs.size() > 2){
+            dmp.diff_cleanupEfficiency(diffs);
+        }
+        if(diffs.size() > 0){
+            m.put(DIFF_OPERATION_KEY, OPERATION_DIFF);
+            m.put(DIFF_VALUE_KEY, dmp.diff_toDelta(diffs));
+        }
+        return m;
+    }
 
     public static Object apply(Object origin, JSONObject patch)
     throws JSONException {
@@ -233,12 +230,12 @@ public class JSONDiff {
         return transformed;
     }
 
-	public static String apply(String origin, String patch){
-		LinkedList<Diff> diffs = dmp.diff_fromDelta(origin, patch);
-		LinkedList<Patch> patches = dmp.patch_make(origin, diffs);
-		Object[] result = dmp.patch_apply(patches, origin);
-		return (String)result[0];
-	}
+    public static String apply(String origin, String patch){
+        LinkedList<Diff> diffs = dmp.diff_fromDelta(origin, patch);
+        LinkedList<Patch> patches = dmp.patch_make(origin, diffs);
+        Object[] result = dmp.patch_apply(patches, origin);
+        return (String)result[0];
+    }
 
     public static JSONArray apply(JSONArray origin, JSONObject patch)
     throws JSONException {
@@ -328,7 +325,8 @@ public class JSONDiff {
     public static JSONArray sliceJSONArray(JSONArray a, int start, int end)
     throws JSONException {
         int length = a.length();
-        if (end > length || start < 0) throw new java.lang.IndexOutOfBoundsException();
+        if (end > length || start < 0) throw new java.lang.IndexOutOfBoundsException(
+            String.format("indexes %d and %d not valid for array of length %d", start, end, length));
 
         JSONArray dest = new JSONArray();
         for (int i=start; i<end; i++) {

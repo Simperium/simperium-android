@@ -120,13 +120,9 @@ public abstract class BucketSchema<T extends Syncable> {
                 ContentValues indexValues = new ContentValues(keys.length);
                 JSONObject values = object.getDiffableValue();
                 for (String key : keys) {
-                    try {
-                        Object value = values.get(key);
-                        if (value != null) {
-                            indexValues.put(key, value.toString());
-                        }
-                    } catch (JSONException e) {
-                        android.util.Log.e(TAG, "Could not index value for " + key, e);
+                    Object value = values.opt(key);
+                    if (value != null) {
+                        indexValues.put(key, value.toString());
                     }
                 }
                 return indexValues;
@@ -161,7 +157,8 @@ public abstract class BucketSchema<T extends Syncable> {
             while (keys.hasNext()) {
                 String key = keys.next().toString();
                 try {
-                    addIndex(indexes, key, values.get(key));
+                    if (values.has(key))
+                        addIndex(indexes, key, values.get(key));
                 } catch (JSONException e) {
                     android.util.Log.e(TAG, "Unable to index " + key, e);
                 }

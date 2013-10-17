@@ -1,12 +1,9 @@
 package com.simperium.client;
 
-import java.util.Map;
-import java.util.HashMap;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.simperium.util.JSONDiff;
-
-import org.json.JSONObject;
-import org.json.JSONException;
 
 /**
  * A generic object used to represent a single object from a bucket
@@ -64,12 +61,7 @@ public class BucketObject extends Syncable {
     }
 
     public Object getProperty(String key){
-        try {
-            return properties.get(key);
-        } catch (JSONException e) {
-            android.util.Log.e(TAG, "Could not get key " + key, e);
-            return null;
-        }
+        return properties.opt(key);
     }
 
     public void setProperty(String key, Object value){
@@ -109,4 +101,5 @@ public class BucketObject extends Syncable {
         BucketObject other = (BucketObject) o;
         return other.getBucket().equals(getBucket()) && other.getSimperiumKey().equals(getSimperiumKey());
     }
+
 }

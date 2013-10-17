@@ -11,8 +11,8 @@ import com.simperium.client.RemoteChange;
 import com.simperium.client.RemoteChangeInvalidException;
 import com.simperium.util.Uuid;
 
-import java.util.List;
-import java.util.ArrayList;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
 
@@ -71,14 +71,18 @@ public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
         } else {
             entityVersion = sourceVersion + 1;
         }
-        List<String> ccids = new ArrayList<String>(1);
+        JSONArray ccids = new JSONArray();
         String cv = Uuid.uuid().substring(0, 0xF);
-        ccids.add(change.getChangeId());
+        ccids.put(change.getChangeId());
         RemoteChange ack;
-        if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
-            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
-        } else {
-            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
+        try {
+            if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
+                ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
+            } else {
+                ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
+            }
+        } catch (JSONException e) {
+            throw new RemoteChangeInvalidException("Could not make remote chante", e);
         }
         ack.isAcknowledgedBy(change);
         mBucket.acknowledgeChange(ack, change);

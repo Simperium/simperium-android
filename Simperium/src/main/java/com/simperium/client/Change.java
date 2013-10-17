@@ -92,7 +92,7 @@ public class Change {
         this.ccid = ccid;
         this.bucketName = bucketName;
         this.key = key;
-        if (operation != OPERATION_REMOVE) {
+        if (!operation.equals(OPERATION_REMOVE)) {
             this.version = sourceVersion;
             this.origin = JSONDiff.deepCopy(origin);
             this.target = JSONDiff.deepCopy(target);

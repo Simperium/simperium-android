@@ -11,6 +11,10 @@ import java.util.ArrayList;
 
 import java.lang.StringBuilder;
 
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 public class Note extends BucketObject {
     
     public static class Schema extends BucketSchema<Note> {
@@ -20,7 +24,7 @@ public class Note extends BucketObject {
             autoIndex();
             addIndex(contentIndexer);
             setupFullTextIndex("tags", "content");
-            setDefault("tags", new ArrayList<Object>());
+            setDefault("tags", new JSONArray());
             setDefault("deleted", false);
         }
 
@@ -39,12 +43,12 @@ public class Note extends BucketObject {
         }
 
         @Override
-        public Note build(String key, Map<String,Object> properties){
+        public Note build(String key, JSONObject properties){
             return new Note(key, properties);
         }
 
         @Override
-        public void update(Note note, Map<String,Object> properties){
+        public void update(Note note, JSONObject properties){
             note.setProperties(properties);
         }
     }
@@ -52,19 +56,19 @@ public class Note extends BucketObject {
     private static final String SPACE=" ";
     private StringBuilder preview;
 
-    public Note(String key, Map<String,Object> properties){
+    public Note(String key, JSONObject properties){
         super(key, properties);
     }
 
     public void addTag(String tag){
-        List tags = (List) get("tags");
-        tags.add(tag);
+        JSONArray tags = (JSONArray) get("tags");
+        tags.put(tag);
     }
 
     public void addTags(String ... newTags){
-        List tags = (List) get("tags");
+        JSONArray tags = (JSONArray) get("tags");
         for(String tag : newTags){
-            tags.add(tag);
+            tags.put(tag);
         }
     }
 
@@ -86,18 +90,27 @@ public class Note extends BucketObject {
     }
 
     public void put(String key, Object value){
-        getProperties().put(key, value);
+        try {
+            getProperties().put(key, value);
+        } catch (JSONException e) {
+            // Do nothing
+        }
     }
 
     public Object get(String key){
-        return getProperties().get(key);
+        try {
+            return getProperties().get(key);
+        } catch (JSONException e) {
+            // Do nothing
+            return null;
+        }
     }
 
-    public Map<String,Object> getProperties(){
+    public JSONObject getProperties(){
         return getDiffableValue();
     }
 
-    protected void setProperties(Map<String,Object> properties){
+    protected void setProperties(JSONObject properties){
         this.properties = properties;
     }
 

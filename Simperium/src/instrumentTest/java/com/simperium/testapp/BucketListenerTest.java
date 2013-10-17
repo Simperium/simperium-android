@@ -20,6 +20,9 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class BucketListenerTest extends TestCase {
 
     private Bucket<Note> mBucket;
@@ -68,7 +71,8 @@ public class BucketListenerTest extends TestCase {
 
     }
 
-    public void testUnregsiterOnDeleteListener(){
+    public void testUnregsiterOnDeleteListener()
+    throws Exception {
         mBucket.addOnDeleteObjectListener(mListener);
         Note note = mBucket.newObject();
         note.setTitle("Hola Mundo");
@@ -82,21 +86,21 @@ public class BucketListenerTest extends TestCase {
     }
 
     public void testOnNetworkChangeListener()
-    throws RemoteChangeInvalidException {
+    throws Exception {
         mBucket.addOnNetworkChangeListener(mListener);
 
         // TODO create helper for generating remote changes
-        Map<String,Object> diff = new HashMap<String,Object>();
-        Map<String,Object> title = new HashMap<String,Object>();
+        JSONObject diff = new JSONObject();
+        JSONObject title = new JSONObject();
         title.put(JSONDiff.DIFF_OPERATION_KEY, JSONDiff.OPERATION_REPLACE);
         title.put(JSONDiff.DIFF_VALUE_KEY, JSONDiff.OPERATION_REPLACE);
         diff.put("title", title);
-        List<String> ccids = new ArrayList<String>();
-        ccids.add("fake-ccid");
+        JSONArray ccids = new JSONArray();
+        ccids.put("fake-ccid");
         RemoteChange change = new RemoteChange("client", "thing", ccids,
             "fake-cv", null, 1, RemoteChange.OPERATION_MODIFY, diff);
 
-        mBucket.applyRemoteChange(change);            
+        mBucket.applyRemoteChange(change);
         assertTrue(mListener.changed);
     }
 

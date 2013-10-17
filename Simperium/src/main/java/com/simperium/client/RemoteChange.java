@@ -1,20 +1,18 @@
 package com.simperium.client;
 
-import com.simperium.Simperium;
-import com.simperium.util.JSONDiff;
-import com.simperium.util.Logger;
-
-import java.util.List;
-import java.util.Map;
-
-import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.simperium.util.JSONDiff;
 
 /**
  * Encapsulates parsing and logic for remote changes
  */
 public class RemoteChange {
+
+    static public final String TAG = "Simperium.RemoteChange";
+
     public static final String ID_KEY             = "id";
     public static final String CLIENT_KEY         = "clientid";
     public static final String ERROR_KEY          = "error";
@@ -29,7 +27,7 @@ public class RemoteChange {
 
     private String key;
     private String clientid;
-    private List<String> ccids;
+    private JSONArray ccids;
     private Integer sourceVersion;
     private Integer entityVersion;
     private String changeVersion;
@@ -46,7 +44,7 @@ public class RemoteChange {
      * - changes with operation "-" do not have a value
      * - changes with operation "M" have a v (value), ev (entity version) and if not a new object an sv (source version)
      */
-    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion,
+    public RemoteChange(String clientid, String key, JSONArray ccids, String changeVersion,
         Integer sourceVersion, Integer entityVersion, String operation, JSONObject value) {
         this.clientid = clientid;
         this.key = key;
@@ -58,7 +56,7 @@ public class RemoteChange {
         this.changeVersion = changeVersion;
     }
 
-    public RemoteChange(String clientid, String key, List<String> ccids, String changeVersion,
+    public RemoteChange(String clientid, String key, JSONArray ccids, String changeVersion,
         Integer sourceVersion, Integer entityVersion, JSONObject diff)
         throws JSONException {
         this(clientid, key, ccids, changeVersion, sourceVersion, entityVersion,
@@ -66,7 +64,7 @@ public class RemoteChange {
             diff.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
     }
 
-    public RemoteChange(String clientid, String key, List<String> ccids, Integer errorCode){
+    public RemoteChange(String clientid, String key, JSONArray ccids, Integer errorCode){
         this.clientid = clientid;
         this.key = key;
         this.ccids = ccids;
@@ -121,6 +119,7 @@ public class RemoteChange {
     }
 
     public boolean isAcknowledgedBy(Change change){
+        android.util.Log.d(TAG, String.format("Is %s acked by %s", this, change));
         if (change == null) return false;
         // if we have a Change with the same change id from the same client id
         // then we were waiting for this change
@@ -194,14 +193,29 @@ public class RemoteChange {
     }
 
     public boolean hasChangeId(String ccid){
-        return ccids.contains(ccid);
+        android.util.Log.d(TAG, String.format("Do we have the ccid? %s in %s", ccid, ccids));
+
+        if (ccid == null) return false;
+
+        int length = ccids.length();
+        for (int i=0; i<length; i++) {
+            try {
+                android.util.Log.d(TAG, String.format("Does %s equal %s", ccid, ccids.getString(i)));
+                if (ccid.equals(ccids.getString(i)))
+                    return true;;
+            } catch (JSONException e) {
+                android.util.Log.e(TAG, "Invalid ccid", e);
+            }
+        }
+
+        return false;
     }
 
     public boolean hasChangeId(Change change){
         return hasChangeId(change.getChangeId());
     }
 
-    public List<String> getChangeIds(){
+    public JSONArray getChangeIds(){
         return ccids;
     }
 
@@ -216,18 +230,19 @@ public class RemoteChange {
     public static RemoteChange buildFromMap(JSONObject changeData)
     throws JSONException {
         // get the list of ccids that this applies to
-        List<String> ccids = (List<String>)changeData.get(CHANGE_IDS_KEY);
+        JSONArray ccids = changeData.getJSONArray(CHANGE_IDS_KEY);
         // get the client id
-        String client_id = (String)changeData.get(CLIENT_KEY);
+        String client_id = changeData.getString(CLIENT_KEY);
         // get the id of the object it applies to
-        String id = (String)changeData.get(ID_KEY);
+        String id = changeData.getString(ID_KEY);
         if (changeData.has(ERROR_KEY)) {
             int errorCode = changeData.getInt(ERROR_KEY);
             return new RemoteChange(client_id, id, ccids, errorCode);
         }
+
         String operation = changeData.getString(OPERATION_KEY);
-        Integer sourceVersion = changeData.getInt(SOURCE_VERSION_KEY);
-        Integer objectVersion = changeData.getInt(ENTITY_VERSION_KEY);
+        Integer sourceVersion = changeData.optInt(SOURCE_VERSION_KEY, -1);
+        Integer objectVersion = changeData.optInt(ENTITY_VERSION_KEY);
         JSONObject patch = changeData.getJSONObject(VALUE_KEY);
         String changeVersion = changeData.getString(CHANGE_VERSION_KEY);
 

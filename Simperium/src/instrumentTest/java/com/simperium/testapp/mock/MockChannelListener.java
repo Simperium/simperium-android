@@ -14,6 +14,8 @@ import java.util.Collections;
 
 public class MockChannelListener implements Channel.OnMessageListener {
 
+    static public final String TAG = "SimperiumTest";
+
     public boolean open = false, autoAcknowledge = false;
     public List<Channel.MessageEvent> messages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     public Channel.MessageEvent lastMessage;
@@ -30,7 +32,6 @@ public class MockChannelListener implements Channel.OnMessageListener {
     @Override
     public void onMessage(Channel.MessageEvent event) {
         messages.add(event);
-        lastMessage = event;
 
         if (autoAcknowledge == true && event.message.indexOf("c:") == 0) {
             try {
@@ -59,6 +60,8 @@ public class MockChannelListener implements Channel.OnMessageListener {
                 throw new RuntimeException(String.format("Couldn't auto-acknowledge %s", event.message), e);
             }
         }
+
+        lastMessage = event;
     }
 
     @Override

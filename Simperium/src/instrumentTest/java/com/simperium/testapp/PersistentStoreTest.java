@@ -39,6 +39,8 @@ import java.io.FileOutputStream;
 import java.io.File;
 import java.io.IOException;
 
+import org.json.JSONArray;
+
 public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginActivity> {
     public static final String TAG = "SimperiumTest.PersistentStore";
     public static final String MASTER_TABLE = "sqlite_master";
@@ -180,10 +182,10 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
     public void testIndexObject()
     throws Exception {
         String bucketName = BUCKET_NAME;
-        List<String> list = new ArrayList<String>();
-        list.add("uno");
-        list.add("dos");
-        list.add("tres");
+        JSONArray list = new JSONArray();
+        list.put("uno");
+        list.put("dos");
+        list.put("tres");
 
         Note note = mBucket.newObject("hola");
         note.put("col1", "Hello");
