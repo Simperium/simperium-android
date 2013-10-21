@@ -332,6 +332,7 @@ public class PersistentStore implements StorageProvider {
                     Logger.log(TAG, String.format("SQL Error %s", bucketName), e);
                 }
                 Logger.log(TAG, String.format("Done indexing %s", bucketName));
+                mBucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
             }
 
         }
