@@ -119,7 +119,6 @@ public class RemoteChange {
     }
 
     public boolean isAcknowledgedBy(Change change){
-        android.util.Log.d(TAG, String.format("Is %s acked by %s", this, change));
         if (change == null) return false;
         // if we have a Change with the same change id from the same client id
         // then we were waiting for this change
@@ -193,14 +192,12 @@ public class RemoteChange {
     }
 
     public boolean hasChangeId(String ccid){
-        android.util.Log.d(TAG, String.format("Do we have the ccid? %s in %s", ccid, ccids));
 
         if (ccid == null) return false;
 
         int length = ccids.length();
         for (int i=0; i<length; i++) {
             try {
-                android.util.Log.d(TAG, String.format("Does %s equal %s", ccid, ccids.getString(i)));
                 if (ccid.equals(ccids.getString(i)))
                     return true;;
             } catch (JSONException e) {
