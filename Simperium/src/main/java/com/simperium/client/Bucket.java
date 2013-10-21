@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.simperium.SimperiumException;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.util.Logger;
@@ -683,11 +684,8 @@ public class Bucket<T extends Syncable> {
                 } else {
                     updateObject(object);
                 }
-            } catch(BucketObjectMissingException e) {
-                Logger.log(TAG, "Unable to apply remote change", e);
-                throw(new RemoteChangeInvalidException(e));
-            } catch (BucketObjectNameInvalid e) {
-                Logger.log(TAG, "Remote change had invalid key", e);
+            } catch(SimperiumException e) {
+                Logger.log(TAG, String.format("Unable to apply remote change %s", change), e);
                 throw(new RemoteChangeInvalidException(e));
             }
         }
