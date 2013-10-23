@@ -38,7 +38,7 @@ android {
 
         debug {
             java {
-                srcDir 'src/support'
+                srcDir 'src/support/java'
             }
         }
 
