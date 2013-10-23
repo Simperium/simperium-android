@@ -1,17 +1,13 @@
 package com.simperium.storage;
 
 import com.simperium.client.Bucket;
+import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
-import com.simperium.client.Syncable;
-import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.Query;
-
-import android.database.Cursor;
-import android.os.CancellationSignal;
+import com.simperium.client.Syncable;
 
 import java.util.List;
-import java.util.Map;
 
 public interface StorageProvider {
     /**

@@ -8,15 +8,13 @@
  */
 package com.simperium.android;
 
-import android.content.Context;
-
-import com.simperium.Simperium;
+import com.codebutler.android_websockets.WebSocketClient;
+import com.simperium.client.Bucket;
+import com.simperium.client.Channel;
+import com.simperium.client.ChannelProvider;
 import com.simperium.util.Logger;
 
-import com.simperium.client.ChannelProvider;
-import com.simperium.client.Channel;
-import com.simperium.client.Channel.Serializer;
-import com.simperium.client.Bucket;
+import org.apache.http.message.BasicNameValuePair;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -26,10 +24,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-
-import org.apache.http.message.BasicNameValuePair;
-
-import com.codebutler.android_websockets.*;
 
 public class WebSocketManager implements ChannelProvider, WebSocketClient.Listener, Channel.OnMessageListener {
 

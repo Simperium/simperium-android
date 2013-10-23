@@ -24,27 +24,22 @@
 
 package com.simperium.client;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import android.database.Cursor;
+import android.database.CursorWrapper;
 
 import com.simperium.SimperiumException;
-import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.client.ObjectCacheProvider.ObjectCache;
+import com.simperium.storage.StorageProvider.BucketStore;
+import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
-import com.simperium.util.JSONDiff;
 
 import org.json.JSONObject;
 
-import android.database.Cursor;
-import android.database.CursorWrapper;
-import android.os.CancellationSignal;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 public class Bucket<T extends Syncable> {
     

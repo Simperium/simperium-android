@@ -1,23 +1,15 @@
 package com.simperium;
 
+import android.content.Intent;
 import android.test.ActivityInstrumentationTestCase2;
-import android.test.UiThreadTest;
-
-import static android.test.MoreAsserts.*;
-import static com.simperium.TestHelpers.*;
-
-import com.simperium.R;
-import com.simperium.Simperium;
-import com.simperium.android.LoginActivity;
-
-import com.simperium.test.MockClient;
-
+import android.test.TouchUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.test.TouchUtils;
-import android.content.Intent;
+
+import com.simperium.android.LoginActivity;
+import com.simperium.test.MockClient;
 
 public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginActivity> {
 

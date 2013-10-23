@@ -3,10 +3,6 @@
  */
 package com.simperium;
 
-import com.simperium.test.R;
-
-import android.os.Bundle;
-
 public class ListActivity extends android.app.ListActivity
 {
     public static String TAG="SimperiumTest";

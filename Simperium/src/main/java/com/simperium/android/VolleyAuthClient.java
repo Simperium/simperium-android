@@ -1,30 +1,27 @@
 package com.simperium.android;
 
-import com.simperium.client.AuthProvider;
-import com.simperium.client.AuthException;
-import com.simperium.client.AuthResponseHandler;
-import com.simperium.client.User;
-import com.simperium.util.Logger;
-import com.simperium.util.AuthUtil;
+import android.content.Context;
+import android.content.SharedPreferences;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
-import com.android.volley.NetworkResponse;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.simperium.client.AuthException;
+import com.simperium.client.AuthProvider;
+import com.simperium.client.AuthResponseHandler;
+import com.simperium.client.User;
+import com.simperium.util.AuthUtil;
+import com.simperium.util.Logger;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 
-import java.util.Map;
 import java.util.HashMap;
-import java.util.Collections;
+import java.util.Map;
 
 public class VolleyAuthClient implements AuthProvider {
 

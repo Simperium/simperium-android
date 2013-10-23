@@ -1,16 +1,9 @@
 package com.simperium.android;
 
-import com.simperium.client.Syncable;
-import com.simperium.client.ObjectCacheProvider;
-import com.simperium.client.ObjectCacheProvider.ObjectCache;
-
-import com.simperium.util.Logger;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Collections;
-
 import android.util.LruCache;
+
+import com.simperium.client.ObjectCacheProvider;
+import com.simperium.client.Syncable;
 
 public class LruCacheProvider implements ObjectCacheProvider {
 

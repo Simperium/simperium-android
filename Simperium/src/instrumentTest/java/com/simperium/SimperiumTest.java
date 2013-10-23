@@ -1,17 +1,15 @@
 package com.simperium;
 
-import com.simperium.Simperium;
-import com.simperium.client.User;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema.Index;
-
-import com.simperium.test.MockClient;
-import com.simperium.test.MockBucketStore;
+import com.simperium.client.User;
 import com.simperium.test.MockAuthResponseListener;
+import com.simperium.test.MockBucketStore;
+import com.simperium.test.MockClient;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SimperiumTest extends BaseSimperiumTest {
 

@@ -2,18 +2,13 @@ package com.simperium.models;
 
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.BucketSchema.Indexer;
-import com.simperium.client.BucketSchema.Index;
 
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
-
-import java.lang.StringBuilder;
-
-import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Note extends BucketObject {
     

@@ -1,16 +1,11 @@
 package com.simperium.android;
 
-import com.loopj.android.http.*;
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 
 import com.simperium.Simperium;
 import com.simperium.client.ClientFactory;
 import com.simperium.util.BasicSyncService;
-
-import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
-import android.content.SharedPreferences;
-import android.util.Log;
-
 import com.simperium.util.Uuid;
 
 /**

@@ -3,20 +3,13 @@ package com.simperium.storage;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
-import com.simperium.client.Syncable;
 import com.simperium.client.Query;
-import com.simperium.storage.StorageProvider.BucketStore;
+import com.simperium.client.Syncable;
 
-import com.simperium.util.Logger;
-
-import android.os.CancellationSignal;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Naive implementation of a StorageProvider in memory.

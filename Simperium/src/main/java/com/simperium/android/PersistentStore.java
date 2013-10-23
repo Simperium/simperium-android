@@ -1,38 +1,29 @@
 package com.simperium.android;
 
-import com.simperium.storage.StorageProvider;
-import com.simperium.storage.StorageProvider.BucketStore;
-import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.ChangeType;
-import com.simperium.client.BucketSchema;
-import com.simperium.client.BucketSchema.Index;
-import com.simperium.client.Syncable;
-import com.simperium.client.Channel;
-import com.simperium.client.FullTextIndex;
-import com.simperium.client.BucketObjectMissingException;
-import com.simperium.client.Query;
-import com.simperium.util.Logger;
-
-import android.database.sqlite.SQLiteDatabase;
-import android.database.SQLException;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.CursorWrapper;
-import android.content.ContentValues;
-import android.os.CancellationSignal;
-import android.os.Handler;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
 
-import java.util.Map;
-import java.util.Map.Entry;
+import com.simperium.client.Bucket;
+import com.simperium.client.BucketObjectMissingException;
+import com.simperium.client.BucketSchema;
+import com.simperium.client.BucketSchema.Index;
+import com.simperium.client.FullTextIndex;
+import com.simperium.client.Query;
+import com.simperium.client.Syncable;
+import com.simperium.storage.StorageProvider;
+import com.simperium.util.Logger;
+
+import org.json.JSONObject;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.Collections;
 import java.util.Locale;
-
-import org.json.JSONObject;
-import org.json.JSONException;
+import java.util.Map;
 
 public class PersistentStore implements StorageProvider {
     public static final String TAG="Simperium.Store";

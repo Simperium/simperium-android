@@ -1,9 +1,9 @@
 package com.simperium.client;
 
+import com.simperium.util.JSONDiff;
+
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.simperium.util.JSONDiff;
 
 /**
  * A generic object used to represent a single object from a bucket

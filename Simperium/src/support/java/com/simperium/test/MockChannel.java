@@ -4,11 +4,10 @@
 package com.simperium.test;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.Channel;
-import com.simperium.client.Syncable;
 import com.simperium.client.Change;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.RemoteChangeInvalidException;
+import com.simperium.client.Syncable;
 import com.simperium.util.Uuid;
 
 import org.json.JSONArray;

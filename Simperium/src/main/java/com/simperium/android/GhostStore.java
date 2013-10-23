@@ -1,22 +1,16 @@
 package com.simperium.android;
 
 import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 
-import java.util.Map;
-import java.util.HashMap;
-
-import org.json.JSONObject;
-
-import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.Bucket;
 import com.simperium.client.Ghost;
 import com.simperium.client.GhostMissingException;
-
-import static com.simperium.client.Channel.serializeJSON;
-import static com.simperium.client.Channel.convertJSON;
+import com.simperium.client.GhostStorageProvider;
 import com.simperium.util.Logger;
+
+import org.json.JSONObject;
 
 public class GhostStore implements GhostStorageProvider {
 

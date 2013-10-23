@@ -1,27 +1,19 @@
 package com.simperium;
 
-import static com.simperium.TestHelpers.*;
-
-import com.simperium.client.Change;
-import com.simperium.client.RemoteChange;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.BucketObjectNameInvalid;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.User;
-import com.simperium.storage.MemoryStore;
-
-import com.simperium.util.Uuid;
-import com.simperium.util.Logger;
-
 import com.simperium.models.Note;
-import com.simperium.test.MockChannel;
+import com.simperium.storage.MemoryStore;
 import com.simperium.test.MockCache;
+import com.simperium.test.MockChannel;
 import com.simperium.test.MockGhostStore;
 import com.simperium.test.MockSyncService;
 
-import org.json.JSONArray;
+import static com.simperium.TestHelpers.makeUser;
 
 public class BucketTest extends BaseSimperiumTest {
 

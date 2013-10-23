@@ -1,45 +1,34 @@
 package com.simperium;
 
-import android.test.ActivityInstrumentationTestCase2;
-import static android.test.MoreAsserts.*;
-import static com.simperium.TestHelpers.*;
-
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.database.Cursor;
+import android.test.ActivityInstrumentationTestCase2;
 
-import com.simperium.android.PersistentStore;
 import com.simperium.android.LoginActivity;
-
+import com.simperium.android.PersistentStore;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.Query;
-import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.Syncable;
+import com.simperium.client.ObjectCacheProvider.ObjectCache;
+import com.simperium.client.Query;
 import com.simperium.client.User;
-import com.simperium.client.BucketObjectMissingException;
-import com.simperium.storage.StorageProvider.BucketStore;
-
-import com.simperium.util.Uuid;
-
 import com.simperium.models.Note;
-
+import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.test.MockCache;
 import com.simperium.test.MockChannel;
-import com.simperium.test.MockSyncService;
 import com.simperium.test.MockGhostStore;
-
-import java.util.List;
-import java.util.ArrayList;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.io.File;
-import java.io.IOException;
+import com.simperium.test.MockSyncService;
 
 import org.json.JSONArray;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import static com.simperium.TestHelpers.makeUser;
 
 public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginActivity> {
     public static final String TAG = "SimperiumTest.PersistentStore";

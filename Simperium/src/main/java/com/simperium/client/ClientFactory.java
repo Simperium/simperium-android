@@ -6,7 +6,6 @@
 package com.simperium.client;
 
 import com.simperium.storage.StorageProvider;
-import com.simperium.client.ObjectCacheProvider;
 
 public interface ClientFactory {
 

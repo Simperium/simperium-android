@@ -1,24 +1,12 @@
 package com.simperium;
 
-import junit.framework.TestCase;
-
 import com.simperium.client.Bucket;
-import com.simperium.client.Bucket.OnSaveObjectListener;
-import com.simperium.client.Bucket.OnDeleteObjectListener;
-import com.simperium.client.Bucket.OnNetworkChangeListener;
-import com.simperium.client.Syncable;
 import com.simperium.client.RemoteChange;
-import com.simperium.client.RemoteChangeInvalidException;
-import com.simperium.client.Change;
+import com.simperium.models.Note;
+import com.simperium.test.MockBucket;
 import com.simperium.util.JSONDiff;
 
-import com.simperium.test.MockBucket;
-import com.simperium.models.Note;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.List;
+import junit.framework.TestCase;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

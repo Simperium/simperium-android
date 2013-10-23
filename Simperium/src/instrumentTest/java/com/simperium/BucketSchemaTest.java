@@ -1,19 +1,16 @@
 package com.simperium;
 
-import junit.framework.TestCase;
-
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
-
 import com.simperium.models.Note;
 
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
+import junit.framework.TestCase;
 
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BucketSchemaTest extends TestCase {
 

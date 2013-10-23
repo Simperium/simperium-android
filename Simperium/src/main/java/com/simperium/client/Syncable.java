@@ -1,7 +1,5 @@
 package com.simperium.client;
 
-import com.simperium.util.Logger;
-
 import org.json.JSONObject;
 
 /**

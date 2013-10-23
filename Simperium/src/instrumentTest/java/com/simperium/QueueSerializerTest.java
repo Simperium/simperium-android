@@ -1,26 +1,16 @@
 package com.simperium;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.test.ActivityInstrumentationTestCase2;
-import android.test.UiThreadTest;
-
-import static android.test.MoreAsserts.*;
-import static com.simperium.TestHelpers.*;
 
 import com.simperium.android.LoginActivity;
 import com.simperium.android.QueueSerializer;
-import com.simperium.client.Change;
-import com.simperium.client.Channel;
-import com.simperium.client.Channel.SerializedQueue;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
-
-import android.database.sqlite.SQLiteDatabase;
-import android.database.Cursor;
-
+import com.simperium.client.Change;
+import com.simperium.client.Channel.SerializedQueue;
 import com.simperium.test.MockBucket;
-
-import java.util.Map;
-import java.util.HashMap;
 
 public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginActivity> {
 

@@ -1,8 +1,8 @@
 package com.simperium;
 
-import junit.framework.TestCase;
-
 import com.simperium.client.Query;
+
+import junit.framework.TestCase;
 
 public class QueryTest extends TestCase {
 

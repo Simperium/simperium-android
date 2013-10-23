@@ -1,40 +1,34 @@
 package com.simperium.android;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.net.ConnectivityManager;
-import android.net.Uri;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Looper;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.text.TextUtils;
-
-import org.json.*;
 
 import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
-import com.simperium.client.User;
-import com.simperium.client.AuthResponseListener;
 import com.simperium.client.AuthException;
+import com.simperium.client.AuthResponseListener;
+import com.simperium.client.User;
 import com.simperium.util.AlertUtil;
 import com.simperium.util.Logger;
 
-import android.util.Log;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LoginActivity extends Activity {
 

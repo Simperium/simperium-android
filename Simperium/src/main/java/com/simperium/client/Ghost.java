@@ -1,7 +1,5 @@
 package com.simperium.client;
 
-import com.simperium.util.JSONDiff;
-
 import org.json.JSONObject;
 
 public class Ghost implements Diffable {

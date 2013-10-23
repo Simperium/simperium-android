@@ -1,30 +1,26 @@
 package com.simperium;
 
+import android.content.Context;
+
+import com.simperium.client.AuthException;
+import com.simperium.client.AuthProvider;
+import com.simperium.client.AuthResponseHandler;
+import com.simperium.client.AuthResponseListener;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.Syncable;
-import com.simperium.client.User;
-import com.simperium.client.SyncService;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.ClientFactory;
-import com.simperium.client.ClientFactory.*;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.ObjectCacheProvider;
-import com.simperium.client.AuthProvider;
-import com.simperium.client.AuthException;
-import com.simperium.client.AuthResponseHandler;
-import com.simperium.client.AuthResponseListener;
-import com.simperium.client.ChannelProvider;
-import com.simperium.client.Channel;
-
+import com.simperium.client.SyncService;
+import com.simperium.client.Syncable;
+import com.simperium.client.User;
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
-
-import com.simperium.util.Logger;
 import com.simperium.util.AuthUtil;
-
-import android.content.Context;
+import com.simperium.util.Logger;
 
 public class Simperium implements User.StatusChangeListener {
 

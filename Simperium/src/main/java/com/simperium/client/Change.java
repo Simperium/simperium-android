@@ -1,15 +1,16 @@
 package com.simperium.client;
 
-import java.util.TimerTask;
-import java.util.Map;
-import java.util.HashMap;
-
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
-import static com.simperium.util.Uuid.uuid;
 
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimerTask;
+
+import static com.simperium.util.Uuid.uuid;
 
 public class Change {
 

@@ -2,22 +2,20 @@ package com.simperium.test;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketNameInvalid;
-import com.simperium.client.Bucket.Channel;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.Syncable;
-import com.simperium.client.User;
+import com.simperium.client.Change;
 import com.simperium.client.ChannelProvider;
-import com.simperium.client.SyncService;
+import com.simperium.client.Ghost;
+import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.client.RemoteChange;
-import com.simperium.client.Ghost;
-import com.simperium.client.Change;
 import com.simperium.client.RemoteChangeInvalidException;
-
+import com.simperium.client.SyncService;
+import com.simperium.client.Syncable;
+import com.simperium.client.User;
+import com.simperium.storage.MemoryStore;
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
-import com.simperium.storage.MemoryStore;
 
 public class MockBucket<T extends Syncable> extends Bucket<T> {
 

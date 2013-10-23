@@ -4,9 +4,6 @@
 package com.simperium.test;
 
 import com.simperium.client.ClientFactory;
-import com.simperium.client.User;
-import com.simperium.client.Bucket;
-
 import com.simperium.storage.MemoryStore;
 
 public class MockClient implements ClientFactory {

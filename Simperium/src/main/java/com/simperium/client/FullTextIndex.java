@@ -1,7 +1,7 @@
 package com.simperium.client;
 
-import java.util.Map;
 import java.util.Arrays;
+import java.util.Map;
 
 public class FullTextIndex<T extends Syncable> {
 

@@ -2,11 +2,11 @@ package com.simperium.test;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Ghost;
-import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.GhostMissingException;
+import com.simperium.client.GhostStorageProvider;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class MockGhostStore implements GhostStorageProvider {
     private Map<String,Map<String,Ghost>> data = new HashMap<String,Map<String,Ghost>>();

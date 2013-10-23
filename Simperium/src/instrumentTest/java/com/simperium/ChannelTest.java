@@ -1,31 +1,20 @@
 package com.simperium;
 
-import com.simperium.models.Note;
-
+import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
-import com.simperium.client.Bucket;
-import com.simperium.client.Syncable;
-import com.simperium.client.User;
 import com.simperium.client.RemoteChange;
-import com.simperium.client.Change;
-import com.simperium.util.Uuid;
-
+import com.simperium.client.User;
+import com.simperium.models.Note;
 import com.simperium.test.MockBucket;
-import com.simperium.test.MockChannelSerializer;
 import com.simperium.test.MockChannelListener;
+import com.simperium.test.MockChannelSerializer;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Locale;
 
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import static android.test.MoreAsserts.*;
-import static com.simperium.TestHelpers.*;
+import static android.test.MoreAsserts.assertMatchesRegex;
+import static com.simperium.TestHelpers.Flag;
+import static com.simperium.TestHelpers.waitUntil;
 
 public class ChannelTest extends BaseSimperiumTest {
 

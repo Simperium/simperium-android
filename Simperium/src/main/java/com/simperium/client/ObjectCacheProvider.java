@@ -1,7 +1,5 @@
 package com.simperium.client;
 
-import com.simperium.util.Logger;
-
 public interface ObjectCacheProvider {
 
     public <T extends Syncable> ObjectCache<T> buildCache();

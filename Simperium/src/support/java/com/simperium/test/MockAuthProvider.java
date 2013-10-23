@@ -5,8 +5,8 @@ import com.simperium.client.AuthResponseHandler;
 import com.simperium.client.User;
 import com.simperium.util.AuthUtil;
 
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MockAuthProvider implements AuthProvider {
 

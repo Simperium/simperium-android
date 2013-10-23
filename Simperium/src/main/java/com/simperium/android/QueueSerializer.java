@@ -1,22 +1,17 @@
 package com.simperium.android;
 
-import com.simperium.client.Syncable;
-import com.simperium.client.Channel;
-import com.simperium.client.Change;
-import com.simperium.client.Bucket;
-import com.simperium.client.BucketObjectMissingException;
-
-import com.simperium.util.Logger;
-
-import org.json.JSONObject;
-import org.json.JSONException;
-
-import android.database.sqlite.SQLiteDatabase;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.SQLException;
-import android.content.ContentValues;
+import android.database.sqlite.SQLiteDatabase;
 
-import java.util.Map;
+import com.simperium.client.Bucket;
+import com.simperium.client.Change;
+import com.simperium.client.Channel;
+import com.simperium.util.Logger;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class QueueSerializer implements Channel.Serializer {
 

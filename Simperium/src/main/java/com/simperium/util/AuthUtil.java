@@ -2,8 +2,8 @@ package com.simperium.util;
 
 import com.simperium.client.User;
 
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 public class AuthUtil {
 

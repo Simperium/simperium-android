@@ -16,9 +16,12 @@
  */
 package com.simperium.client;
 
-import com.simperium.Simperium;
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,12 +31,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
-import java.util.Scanner;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 
 public class Channel implements Bucket.Channel {
 

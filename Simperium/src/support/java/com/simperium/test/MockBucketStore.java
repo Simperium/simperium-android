@@ -1,18 +1,15 @@
 package com.simperium.test;
 
-import com.simperium.client.Syncable;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema.Index;
-
 import com.simperium.client.Query;
+import com.simperium.client.Syncable;
 import com.simperium.storage.StorageProvider;
 
-import java.util.Map;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Collections;
-
-import android.os.CancellationSignal;
+import java.util.Map;
 
 public class MockBucketStore<T extends Syncable> implements StorageProvider.BucketStore<T> {
 

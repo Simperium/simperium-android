@@ -1,10 +1,10 @@
 package com.simperium.client;
 
+import com.simperium.util.JSONDiff;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.simperium.util.JSONDiff;
 
 /**
  * Encapsulates parsing and logic for remote changes

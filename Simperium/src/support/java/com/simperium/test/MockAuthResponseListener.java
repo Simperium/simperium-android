@@ -1,10 +1,8 @@
 package com.simperium.test;
 
-import com.simperium.client.User;
-import com.simperium.client.AuthResponseListener;
 import com.simperium.client.AuthException;
-
-import org.json.JSONObject;
+import com.simperium.client.AuthResponseListener;
+import com.simperium.client.User;
 
 public class MockAuthResponseListener implements AuthResponseListener {
 

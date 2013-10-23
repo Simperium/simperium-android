@@ -1,10 +1,9 @@
 package com.simperium.test;
 
 import com.simperium.client.Bucket;
-import com.simperium.client.Channel.Serializer;
-import com.simperium.client.Channel.SerializedQueue;
 import com.simperium.client.Change;
-import com.simperium.client.Syncable;
+import com.simperium.client.Channel.SerializedQueue;
+import com.simperium.client.Channel.Serializer;
 
 public class MockChannelSerializer implements Serializer {
 

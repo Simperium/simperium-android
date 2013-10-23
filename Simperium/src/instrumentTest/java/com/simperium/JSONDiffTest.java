@@ -1,12 +1,12 @@
 package com.simperium;
 
+import com.simperium.util.JSONDiff;
+
+import junit.framework.TestCase;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.simperium.util.JSONDiff;
-
-import junit.framework.*;
 
 public class JSONDiffTest extends TestCase {
 

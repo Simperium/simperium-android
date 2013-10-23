@@ -1,12 +1,9 @@
 package com.simperium;
-import static android.test.MoreAsserts.*;
-import static com.simperium.TestHelpers.*;
-
-import junit.framework.TestCase;
 
 import com.simperium.client.Change;
-import com.simperium.client.User;
 import com.simperium.util.Logger;
+
+import junit.framework.TestCase;
 
 class BaseSimperiumTest extends TestCase {
 
