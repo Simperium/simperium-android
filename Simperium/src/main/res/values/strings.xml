@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">ACTIVITY_ENTRY_NAME</string>
-
     <!-- account setup -->
     <string name="required_fields">Required Fields</string>
     <string name="required_field">Required Field</string>
