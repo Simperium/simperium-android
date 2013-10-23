@@ -18,7 +18,7 @@ import android.content.ContentValues;
 
 import java.util.Map;
 
-public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T> {
+public class QueueSerializer implements Channel.Serializer {
 
     public static final String TAG = "Simperium.QueueSerializer";
 
@@ -76,7 +76,7 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
 
     private static final String QUERY_CLAUSE = String.format("%s = ?", FIELD_BUCKET);
     @Override
-    public Channel.SerializedQueue<T> restore(Bucket<T> bucket) {
+    public Channel.SerializedQueue restore(Bucket bucket) {
         Channel.SerializedQueue queue = new Channel.SerializedQueue();
         // public Cursor query (String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy)
         String[] args = new String[]{ bucket.getName() };
@@ -135,7 +135,7 @@ public class QueueSerializer<T extends Syncable> implements Channel.Serializer<T
     }
 
     @Override
-    public void reset(Bucket<T> bucket) {
+    public void reset(Bucket bucket) {
         // delete everything from the queue for this bucket
     }
 

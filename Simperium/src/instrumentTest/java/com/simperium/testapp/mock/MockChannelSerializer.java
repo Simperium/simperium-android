@@ -6,17 +6,17 @@ import com.simperium.client.Channel.SerializedQueue;
 import com.simperium.client.Change;
 import com.simperium.client.Syncable;
 
-public class MockChannelSerializer<T extends Syncable> implements Serializer<T> {
+public class MockChannelSerializer implements Serializer {
 
     public int ackCount = 0;
 
-    public SerializedQueue<T> queue = new SerializedQueue<T>();
+    public SerializedQueue queue = new SerializedQueue();
 
     /**
      * Return what we want the queue to start with
      */
     @Override
-    public SerializedQueue<T> restore(Bucket<T> bucket){
+    public SerializedQueue restore(Bucket bucket){
         return queue;
     }
 
@@ -24,8 +24,8 @@ public class MockChannelSerializer<T extends Syncable> implements Serializer<T> 
      * Create a new blank queue
      */
     @Override
-    public void reset(Bucket<T> bucket){
-        queue = new SerializedQueue<T>();
+    public void reset(Bucket bucket){
+        queue = new SerializedQueue();
     }
 
     public void onQueueChange(Change change){

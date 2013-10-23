@@ -18,13 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// import org.apache.http.HttpEntity;
-// import org.apache.http.NameValuePair;
-// import org.apache.http.client.entity.UrlEncodedFormEntity;
-// import org.apache.http.entity.StringEntity;
-// import org.apache.http.message.BasicNameValuePair;
-// import org.apache.http.protocol.HTTP;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 

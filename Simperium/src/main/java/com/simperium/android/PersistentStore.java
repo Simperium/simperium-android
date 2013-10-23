@@ -208,13 +208,20 @@ public class PersistentStore implements StorageProvider {
 
             // If we have a fulltext index, let's add a record
             if (schema.hasFullTextIndex()) {
-                ContentValues fullTextValues = schema.getFullTextIndex().index(object);
+                Map<String,String> fullTextValues = schema.getFullTextIndex().index(object);
+                ContentValues fullTextIndexes = new ContentValues(fullTextValues.size());
+
+                for(Map.Entry<String,String> entry : fullTextValues.entrySet()) {
+                    fullTextIndexes.put(entry.getKey(), entry.getValue());
+                }
+
                 String ftTableName = getFullTextTableName();
                 database.delete(ftTableName, "key=?", new String[]{ object.getSimperiumKey() });
-                if (fullTextValues.size() > 0) {
-                    fullTextValues.put("key", object.getSimperiumKey());
-                    database.insertOrThrow(ftTableName, null, fullTextValues);
+                if (fullTextIndexes.size() > 0) {
+                    fullTextIndexes.put("key", object.getSimperiumKey());
+                    database.insertOrThrow(ftTableName, null, fullTextIndexes);
                 }
+
             }
         }
 

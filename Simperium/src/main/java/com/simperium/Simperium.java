@@ -24,8 +24,6 @@ import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.Logger;
 import com.simperium.util.AuthUtil;
 
-import org.json.JSONObject;
-
 import android.content.Context;
 
 public class Simperium implements User.StatusChangeListener {
@@ -136,7 +134,7 @@ public class Simperium implements User.StatusChangeListener {
         Bucket<T> bucket = new Bucket<T>(mSyncService, bucketName, schema, user, storage, mGhostStorageProvider, cache);
 
         // initialize the communication method for the bucket
-        Bucket.Channel<T> channel = mChannelProvider.buildChannel(bucket);
+        Bucket.Channel channel = mChannelProvider.buildChannel(bucket);
 
         // tell the bucket about the channel
         bucket.setChannel(channel);

@@ -34,8 +34,8 @@ public class ChannelTest extends BaseSimperiumTest {
     public static String APP_ID = "APP_ID";
 
     private MockBucket<Note> mBucket;
-    private Channel<Note> mChannel;
-    private MockChannelSerializer<Note> mChannelSerializer;
+    private Channel mChannel;
+    private MockChannelSerializer mChannelSerializer;
 
     protected User.Status mAuthStatus;
 
@@ -47,7 +47,7 @@ public class ChannelTest extends BaseSimperiumTest {
         mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
-                mChannelSerializer = new MockChannelSerializer<Note>();
+                mChannelSerializer = new MockChannelSerializer();
                 mChannel = new Channel(APP_ID, SESSION_ID, bucket, mChannelSerializer, mListener);
                 return mChannel;
             }

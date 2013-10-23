@@ -35,7 +35,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-public class Channel<T extends Syncable> implements Bucket.Channel<T> {
+public class Channel implements Bucket.Channel {
 
     public interface OnMessageListener {
         void onMessage(MessageEvent event);
@@ -86,7 +86,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     static final String  COMMAND_FORMAT = "%s:%s";
 
     // bucket determines which bucket we are using on this channel
-    private Bucket<T> bucket;
+    private Bucket bucket;
     // the object the receives the messages the channel emits
     private OnMessageListener listener;
     // track channel status
@@ -100,17 +100,17 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     final private ChangeProcessor changeProcessor;
     private IndexProcessor indexProcessor;
     
-    public interface Serializer<T extends Syncable> {
+    public interface Serializer {
         // public <T extends Syncable> void save(Bucket<T> bucket, SerializedQueue<T> data);
-        public SerializedQueue<T> restore(Bucket<T> bucket);
-        public void reset(Bucket<T> bucket);
+        public SerializedQueue restore(Bucket bucket);
+        public void reset(Bucket bucket);
         public void onQueueChange(Change change);
         public void onDequeueChange(Change change);
         public void onSendChange(Change change);
         public void onAcknowledgeChange(Change change);
     }
 
-    public static class SerializedQueue<T extends Syncable> {
+    public static class SerializedQueue {
         final public Map<String,Change> pending;
         final public List<Change> queued;
 
@@ -124,7 +124,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
         }
     }
 
-    public Channel(String appId, String sessionId, final Bucket<T> bucket, Serializer serializer, OnMessageListener listener){
+    public Channel(String appId, String sessionId, final Bucket bucket, Serializer serializer, OnMessageListener listener){
         this.serializer = serializer;
         this.appId = appId;
         this.sessionId = sessionId;
@@ -226,13 +226,13 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
     /**
      * Diffs and object's local modifications and queues up the changes
      */
-    public Change queueLocalChange(T object){
+    public Change queueLocalChange(Syncable object){
         Change change = new Change(Change.OPERATION_MODIFY, object);
         changeProcessor.addChange(change);
         return change;
     }
 
-    public Change queueLocalDeletion(T object){
+    public Change queueLocalDeletion(Syncable object){
         Change change = new Change(Change.OPERATION_REMOVE, object);
         changeProcessor.addChange(change);
         return change;
@@ -815,7 +815,7 @@ public class Channel<T extends Syncable> implements Bucket.Channel<T> {
 
         private void restore(){
             synchronized(lock){
-                SerializedQueue<T> serialized = serializer.restore(bucket);
+                SerializedQueue serialized = serializer.restore(bucket);
                 localQueue.addAll(serialized.queued);
                 pendingChanges.putAll(serialized.pending);
                 resendPendingChanges();

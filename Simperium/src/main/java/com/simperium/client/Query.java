@@ -3,8 +3,6 @@ package com.simperium.client;
 import java.util.ArrayList;
 import java.util.List;
 
-import android.os.CancellationSignal;
-
 public class Query<T extends Syncable> {
 
     public interface Field {

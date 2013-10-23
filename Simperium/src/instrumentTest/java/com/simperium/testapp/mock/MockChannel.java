@@ -14,19 +14,19 @@ import com.simperium.util.Uuid;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
+public class MockChannel implements Bucket.Channel {
 
-    private Bucket<T> mBucket;
+    private Bucket mBucket;
     private boolean started = false;
 
     public boolean autoAcknowledge = true;
 
-    public MockChannel(Bucket<T> bucket){
+    public MockChannel(Bucket bucket){
         mBucket = bucket;
     }
 
     @Override
-    public Change queueLocalDeletion(T object){
+    public Change queueLocalDeletion(Syncable object){
         Change change = new Change(Change.OPERATION_REMOVE, object);
         try {
             if(started && autoAcknowledge) acknowledge(change);
@@ -37,7 +37,7 @@ public class MockChannel<T extends Syncable> implements Bucket.Channel<T> {
     }
 
     @Override
-    public Change queueLocalChange(T object) {
+    public Change queueLocalChange(Syncable object) {
         Change change = new Change(Change.OPERATION_MODIFY, object);
         try {
             if(started && autoAcknowledge) acknowledge(change);

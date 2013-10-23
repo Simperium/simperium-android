@@ -78,7 +78,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         mSchema = new Note.Schema();
         mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
         mBucket = new Bucket<Note>(MockSyncService.service(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
-        Bucket.Channel<Note> channel = new MockChannel<Note>(mBucket);
+        Bucket.Channel channel = new MockChannel(mBucket);
         mBucket.setChannel(channel);
         mNoteStore.prepare(mBucket);
     }
@@ -304,7 +304,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
         Bucket<Note> bucket = new Bucket<Note>(MockSyncService.service(), bucketName, mSchema, mUser, store, mGhostStore, mCache);
         store.prepare(bucket);
-        bucket.setChannel(new MockChannel<Note>(bucket));
+        bucket.setChannel(new MockChannel(bucket));
         
         Note first = bucket.newObject("first");
         Note second = bucket.newObject("second");

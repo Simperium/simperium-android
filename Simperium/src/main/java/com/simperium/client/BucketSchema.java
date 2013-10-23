@@ -15,8 +15,6 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import android.content.ContentValues;
-
 /**
  * An interface to allow applications to provide a schema for a bucket and a way
  * instatiate custom BucketObject instances
@@ -116,8 +114,8 @@ public abstract class BucketSchema<T extends Syncable> {
         FullTextIndex.Indexer<T> indexer = new FullTextIndex.Indexer<T>() {
 
             @Override
-            public ContentValues index(String[] keys, T object){
-                ContentValues indexValues = new ContentValues(keys.length);
+            public Map<String,String> index(String[] keys, T object){
+                Map<String,String> indexValues = new HashMap<String,String>(keys.length);
                 JSONObject values = object.getDiffableValue();
                 for (String key : keys) {
                     Object value = values.opt(key);
@@ -125,6 +123,7 @@ public abstract class BucketSchema<T extends Syncable> {
                         indexValues.put(key, value.toString());
                     }
                 }
+
                 return indexValues;
             }
 
