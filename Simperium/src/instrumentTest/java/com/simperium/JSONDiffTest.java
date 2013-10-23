@@ -15,6 +15,29 @@ public class JSONDiffTest extends TestCase {
         JSONDiff.enableArrayDiff = false;
     }
 
+    public void testStringDiff()
+    throws Exception {
+
+        JSONObject diff = JSONDiff.diff("Hello world", "Hello World!");
+
+        String expected = "=6\t-1\t+W\t=4\t+!";
+        assertEquals(expected, diff.getString("v"));
+    }
+
+    public void testEmojiStringDiff()
+    throws Exception {
+
+        String origin = "This 💩 stinks";
+        String emoji = "This stinks less";
+
+        JSONObject diff = JSONDiff.diff(origin, emoji);
+
+        assertEquals("=5\t-3\t=6\t+ less", diff.getString("v"));
+        assertEquals(emoji, JSONDiff.apply(origin, diff.getString("v")));
+
+    }
+
+
     public void testCommonPrefix()
     throws Exception {
         assertEquals(3, JSONDiff.commonPrefix(list(1,2,3), list(1,2,3,4)));
