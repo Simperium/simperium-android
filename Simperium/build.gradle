@@ -33,6 +33,16 @@ android {
         targetSdkVersion 18
     }
 
+    sourceSets {
+
+        debug {
+            java {
+                srcDir 'src/support'
+            }
+        }
+
+    }
+
 }
 
 task writePom << {
