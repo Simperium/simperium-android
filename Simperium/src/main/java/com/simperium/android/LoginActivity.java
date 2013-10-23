@@ -25,6 +25,7 @@ import android.text.TextUtils;
 
 import org.json.*;
 
+import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
 import com.simperium.client.User;
@@ -32,7 +33,6 @@ import com.simperium.client.AuthResponseListener;
 import com.simperium.client.AuthException;
 import com.simperium.util.AlertUtil;
 import com.simperium.util.Logger;
-import com.simperium.client.R;
 
 import android.util.Log;
 

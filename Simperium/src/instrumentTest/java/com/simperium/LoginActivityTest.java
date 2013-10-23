@@ -6,10 +6,9 @@ import android.test.UiThreadTest;
 import static android.test.MoreAsserts.*;
 import static com.simperium.TestHelpers.*;
 
+import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.android.LoginActivity;
-
-import com.simperium.client.R;
 
 import com.simperium.test.MockClient;
 

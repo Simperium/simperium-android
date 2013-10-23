@@ -3,7 +3,7 @@
  */
 package com.simperium;
 
-import com.simperium.client.test.R;
+import com.simperium.test.R;
 
 import android.os.Bundle;
 
