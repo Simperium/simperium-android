@@ -46,10 +46,12 @@ android {
 }
 
 task writePom << {
-    pom {
-        project {
-            artifactId "simperium-android"
-            packaging "aar"
-        }
-    }.writeTo("$buildDir/pom.xml")
+    ["simperium-android", "simperium-android-support"].each() { artifact ->
+        pom {
+            project {
+                artifactId artifact
+                packaging "aar"
+            }
+        }.writeTo("$buildDir/$artifact-pom.xml")
+    }
 }
