@@ -301,15 +301,6 @@ public class JSONDiffTest extends TestCase {
      * Convenient object building methods for test use
      *
      **/
-    public JSONArray list(int... args)
-    throws JSONException {
-        JSONArray a = new JSONArray();
-        for (int i : args) {
-            a.put(i);
-        }
-        return a;
-    }
-
     public JSONArray list(Object... args)
     throws JSONException {
         JSONArray a = new JSONArray();
