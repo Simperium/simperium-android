@@ -149,7 +149,8 @@ public class RemoteChange {
     }
 
     public boolean isAddOperation(){
-        return isModifyOperation() && (sourceVersion == null || sourceVersion <= 0);
+        if (operation == null) return false;
+        return operation.equals(OPERATION_MODIFY) && (sourceVersion == null || sourceVersion <= 0);
     }
 
     public Integer getErrorCode(){
