@@ -9,7 +9,7 @@ import junit.framework.TestCase;
 public class RemoteChangeTest extends TestCase {
 
     public void testParseRemoteAddOperation() throws Exception {
-        String changeString = "{\"ccids\":[\"abc\"],\"ev\":1, \"id\":\"mock\",\"clientid\":\"mock-client\",\"o\":\"M\",\"v\":{}}";
+        String changeString = "{\"cv\":\"mock-cv\",\"ccids\":[\"abc\"],\"ev\":1, \"id\":\"mock\",\"clientid\":\"mock-client\",\"o\":\"M\",\"v\":{}}";
         JSONObject changeJSON = new JSONObject(changeString);
 
         RemoteChange change = RemoteChange.buildFromMap(changeJSON);
@@ -21,7 +21,7 @@ public class RemoteChangeTest extends TestCase {
     }
 
     public void testParseRemoteDeleteOperation() throws Exception {
-        String changeString = "{\"ccids\":[\"abc\"],\"ev\":2, \"id\":\"mock\",\"clientid\":\"mock-client\",\"o\":\"-\"}";
+        String changeString = "{\"cv\":\"mock-cv\",\"ccids\":[\"abc\"],\"ev\":2, \"id\":\"mock\",\"clientid\":\"mock-client\",\"o\":\"-\"}";
         JSONObject changeJSON = new JSONObject(changeString);
 
         RemoteChange change = RemoteChange.buildFromMap(changeJSON);
@@ -31,7 +31,7 @@ public class RemoteChangeTest extends TestCase {
     }
 
     public void testParseRemoteModifyOperation() throws Exception {
-        String changeString = "{\"ccids\":[\"abc\"],\"ev\":2,\"sv\":1,\"id\":\"mock\",\"clientid\":\"mock-client\",\"o\":\"M\",\"v\":{}}";
+        String changeString = "{\"cv\":\"mock-cv\",\"ccids\":[\"abc\"],\"ev\":2,\"sv\":1,\"id\":\"mock\",\"clientid\":\"mock-client\",\"o\":\"M\",\"v\":{}}";
         JSONObject changeJSON = new JSONObject(changeString);
 
         RemoteChange change = RemoteChange.buildFromMap(changeJSON);
