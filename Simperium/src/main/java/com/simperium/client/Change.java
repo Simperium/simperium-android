@@ -104,6 +104,10 @@ public class Change {
         return operation.equals(OPERATION_MODIFY);
     }
 
+    public boolean isRemoveOperation() {
+        return operation.equals(OPERATION_REMOVE);
+    }
+
     public boolean isPending(){
         return pending;
     }
