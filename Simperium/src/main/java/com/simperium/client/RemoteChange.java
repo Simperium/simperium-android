@@ -241,7 +241,7 @@ public class RemoteChange {
         String operation = changeData.getString(OPERATION_KEY);
         Integer sourceVersion = changeData.optInt(SOURCE_VERSION_KEY);
         Integer objectVersion = changeData.optInt(ENTITY_VERSION_KEY);
-        JSONObject patch = changeData.getJSONObject(VALUE_KEY);
+        JSONObject patch = changeData.optJSONObject(VALUE_KEY);
         String changeVersion = changeData.getString(CHANGE_VERSION_KEY);
 
         return new RemoteChange(client_id, id, ccids, changeVersion, sourceVersion, objectVersion, operation, patch);
