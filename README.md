@@ -1,7 +1,5 @@
 # Simperium for Android
 
-[![Build Status](https://travis-ci.org/Simperium/simperium-android.png)](https://travis-ci.org/Simperium/simperium-android)
-
 Trying to make using [Simperium][Simperium.com] in your Android app dead simple.
 
 
