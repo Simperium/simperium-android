@@ -29,7 +29,7 @@ before_install:
   # For a full list, run `android list sdk -a --extended`
   # Note that sysimg-18 downloads the ARM, x86 and MIPS images (we should optimize this).
   # Other relevant API's
-  - echo yes | android update sdk --filter platform-tools,android017,android-18,sysimg-18,extra-android-support,extra-android-m2repository --no-ui --force > /dev/null
+  - echo yes | android update sdk --filter platform-tools,android-17,android-18,sysimg-18,extra-android-support,extra-android-m2repository --no-ui --force > /dev/null
 
 
   # Create and start emulator
