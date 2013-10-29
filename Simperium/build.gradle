@@ -40,7 +40,6 @@ android {
             java {
                 srcDir 'src/support/java'
             }
-            manifest.srcFile 'DebugAndroidManifest.xml'
         }
 
     }
