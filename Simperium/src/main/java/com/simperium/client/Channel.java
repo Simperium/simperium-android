@@ -860,7 +860,8 @@ public class Channel implements Bucket.Channel {
             synchronized (lock){
                 // compress all changes for this same key
                 Iterator<Change> iterator = localQueue.iterator();
-                while(iterator.hasNext()){
+                boolean isModify = change.isModifyOperation();
+                while(iterator.hasNext() && isModify){
                     Change queued = iterator.next();
                     if(queued.getKey().equals(change.getKey())){
                         serializer.onDequeueChange(queued);
