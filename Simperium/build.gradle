@@ -11,7 +11,7 @@ buildscript {
 apply plugin: 'android-library'
 apply plugin: 'maven'
 
-version "0.3.3"
+version "0.3.4"
 group "com.simperium"
 
 repositories {
