@@ -39,7 +39,11 @@ before_install:
 before_script:
   - adb wait-for-device
   - adb devices
+  # send power keypress
+  - adb shell input keyevent 26
+  # send menu keypress
   - adb shell input keyevent 82
+  # send home keypress
   - adb shell input keyevent 4
 
 script:
