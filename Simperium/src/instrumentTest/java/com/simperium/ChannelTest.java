@@ -58,6 +58,43 @@ public class ChannelTest extends BaseSimperiumTest {
         super.tearDown();
     }
 
+    public void testSendFinalModificationBeforeDeleteOperation() throws Exception {
+
+        mListener.autoAcknowledge = true;
+
+        // put channel is started/connected mode with a complete but empty index
+        startWithEmptyIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo!");
+        // the will queue up a change
+        note.save();
+
+        clearMessages();
+        waitForMessage();
+
+        // make the channel disconnect as if it's offline
+        mChannel.onDisconnect();
+
+        note.setContent("My hovercraft is full of eels.");
+        // this will queue up a change with
+        note.save();
+
+        // queue up a {o:-} change
+        note.delete();
+
+        // make sure the object creation was acknowledged
+        assertEquals(1, mChannelSerializer.ackCount);
+
+        // we should have a queued modification and queued deletion
+        assertEquals(2, mChannelSerializer.queue.queued.size());
+
+        assertTrue(mChannelSerializer.queue.queued.get(0).isModifyOperation());
+        assertTrue(mChannelSerializer.queue.queued.get(1).isRemoveOperation());
+
+    }
+
+
     public void testChannelInitialState(){
         assertNotNull(mChannel);
         assertFalse(mChannel.isConnected());

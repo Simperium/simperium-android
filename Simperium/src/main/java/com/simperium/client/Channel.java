@@ -129,7 +129,7 @@ public class Channel implements Bucket.Channel {
         this.listener = listener;
         // Receive auth: command
         command(COMMAND_AUTH, new Command(){
-            public void run(String param){
+            public void execute(String param){
                 User user = getUser();
                 // ignore auth:expired, implement new auth:{JSON} for failures
                 if(EXPIRED_AUTH.equals(param.trim())) return;
@@ -155,23 +155,35 @@ public class Channel implements Bucket.Channel {
                 user.setStatus(User.Status.AUTHORIZED);
             }
         });
+
         // Receive i: command
         command(COMMAND_INDEX, new Command(){
-            public void run(String param){
+
+            @Override
+            public void execute(String param){
                 updateIndex(param);
             }
+
         });
+
         // Receive c: command
         command(COMMAND_CHANGE, new Command(){
-            public void run(String param){
+
+            @Override
+            public void execute(String param){
                 handleRemoteChanges(param);
             }
+
         });
+
         // Receive e: command
         command(COMMAND_ENTITY, new Command(){
-            public void run(String param){
+
+            @Override
+            public void execute(String param){
                 handleVersionResponse(param);
             }
+
         });
 
         changeProcessor = new ChangeProcessor();
@@ -425,7 +437,7 @@ public class Channel implements Bucket.Channel {
         String[] parts = message.split(":", MESSAGE_PARTS);
         String command = parts[COMMAND_PART];
 
-        run(command, parts[1]);
+        executeCommand(command, parts[1]);
 
     }
 
@@ -461,8 +473,8 @@ public class Channel implements Bucket.Channel {
         commands.add(name, command);
     }
 
-    private void run(String name, String params){
-        commands.run(name, params);
+    private void executeCommand(String name, String params){
+        commands.executeCommand(name, params);
     }
 
     /**
@@ -478,7 +490,7 @@ public class Channel implements Bucket.Channel {
      *      });
      */
     private interface Command {
-        void run(String params);
+        void execute(String params);
     }
 
     private class CommandInvoker {
@@ -488,10 +500,11 @@ public class Channel implements Bucket.Channel {
             commands.put(name, command);
             return this;
         }
-        protected void run(String name, String params){
+
+        protected void executeCommand(String name, String params){
             if (commands.containsKey(name)) {
                 Command command = commands.get(name);
-                command.run(params);
+                command.execute(params);
             } else {
                 Logger.log(TAG, String.format("Unkown command received: %s", name));
             }
@@ -847,7 +860,8 @@ public class Channel implements Bucket.Channel {
             synchronized (lock){
                 // compress all changes for this same key
                 Iterator<Change> iterator = localQueue.iterator();
-                while(iterator.hasNext()){
+                boolean isModify = change.isModifyOperation();
+                while(iterator.hasNext() && isModify){
                     Change queued = iterator.next();
                     if(queued.getKey().equals(change.getKey())){
                         serializer.onDequeueChange(queued);
