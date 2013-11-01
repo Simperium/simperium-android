@@ -3,15 +3,12 @@ buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:0.6.+'
-    }
+    dependencies { classpath 'com.android.tools.build:gradle:0.6.+' }
 }
 
 apply plugin: 'android-library'
 apply plugin: 'maven'
 
-version "0.3.4"
 group "com.simperium"
 
 repositories {
@@ -26,6 +23,7 @@ dependencies {
 }
 
 android {
+
     compileSdkVersion 18
     buildToolsVersion "18.1.1"
 
@@ -44,7 +42,79 @@ android {
 
     }
 
+
 }
+
+def gitHash = { ->
+    try {
+        def code = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--verify', '--short', 'HEAD'
+            standardOutput = code
+        }
+        return code.toString().trim()
+    }
+    catch (ignored) {
+        return "<unknown>";
+    }
+}
+
+def gitDescribe = { ->
+    try {
+        def code = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--always', '--dirty=*'
+            standardOutput = code
+        }
+        return code.toString().trim()
+    }
+    catch (ignored) {
+        return "<unknown>"
+    }
+}
+
+def gitVersion = { ->
+    (gitDescribe() =~ /^v/).replaceFirst('')
+}
+
+version gitVersion()
+
+task versionConfig(group: "build", description: "Generate version class") {
+    def dir = "${buildDir}/source/version"
+    def file = new File(dir, "com/simperium/Version.java")
+
+    android.sourceSets.main.java.srcDir dir
+
+
+    doLast {
+        def describe = gitDescribe()
+
+        logger.info "Version: ${describe}"
+
+        file.getParentFile().mkdirs()
+        def writer = new FileWriter(file)
+        writer.write("""/* auto-generated file do not modify */
+package com.simperium;
+
+public final class Version {
+
+    public static final String NAME = "android-${project.version}";
+
+    /* project.version */
+    public static final String NUMBER = "${project.version}";
+
+    /* git rev-parse --short --verify HEAD */
+    public static final String BUILD = "${gitHash()}";
+
+    /* git describe --always --dirty=* */
+    public static final String DESCRIBE = "${gitDescribe()}";
+}
+""")
+        writer.close()
+    }
+}
+
+tasks.preBuild.dependsOn versionConfig
 
 task writePom << {
     ["simperium-android", "simperium-android-support"].each() { artifact ->

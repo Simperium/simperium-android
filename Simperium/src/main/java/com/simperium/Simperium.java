@@ -38,8 +38,8 @@ public class Simperium implements User.StatusChangeListener {
         void onUserCreated(User user);
     }
 
-    public static final String VERSION = "1.0";
-    public static final String CLIENT_ID = String.format("android-%s", VERSION);
+    public static final String VERSION = Version.NUMBER;
+    public static final String CLIENT_ID = Version.NAME;
     public static final int SIGNUP_SIGNIN_REQUEST = 1000;  // The request code
 
     private String appId;
