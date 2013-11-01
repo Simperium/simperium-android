@@ -106,6 +106,24 @@ public class ChannelTest extends BaseSimperiumTest {
 
     }
 
+    /**
+     * Testing the receipt of cv:? from the server
+     */
+    public void testReceiveUnknownCV() throws Exception {
+        startWithEmptyIndex();
+        clearMessages();
+        waitForIndex();
+
+        // channel gets a cv:?
+        clearMessages();
+        mChannel.receiveMessage("cv:?");
+
+        waitForMessage();
+
+        assertEquals("", mListener.lastMessage);
+
+    }
+
 
     /**
      * A channel by default is not connected or started until asked.
