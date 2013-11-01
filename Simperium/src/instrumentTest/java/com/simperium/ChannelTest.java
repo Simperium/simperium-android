@@ -124,6 +124,28 @@ public class ChannelTest extends BaseSimperiumTest {
 
     }
 
+    /**
+     * Testing the receipt of c:? from the server
+     */
+    public void testReceiveUnknownC() throws Exception {
+        startWithEmptyIndex();
+        clearMessages();
+        waitForIndex();
+
+        // channel gets a cv:?
+        clearMessages();
+        mChannel.receiveMessage("c:?");
+
+        boolean ignoredMessage = false;
+        try {
+            waitForMessage();
+        } catch (InterruptedException e) {
+            ignoredMessage = true;
+        }
+
+        assertTrue("Should have ignored c:?", ignoredMessage);
+
+    }
 
     /**
      * A channel by default is not connected or started until asked.
