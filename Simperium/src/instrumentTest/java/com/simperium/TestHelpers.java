@@ -25,7 +25,7 @@ public class TestHelpers {
         while(!flag.isComplete()){
             Thread.sleep(100);
             if (System.currentTimeMillis() - start > timeout) {
-                throw(new RuntimeException(message));
+                throw(new InterruptedException(message));
             }
         }
     }
