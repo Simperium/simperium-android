@@ -117,9 +117,12 @@ public final class Version {
 tasks.preBuild.dependsOn versionConfig
 
 task writePom << {
+    // if there's some trailing version cruft replace with SNAPSHOT
+    def artifactVersion = (project.version =~ /[^\d]$/) ? "$project.version-SNAPSHOT" : project.version
     ["simperium-android", "simperium-android-support"].each() { artifact ->
         pom {
             project {
+                version artifactVersion
                 artifactId artifact
                 packaging "aar"
             }
