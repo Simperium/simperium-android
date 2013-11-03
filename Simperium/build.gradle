@@ -63,7 +63,7 @@ def gitDescribe = { ->
     try {
         def code = new ByteArrayOutputStream()
         exec {
-            commandLine 'git', 'describe', '--always', '--dirty=*'
+            commandLine 'git', 'describe', '--always', '--dirty=-dirty'
             standardOutput = code
         }
         return code.toString().trim()
@@ -106,7 +106,7 @@ public final class Version {
     /* git rev-parse --short --verify HEAD */
     public static final String BUILD = "${gitHash()}";
 
-    /* git describe --always --dirty=* */
+    /* git describe --always --dirty=-dirty */
     public static final String DESCRIBE = "${gitDescribe()}";
 }
 """)
