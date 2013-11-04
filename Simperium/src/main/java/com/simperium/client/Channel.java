@@ -62,6 +62,7 @@ public class Channel implements Bucket.Channel {
     public static final String COMMAND_CHANGE    = "c";
     public static final String COMMAND_VERSION   = "cv";
     public static final String COMMAND_ENTITY    = "e";
+    static public final String COMMAND_INDEX_STATE = "index";
 
     static final String RESPONSE_UNKNOWN  = "?";
 
@@ -183,6 +184,16 @@ public class Channel implements Bucket.Channel {
             @Override
             public void execute(String param){
                 handleVersionResponse(param);
+            }
+
+        });
+
+        // Receive index command
+        command(COMMAND_INDEX_STATE, new Command() {
+
+            @Override
+            public void execute(String param){
+                sendIndexStatus();
             }
 
         });
@@ -326,6 +337,48 @@ public class Channel implements Bucket.Channel {
             Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
         }
 
+    }
+
+    /**
+     * Send index status JSON
+     */
+    private void sendIndexStatus() {
+        bucket.submit(new Runnable(){
+
+            @Override
+            public void run(){
+
+                int total = bucket.count();
+                JSONArray objectVersions = new JSONArray();
+                String idKey = "id";
+                String versionKey = "v";
+                Bucket.ObjectCursor objects = bucket.allObjects();
+
+                while(objects.moveToNext()) {
+                    try {
+                        JSONObject objectData = new JSONObject();
+                        Syncable object = objects.getObject();
+                        objectData.put(idKey, object.getSimperiumKey());
+                        objectData.put(versionKey, object.getVersion());
+                        objectVersions.put(objectData);
+                    } catch (JSONException e) {
+                        Logger.log(TAG, "Unable to add object version", e);
+                    }
+                }
+
+                JSONObject index = new JSONObject();
+                try {
+                    index.put("index", objectVersions);
+                    index.put("current", getChangeVersion());
+                } catch (JSONException e) {
+                    Logger.log(TAG, "Unable to build index response", e);
+                }
+
+                sendMessage(String.format("%s:%s", COMMAND_INDEX_STATE, index));
+
+            }
+
+        });
     }
 
     public Bucket getBucket(){
