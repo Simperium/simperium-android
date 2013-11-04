@@ -115,7 +115,7 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
-     * Testing the receipt of cv:? from the server
+     * Testing the receipt of cv:? from the server when using api 1.1
      */
     public void testReceiveUnknownCV() throws Exception {
         startWithEmptyIndex();
@@ -133,7 +133,7 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
-     * Testing the receipt of c:? from the server
+     * Testing the receipt of c:? from the server when using api 1.1
      */
     public void testReceiveUnknownC() throws Exception {
         startWithEmptyIndex();
