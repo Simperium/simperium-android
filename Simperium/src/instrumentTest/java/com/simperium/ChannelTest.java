@@ -9,6 +9,7 @@ import com.simperium.models.Note;
 import com.simperium.test.MockBucket;
 import com.simperium.test.MockChannelListener;
 import com.simperium.test.MockChannelSerializer;
+import com.simperium.test.MockGhostStore;
 
 import java.util.Locale;
 
