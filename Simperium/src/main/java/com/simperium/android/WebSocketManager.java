@@ -25,6 +25,9 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.json.JSONObject;
+import org.json.JSONException;
+
 public class WebSocketManager implements ChannelProvider, WebSocketClient.Listener, Channel.OnMessageListener {
 
     public interface WebSocketFactory {
@@ -49,8 +52,10 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     public static final String TAG = "Simperium.Websocket";
     private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/1/%s/websocket";
     private static final String USER_AGENT_HEADER = "User-Agent";
-    private static final String COMMAND_HEARTBEAT = "h";
-    private static final String COMMAND_LOG = "log";
+    static public final String COMMAND_HEARTBEAT = "h";
+    static public final String COMMAND_LOG = "log";
+    static public final String LOG_FORMAT = "%s:%s";
+
     private String appId, sessionId;
     private String clientId;
     private WebSocketClient socketClient;
@@ -90,6 +95,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
+    @Override
     public Channel buildChannel(Bucket bucket) {
         // create a channel
         Channel channel = new Channel(appId, sessionId, bucket, mSerializer, this);
@@ -104,6 +110,27 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
             channel.onConnect();
         }
         return channel;
+    }
+
+    @Override
+    public void log(int level, CharSequence message) {
+        // no logging if disabled
+        if (logLevel == ChannelProvider.LOG_DISABLED) return;
+
+        if (level <= logLevel) {
+            try {
+                JSONObject log = new JSONObject();
+                log.put(COMMAND_LOG, message.toString());
+                socketClient.send(String.format(LOG_FORMAT, COMMAND_LOG, log));
+            } catch (JSONException e) {
+                Logger.log(TAG, "Could not send log", e);
+            }
+        }
+    }
+
+    @Override
+    public int getLogLevel() {
+        return logLevel;
     }
 
     public void connect() {
