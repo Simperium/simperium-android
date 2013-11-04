@@ -16,6 +16,8 @@
  */
 package com.simperium.client;
 
+import com.simperium.Version;
+
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 
@@ -398,6 +400,19 @@ public class Channel implements Bucket.Channel {
                 } catch (JSONException e) {
                     Logger.log(TAG, "Unable to build index response", e);
                 }
+
+                JSONObject extra = new JSONObject();
+                try {
+                    extra.put("bucketName", bucket.getName());
+                    extra.put("build", Version.BUILD);
+                    extra.put("version", Version.NUMBER);
+                    extra.put("client", Version.NAME);
+
+                    index.put("extra", extra);
+                } catch (JSONException e) {
+                    Logger.log(TAG, "Unable to add extra info", e);
+                }
+
 
                 sendMessage(String.format("%s:%s", COMMAND_INDEX_STATE, index));
 

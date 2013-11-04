@@ -1,5 +1,6 @@
 package com.simperium;
 
+import com.simperium.Version;
 import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
@@ -436,6 +437,10 @@ public class ChannelTest extends BaseSimperiumTest {
 
         assertEquals(expected.get("current"), index.get("current"));
         assertEquals(expected.getJSONArray("index").length(), index.getJSONArray("index").length());
+
+        assertEquals(mBucket.getName(), index.getJSONObject("extra").getString("bucketName"));
+        assertEquals(Version.BUILD, index.getJSONObject("extra").getString("build"));
+        assertEquals(Version.NUMBER, index.getJSONObject("extra").getString("version"));
     }
 
     /**
@@ -489,6 +494,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
             versions.put(versionData);
         }
+
         mListener.indexVersions = versions;
         mListener.indexData = objects;
         sendMessage(String.format("i:%s", index));
