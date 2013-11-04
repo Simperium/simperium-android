@@ -27,6 +27,21 @@ import java.util.TimerTask;
 
 public class WebSocketManager implements ChannelProvider, WebSocketClient.Listener, Channel.OnMessageListener {
 
+    public interface WebSocketFactory {
+
+        public WebSocketClient buildClient(URI socketUri, WebSocketClient.Listener listener,
+            List<BasicNameValuePair> headers);
+    }
+
+    private static class DefaultSocketFactory implements WebSocketFactory {
+
+        public WebSocketClient buildClient(URI socketUri, WebSocketClient.Listener listener,
+            List<BasicNameValuePair> headers) {
+            return new WebSocketClient(socketUri, listener, headers);
+        }
+
+    }
+
     public enum ConnectionStatus {
         DISCONNECTING, DISCONNECTED, CONNECTING, CONNECTED
     }
@@ -55,6 +70,11 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     protected Channel.Serializer mSerializer;
 
     public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer) {
+        this(appId, sessionId, channelSerializer, new DefaultSocketFactory());
+    }
+
+    public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer,
+        WebSocketFactory socketFactory) {
         this.appId = appId;
         this.sessionId = sessionId;
         mSerializer = channelSerializer;
@@ -62,7 +82,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
             new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
         );
         socketURI = URI.create(String.format(WEBSOCKET_URL, appId));
-        socketClient = new WebSocketClient(socketURI, this, headers);
+        socketClient = socketFactory.buildClient(socketURI, this, headers);
     }
 
     /**
