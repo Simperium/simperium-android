@@ -513,7 +513,7 @@ public class ChannelTest extends BaseSimperiumTest {
             public boolean isComplete(){
                 return mChannel.haveCompleteIndex();
             }
-        }, "Index never received", 2000);
+        }, "Index never received", 5000);
     }
 
     private static class RemoteChangeFlagger implements MockBucket.RemoteChangeListener {
