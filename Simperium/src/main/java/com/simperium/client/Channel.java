@@ -198,6 +198,21 @@ public class Channel implements Bucket.Channel {
 
         });
 
+        // Receive cv:? command
+        command(COMMAND_VERSION, new Command() {
+
+            @Override
+            public void execute(String param) {
+
+                if (param.equals(RESPONSE_UNKNOWN)) {
+                    Logger.log(TAG, "CV is out of date");
+                    stopChangesAndRequestIndex();
+                }
+
+            }
+
+        });
+
         changeProcessor = new ChangeProcessor();
     }
 
@@ -269,8 +284,7 @@ public class Channel implements Bucket.Channel {
         // if we do have an index processor and the cv's match, add the page of items
         // to the queue.
         if (indexJson.equals(RESPONSE_UNKNOWN)) {
-            // refresh the index
-            getLatestVersions();
+            // noop, api 1.1 should not be sending ? here
             return;
         }
         JSONObject index;
@@ -313,9 +327,7 @@ public class Channel implements Bucket.Channel {
     private void handleRemoteChanges(String changesJson){
         JSONArray changes;
         if (changesJson.equals(RESPONSE_UNKNOWN)) {
-            Logger.log(TAG, "CV is out of date");
-            changeProcessor.reset();
-            getLatestVersions();
+            // noop API 1.1 does not send "?" here
             return;
         }
         try {
@@ -336,6 +348,19 @@ public class Channel implements Bucket.Channel {
         if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
             Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
         }
+
+    }
+
+    /**
+     * Stop sending changes and download a new index
+     */
+    private void stopChangesAndRequestIndex() {
+
+        // top the change processor from listening for changes
+        changeProcessor.stop();
+
+        // get the latest index
+        getLatestVersions();
 
     }
 
