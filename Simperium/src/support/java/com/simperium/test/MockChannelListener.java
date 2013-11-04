@@ -32,7 +32,9 @@ public class MockChannelListener implements Channel.OnMessageListener {
     public void onMessage(Channel.MessageEvent event) {
         messages.add(event);
 
-        if (autoAcknowledge == true && event.message.indexOf("c:") == 0) {
+        Message message = parseMessage(event.message);
+
+        if (autoAcknowledge == true && message.isCommand(Channel.COMMAND_CHANGE)) {
             try {
                 Channel channel = (Channel) event.getSource();
                 JSONObject changeJSON = new JSONObject(event.message.substring(2));
@@ -71,6 +73,36 @@ public class MockChannelListener implements Channel.OnMessageListener {
     @Override
     public void onOpen(Channel channel) {
         open = true;
+    }
+
+    static public final String COLON = ":";
+    public static Message parseMessage(String message) {
+        int colon = message.indexOf(COLON);
+        String command = null, payload = null;
+        if (colon == -1) {
+            command = message;
+            payload = "";
+        } else {
+            command = message.substring(0, colon);
+            payload = message.substring(colon+1);
+        }
+
+        return new Message(command, payload);
+    }
+
+    public static class Message {
+
+        final public String command;
+        final public String payload;
+
+        public Message(String command, String payload) {
+            this.command = command;
+            this.payload = payload;
+        }
+
+        public boolean isCommand(String command) {
+            return this.command.equals(command);
+        }
     }
 
 }
