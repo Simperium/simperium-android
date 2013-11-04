@@ -67,16 +67,30 @@ public class WebSocketManagerTest extends TestCase {
 
     public void testSendDebugLogWhenLogLevelDebug()
     throws Exception {
+
+        // Turn on debug level
+        mSocketManager.onMessage("log:1");
+
         mSocketManager.log(ChannelProvider.LOG_DEBUG, "debug");
         mSocketManager.log(ChannelProvider.LOG_VERBOSE, "verbose");
+
+        mSocketManager.onMessage("log:0");
+        mSocketManager.log(ChannelProvider.LOG_DEBUG, "disabled");
 
         assertEquals("log:{\"log\":\"debug\"}", mSocketClient.lastMessage);
     }
 
     public void testSendVerboseLogWhenLogLevelVerbose()
     throws Exception {
+
+        // Turn on verbose level
+        mSocketManager.onMessage("log:2");
+
         mSocketManager.log(ChannelProvider.LOG_DEBUG, "debug");
         mSocketManager.log(ChannelProvider.LOG_VERBOSE, "verbose");
+
+        mSocketManager.onMessage("log:0");
+        mSocketManager.log(ChannelProvider.LOG_VERBOSE, "disabled");
 
         assertEquals("log:{\"log\":\"verbose\"}", mSocketClient.lastMessage);
     }
