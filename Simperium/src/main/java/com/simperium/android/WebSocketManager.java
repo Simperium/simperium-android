@@ -50,6 +50,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/1/%s/websocket";
     private static final String USER_AGENT_HEADER = "User-Agent";
     private static final String COMMAND_HEARTBEAT = "h";
+    private static final String COMMAND_LOG = "log";
     private String appId, sessionId;
     private String clientId;
     private WebSocketClient socketClient;
@@ -62,7 +63,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
 
     private Timer heartbeatTimer, reconnectTimer;
-    private int heartbeatCount = 0;
+    private int heartbeatCount = 0, logLevel = 0;
     private long reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
 
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
@@ -285,6 +286,9 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);
+            return;
+        } else if (parts[0].equals(COMMAND_LOG)) {
+            logLevel = Integer.parseInt(parts[1]);
             return;
         }
         try {
