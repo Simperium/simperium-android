@@ -128,7 +128,8 @@ public class ChannelTest extends BaseSimperiumTest {
 
         waitForMessage();
 
-        assertEquals("", mListener.lastMessage);
+        // sends an index request
+        assertEquals("i::::50", mListener.lastMessage.toString());
 
     }
 
