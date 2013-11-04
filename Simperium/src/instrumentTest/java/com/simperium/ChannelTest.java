@@ -11,11 +11,18 @@ import com.simperium.test.MockChannelListener;
 import com.simperium.test.MockChannelSerializer;
 import com.simperium.test.MockGhostStore;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import static android.test.MoreAsserts.assertMatchesRegex;
 import static com.simperium.TestHelpers.Flag;
 import static com.simperium.TestHelpers.waitUntil;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 public class ChannelTest extends BaseSimperiumTest {
 
@@ -402,11 +409,43 @@ public class ChannelTest extends BaseSimperiumTest {
         waitForIndex();
     }
 
+    protected void startWithIndex(String cv, Map<String,String> objects)
+    throws JSONException, InterruptedException {
+        start();
+        sendIndex(cv, objects);
+        waitForIndex();
+    }
+
     /**
      * Simulates a brand new bucket with and empty index
      */
     protected void sendEmptyIndex(){
-        mChannel.receiveMessage("i:{\"index\":[]}");
+        sendMessage("i:{\"index\":[]}");
+    }
+
+    protected void sendIndex(String cv, Map<String,String> objects)
+    throws JSONException {
+        JSONObject index = new JSONObject();
+        String period = ".";
+        index.put("current", cv);
+
+        JSONArray versions = new JSONArray();
+        index.put("index", versions);
+
+        for(Entry<String,String> entry : objects.entrySet()) {
+            String key = entry.getKey();
+            int dot = key.indexOf(period);
+            String id = key.substring(0, dot);
+            int version = Integer.parseInt(key.substring(dot+1));
+            JSONObject versionData = new JSONObject();
+            versionData.put("v", version);
+            versionData.put("id", id);
+
+            versions.put(versionData);
+        }
+        mListener.indexVersions = versions;
+        mListener.indexData = objects;
+        sendMessage(String.format("i:%s", index));
     }
 
     protected void sendMessage(String message){
