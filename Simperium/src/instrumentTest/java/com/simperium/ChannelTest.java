@@ -46,12 +46,24 @@ public class ChannelTest extends BaseSimperiumTest {
         super.setUp();
         
         mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
+
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
                 mChannelSerializer = new MockChannelSerializer();
                 mChannel = new Channel(APP_ID, SESSION_ID, bucket, mChannelSerializer, mListener);
                 return mChannel;
             }
+
+            @Override
+            public void log(int level, CharSequence message) {
+                // noop
+            }
+
+            @Override
+            public int getLogLevel() {
+                return 0;
+            }
+
         });
 
         mBucket.getUser().setStatusChangeListener(new User.StatusChangeListener(){
