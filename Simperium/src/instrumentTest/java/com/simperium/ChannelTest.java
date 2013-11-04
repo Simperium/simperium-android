@@ -392,6 +392,39 @@ public class ChannelTest extends BaseSimperiumTest {
 
     }
 
+    public void testReceiveIndexRequest()
+    throws Exception {
+        String cv = "mock-cv-123";
+        Map objects = new HashMap();
+
+        objects.put("mock1.1", "{\"data\":{\"title\":\"1.1\"}}");
+        objects.put("mock2.10", "{\"data\":{\"title\":\"2.10\"}}");
+        objects.put("mock3.5", "{\"data\":{\"title\":\"3.5\"}}");
+
+        startWithIndex(cv, objects);
+        waitForIndex();
+
+        // 0:index:{ current: <cv>, index: { {id: <eid>, v: <version>}, ... }, pending: { { id: <eid>, sv: <version>, ccid: <ccid> }, ... }, extra: { ? } }
+
+        mChannel.receiveMessage("index");
+
+        Channel.MessageEvent message = mListener.lastMessage;
+
+        JSONObject expected = new JSONObject();
+
+        expected.put("index", mListener.indexVersions);
+        expected.put("current", cv);
+
+        MockChannelListener.Message parsedMessage = MockChannelListener.parseMessage(message.toString());
+
+        assertEquals("index", parsedMessage.command);
+
+        JSONObject index = new JSONObject(parsedMessage.payload);
+
+        assertEquals(expected.get("current"), index.get("current"));
+        assertEquals(expected.getJSONArray("index").length(), index.getJSONArray("index").length());
+    }
+
     /**
      * Get's the channel into a started state
      */
