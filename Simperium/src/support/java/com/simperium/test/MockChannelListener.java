@@ -15,7 +15,8 @@ public class MockChannelListener implements Channel.OnMessageListener {
 
     static public final String TAG = "SimperiumTest";
 
-    public boolean open = false, autoAcknowledge = false;
+    public boolean open = false, autoAcknowledge = false, initReceived = false;
+    public String api = null;
     public List<Channel.MessageEvent> messages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     public Channel.MessageEvent lastMessage;
 
@@ -33,6 +34,20 @@ public class MockChannelListener implements Channel.OnMessageListener {
         messages.add(event);
 
         Message message = parseMessage(event.message);
+
+        if (message.isCommand(Channel.COMMAND_INIT)) {
+            // init already received
+            if (initReceived) throw new RuntimeException("Channel sent init after already sending init");
+            initReceived = true;
+
+            try {
+                JSONObject initParams = new JSONObject(message.payload);
+                api = initParams.getString(Channel.FIELD_API_VERSION);
+            } catch (JSONException e) {
+                throw new RuntimeException("Invalid init params", e);
+            }
+
+        }
 
         if (autoAcknowledge == true && message.isCommand(Channel.COMMAND_CHANGE)) {
             try {
