@@ -449,7 +449,7 @@ public class Channel implements Bucket.Channel {
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, bucket.getUser().getAccessToken());
         init.put(FIELD_BUCKET_NAME, bucket.getRemoteName());
-        init.put(FIELD_COMMAND, initialCommand);
+        init.put(FIELD_COMMAND, initialCommand.toString());
         init.put(FIELD_LIBRARY_VERSION, LIBRARY_VERSION);
         init.put(FIELD_LIBRARY, LIBRARY_NAME);
         String initParams = new JSONObject(init).toString();

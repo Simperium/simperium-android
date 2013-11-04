@@ -24,12 +24,12 @@ dependencies {
 
 android {
 
-    compileSdkVersion 18
+    compileSdkVersion 19
     buildToolsVersion "18.1.1"
 
     defaultConfig {
         minSdkVersion 8
-        targetSdkVersion 18
+        targetSdkVersion 19
     }
 
     sourceSets {
@@ -63,7 +63,7 @@ def gitDescribe = { ->
     try {
         def code = new ByteArrayOutputStream()
         exec {
-            commandLine 'git', 'describe', '--always', '--dirty=*'
+            commandLine 'git', 'describe', '--always', '--dirty=-dirty'
             standardOutput = code
         }
         return code.toString().trim()
@@ -106,7 +106,7 @@ public final class Version {
     /* git rev-parse --short --verify HEAD */
     public static final String BUILD = "${gitHash()}";
 
-    /* git describe --always --dirty=* */
+    /* git describe --always --dirty=-dirty */
     public static final String DESCRIBE = "${gitDescribe()}";
 }
 """)
@@ -117,9 +117,12 @@ public final class Version {
 tasks.preBuild.dependsOn versionConfig
 
 task writePom << {
+    // if there's some trailing version cruft replace with SNAPSHOT
+    def artifactVersion = (project.version =~ /[^\d]$/) ? "$project.version-SNAPSHOT" : project.version
     ["simperium-android", "simperium-android-support"].each() { artifact ->
         pom {
             project {
+                version artifactVersion
                 artifactId artifact
                 packaging "aar"
             }
