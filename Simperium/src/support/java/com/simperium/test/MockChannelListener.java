@@ -9,7 +9,9 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MockChannelListener implements Channel.OnMessageListener {
 
@@ -19,6 +21,8 @@ public class MockChannelListener implements Channel.OnMessageListener {
     public String api = null;
     public List<Channel.MessageEvent> messages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
     public Channel.MessageEvent lastMessage;
+    public Map<String,String> indexData = new HashMap<String,String>();
+    public JSONArray indexVersions;
 
     public void sendEmptyIndex(Channel channel){
         channel.receiveMessage("i:{\"index\":[]}");
@@ -47,6 +51,13 @@ public class MockChannelListener implements Channel.OnMessageListener {
                 throw new RuntimeException("Invalid init params", e);
             }
 
+        }
+
+        if (message.isCommand(Channel.COMMAND_ENTITY)) {
+            if (indexData.containsKey(message.payload)) {
+                Channel channel = (Channel) event.getSource();
+                channel.receiveMessage(String.format("e:%s\n%s", message.payload, indexData.get(message.payload)));;
+            }
         }
 
         if (autoAcknowledge == true && message.isCommand(Channel.COMMAND_CHANGE)) {
