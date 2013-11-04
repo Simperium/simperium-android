@@ -494,7 +494,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         NewMessageFlagger flagger = new NewMessageFlagger();
 
-        waitUntil(flagger, "No message received");
+        waitUntil(flagger, "No message received", 2000);
 
         return flagger.message;
 
