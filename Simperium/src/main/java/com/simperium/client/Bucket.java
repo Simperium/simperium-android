@@ -615,6 +615,13 @@ public class Bucket<T extends Syncable> {
         return ghost.getVersion();
     }
 
+    /**
+     * Submit a Runnable to this Bucket's executor
+     */
+    public void submit(Runnable task){
+        syncService.submit(task);
+    }
+
     public String uuid(){
         String key;
         do {
