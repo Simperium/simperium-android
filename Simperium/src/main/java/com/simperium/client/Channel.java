@@ -51,6 +51,7 @@ public class Channel implements Bucket.Channel {
     static public final String FIELD_LIBRARY         = "library";
     static public final String FIELD_LIBRARY_VERSION = "version";
 
+    static public final String SIMPERIUM_API_VERSION = "1.1";
     static public final String LIBRARY_NAME = "android";
     static public final Integer LIBRARY_VERSION = 0;
 
@@ -390,7 +391,7 @@ public class Channel implements Bucket.Channel {
 
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(6);
-        init.put(FIELD_API_VERSION, 1);
+        init.put(FIELD_API_VERSION, SIMPERIUM_API_VERSION);
         init.put(FIELD_CLIENT_ID, sessionId);
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, bucket.getUser().getAccessToken());
