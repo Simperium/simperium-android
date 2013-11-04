@@ -438,7 +438,11 @@ public class Channel implements Bucket.Channel {
         String[] parts = message.split(":", MESSAGE_PARTS);
         String command = parts[COMMAND_PART];
 
-        executeCommand(command, parts[1]);
+        if (parts.length == 2) {
+            executeCommand(command, parts[1]);
+        } else if (parts.length == 1) {
+            executeCommand(command, "");
+        }
 
     }
 
