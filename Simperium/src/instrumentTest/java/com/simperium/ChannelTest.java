@@ -415,13 +415,14 @@ public class ChannelTest extends BaseSimperiumTest {
      * Wait until a message received. More than likely clearMessages() should
      * be called before waitForMessage()
      */
-    protected void waitForMessage() throws InterruptedException {
-        waitUntil(new Flag(){
-            @Override
-            public boolean isComplete(){
-                return mListener.lastMessage != null;
-            }
-        }, "No message receieved");
+    protected Channel.MessageEvent waitForMessage() throws InterruptedException {
+
+        NewMessageFlagger flagger = new NewMessageFlagger();
+
+        waitUntil(flagger, "No message received");
+
+        return flagger.message;
+
     }
 
     /**
@@ -438,7 +439,7 @@ public class ChannelTest extends BaseSimperiumTest {
             public boolean isComplete(){
                 return mChannel.haveCompleteIndex();
             }
-        }, "Index never received");
+        }, "Index never received", 2000);
     }
 
     private static class RemoteChangeFlagger implements MockBucket.RemoteChangeListener {
@@ -454,6 +455,21 @@ public class ChannelTest extends BaseSimperiumTest {
         public void onAcknowledgeRemoteChange(RemoteChange change){
             called = true;
         }
+    }
+
+    private class NewMessageFlagger implements Flag {
+
+        Channel.MessageEvent message;
+
+        @Override
+        public boolean isComplete() {
+
+            message = mListener.lastMessage;
+
+            return mListener.lastMessage != null;
+
+        }
+
     }
 
 }
