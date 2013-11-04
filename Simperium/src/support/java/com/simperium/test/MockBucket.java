@@ -68,9 +68,8 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
     public static <T extends Syncable> MockBucket<T> buildBucket(BucketSchema<T> schema, ChannelProvider provider)
     throws BucketNameInvalid {
         User user = MockUser.buildUser();
-        StorageProvider storage = new MemoryStore();
-        BucketStore<T> store = storage.createStore(schema.getRemoteName(), schema);
-        GhostStorageProvider ghosts = new MockGhostStore();
+        BucketStore<T> store = new MockBucketStore<T>();
+        MockGhostStore ghosts = new MockGhostStore();
         MockCache<T> cache = new MockCache<T>();
 
         MockBucket<T> bucket = new MockBucket<T>(MockSyncService.service(), schema.getRemoteName(), schema, user, store, ghosts, cache);
