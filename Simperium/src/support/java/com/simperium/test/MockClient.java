@@ -9,6 +9,7 @@ import com.simperium.storage.MemoryStore;
 public class MockClient implements ClientFactory {
 
     public MockAuthProvider authProvider = new MockAuthProvider();
+    public MockChannelProvider channelProvider = new MockChannelProvider();
 
     @Override
     public MockAuthProvider buildAuthProvider(String appId, String appSecret){
@@ -17,7 +18,7 @@ public class MockClient implements ClientFactory {
 
     @Override
     public MockChannelProvider buildChannelProvider(String appId){
-        return new MockChannelProvider();
+        return channelProvider;
     }
 
     @Override
