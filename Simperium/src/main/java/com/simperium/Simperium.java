@@ -214,6 +214,20 @@ public class Simperium implements User.StatusChangeListener {
         userListener = listener;
     }
 
+    /**
+     * Log message with ChannelProvider.LOG_VERBOSE
+     */
+    public void log(CharSequence message) {
+        mChannelProvider.log(ChannelProvider.LOG_VERBOSE, message);
+    }
+
+    /**
+     * Log message with provided level see ChannelProvider for log level constants.
+     */
+    public void log(int level, CharSequence message) {
+        mChannelProvider.log(level, message);
+    }
+
     private class AuthResponseListenerWrapper implements AuthResponseListener {
 
         final private AuthResponseListener mListener;
