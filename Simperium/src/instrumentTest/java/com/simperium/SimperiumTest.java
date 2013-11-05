@@ -78,7 +78,8 @@ public class SimperiumTest extends BaseSimperiumTest {
 
     }
 
-    public void testInitialAuthState(){
+    public void testInitialAuthState()
+    throws Exception {
         // clear out the saved access token and build a new client for this test
         mClient.authProvider.accessToken = null;
         mSimperium = new Simperium("fake-id", "fake-secret", mClient);
@@ -94,7 +95,8 @@ public class SimperiumTest extends BaseSimperiumTest {
         assertEquals(0, mAuthStatuses.size());
     }
 
-    public void testAuthorized(){
+    public void testAuthorized()
+    throws Exception {
 
         User user = mSimperium.getUser();
         user.setAccessToken("fake-token");
@@ -117,7 +119,8 @@ public class SimperiumTest extends BaseSimperiumTest {
         assertEquals(1, mAuthStatuses.size());
     }
 
-    public void testNotAuthorized(){
+    public void testNotAuthorized()
+    throws Exception {
 
         User user = mSimperium.getUser();
         user.setAccessToken("fake-token");
@@ -136,7 +139,8 @@ public class SimperiumTest extends BaseSimperiumTest {
 
     }
 
-    public void testDeauthorizeUser(){
+    public void testDeauthorizeUser()
+    throws Exception {
 
         User user = mSimperium.getUser();
         user.setAccessToken("fake-token");
@@ -152,7 +156,8 @@ public class SimperiumTest extends BaseSimperiumTest {
         assertEquals(User.Status.NOT_AUTHORIZED, user.getStatus());
     }
 
-    public void testUserCreatedListener(){
+    public void testUserCreatedListener()
+    throws Exception {
         UserCreatedListener userListener = new UserCreatedListener();
         MockAuthResponseListener responseListener = new MockAuthResponseListener();
 
