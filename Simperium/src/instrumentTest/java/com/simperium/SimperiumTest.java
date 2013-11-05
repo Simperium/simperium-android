@@ -170,6 +170,16 @@ public class SimperiumTest extends BaseSimperiumTest {
         assertTrue(userListener.userCreated);
     }
 
+    public void testSendLogMessage()
+    throws Exception {
+        String logMessage = "debug message";
+        mSimperium.log(logMessage);
+
+        assertEquals(1, mClient.channelProvider.logs.size());
+        assertEquals(logMessage, mClient.channelProvider.getLastLog());
+
+    }
+
     private static class UserCreatedListener implements Simperium.OnUserCreatedListener {
 
         public boolean userCreated = false;
