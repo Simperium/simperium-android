@@ -3,7 +3,7 @@
   <groupId>com.simperium</groupId>
   <artifactId>simperium-android</artifactId>
   <versioning>
-    <release>0.4.0-alpha2</release>
+    <release>0.4.0-beta</release>
     <versions>
       <version>g0f7b78d</version>
       <version>1.0.0-ge7778e2</version>
@@ -23,7 +23,8 @@
       <version>0.3.6-beta-SNAPSHOT</version>
       <version>0.3.6</version>
       <version>0.4.0-alpha2</version>
+      <version>0.4.0-beta</version>
     </versions>
-    <lastUpdated>20131106030819</lastUpdated>
+    <lastUpdated>20131106192708</lastUpdated>
   </versioning>
 </metadata>
