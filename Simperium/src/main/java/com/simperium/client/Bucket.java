@@ -46,6 +46,7 @@ public class Bucket<T extends Syncable> {
     public interface Channel {
         public Change queueLocalChange(Syncable object);
         public Change queueLocalDeletion(Syncable object);
+        public void log(int level, CharSequence message);
         public void start();
         public void stop();
         public void reset();

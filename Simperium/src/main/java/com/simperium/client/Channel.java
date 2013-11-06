@@ -38,6 +38,7 @@ public class Channel implements Bucket.Channel {
 
     public interface OnMessageListener {
         void onMessage(MessageEvent event);
+        void onLog(Channel channel, int level, CharSequence message);
         void onClose(Channel channel);
         void onOpen(Channel channel);
     }

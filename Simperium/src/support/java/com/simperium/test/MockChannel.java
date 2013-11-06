@@ -47,6 +47,9 @@ public class MockChannel implements Bucket.Channel {
     }
 
     @Override
+    public void log(int level, CharSequence message) { }
+
+    @Override
     public void reset(){}
 
     @Override

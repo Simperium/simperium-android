@@ -20,6 +20,7 @@ public class MockChannelListener implements Channel.OnMessageListener {
     public boolean open = false, autoAcknowledge = false, initReceived = false;
     public String api = null;
     public List<Channel.MessageEvent> messages = Collections.synchronizedList(new ArrayList<Channel.MessageEvent>());
+    public List<String> logs = new ArrayList<String>();
     public Channel.MessageEvent lastMessage;
     public Map<String,String> indexData = new HashMap<String,String>();
     public JSONArray indexVersions;
@@ -89,6 +90,11 @@ public class MockChannelListener implements Channel.OnMessageListener {
         }
 
         lastMessage = event;
+    }
+
+    @Override
+    public void onLog(Channel channel, int level, CharSequence message) {
+        logs.add(message.toString());
     }
 
     @Override
