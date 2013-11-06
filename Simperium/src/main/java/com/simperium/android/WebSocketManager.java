@@ -114,18 +114,26 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
 
     @Override
     public void log(int level, CharSequence message) {
+
+        try {
+            JSONObject log = new JSONObject();
+            log.put(COMMAND_LOG, message.toString());
+            log(level, log);
+        } catch (JSONException e) {
+            Logger.log(TAG, "Could not send log", e);
+        }
+
+    }
+
+    protected void log(int level, JSONObject log) {
+
         // no logging if disabled
         if (logLevel == ChannelProvider.LOG_DISABLED) return;
 
-        if (level <= logLevel) {
-            try {
-                JSONObject log = new JSONObject();
-                log.put(COMMAND_LOG, message.toString());
-                socketClient.send(String.format(LOG_FORMAT, COMMAND_LOG, log));
-            } catch (JSONException e) {
-                Logger.log(TAG, "Could not send log", e);
-            }
-        }
+        if (level > logLevel) return;
+
+        if (!isConnected()) return;
+        socketClient.send(String.format(LOG_FORMAT, COMMAND_LOG, log));
     }
 
     @Override
@@ -261,6 +269,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
      * Channel.OnMessageListener event listener
      *
      */
+    @Override
     public void onMessage(Channel.MessageEvent event) {
         Channel channel = (Channel)event.getSource();
         Integer channelId = channelIndex.get(channel);
@@ -272,6 +281,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         }
     }
 
+    @Override
     public void onClose(Channel fromChannel) {
         // if we're allready disconnected we can ignore
         if (isDisconnected()) return;
@@ -284,12 +294,23 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         disconnect();
     }
 
+    @Override
     public void onOpen(Channel fromChannel) {
         connect();
     }
 
-    public void onIdle(Channel fromChannel){
-        // no-op
+    static public final String BUCKET_NAME_KEY = "bucket";
+    @Override
+    public void onLog(Channel channel, int level, CharSequence message) {
+        try {
+            JSONObject log = new JSONObject();
+            log.put(COMMAND_LOG, message);
+            log.put(BUCKET_NAME_KEY, channel.getBucketName());
+            log(level, log);
+        } catch (JSONException e) {
+            Logger.log(TAG, "Unable to send channel log message", e);
+        }
+
     }
 
     /**

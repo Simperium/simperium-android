@@ -426,6 +426,13 @@ public class Channel implements Bucket.Channel {
         return bucket;
     }
 
+    public String getBucketName(){
+        if (bucket != null) {
+            return bucket.getName();
+        }
+        return "";
+    }
+
     public User getUser(){
         return bucket.getUser();
     }
@@ -447,6 +454,12 @@ public class Channel implements Bucket.Channel {
      */
     public boolean isIdle(){
         return idle;
+    }
+
+    public void log(int level, CharSequence message) {
+        if (this.listener != null) {
+            this.listener.onLog(this, level, message);
+        }
     }
 
     /**

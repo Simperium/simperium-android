@@ -113,6 +113,15 @@ public class Bucket<T extends Syncable> {
         validateBucketName(name);
     }
 
+    public void log(int level, CharSequence message) {
+        if (channel == null) return;
+        channel.log(level, message);
+    }
+
+    public void log(CharSequence message) {
+        log(ChannelProvider.LOG_VERBOSE, message);
+    }
+
     /**
      * Return the instance of this bucket's schema
      */
