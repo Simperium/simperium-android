@@ -443,6 +443,14 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(Version.NUMBER, index.getJSONObject("extra").getString("version"));
     }
 
+    public void testSendLog()
+    throws Exception {
+        String message = "message";
+        mChannel.log(0, message);
+
+        assertEquals(mListener.logs.get(0), message);
+    }
+
     /**
      * Get's the channel into a started state
      */

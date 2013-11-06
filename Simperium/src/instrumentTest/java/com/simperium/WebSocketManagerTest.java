@@ -1,9 +1,12 @@
 package com.simperium;
 
 import com.simperium.android.WebSocketManager;
+import com.simperium.client.Bucket;
 import com.simperium.client.ChannelProvider;
+import com.simperium.models.Note;
 import com.simperium.test.MockChannelSerializer;
 import com.simperium.test.MockWebSocketClient;
+import com.simperium.test.MockBucket;
 
 import junit.framework.TestCase;
 
@@ -37,6 +40,9 @@ public class WebSocketManagerTest extends TestCase {
             }
 
         });
+
+        // by default assume socket is connected
+        mSocketManager.onConnect();
 
     }
 
@@ -93,6 +99,20 @@ public class WebSocketManagerTest extends TestCase {
         mSocketManager.log(ChannelProvider.LOG_VERBOSE, "disabled");
 
         assertEquals("log:{\"log\":\"verbose\"}", mSocketClient.lastMessage);
+    }
+
+    public void testSendChannelLog()
+    throws Exception {
+
+        // build a bucket
+        Bucket<Note> bucket = MockBucket.buildBucket(new Note.Schema(), mSocketManager);
+        // service turns on verbose logging
+        mSocketManager.onMessage("log:2");
+        // send log message
+        bucket.log(ChannelProvider.LOG_DEBUG, "debug");
+
+        assertEquals("log:{\"log\":\"debug\",\"bucket\":\"notes\"}", mSocketClient.lastMessage);
+
     }
 
 }
