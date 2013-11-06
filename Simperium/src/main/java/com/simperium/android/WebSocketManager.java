@@ -25,7 +25,25 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.json.JSONObject;
+import org.json.JSONException;
+
 public class WebSocketManager implements ChannelProvider, WebSocketClient.Listener, Channel.OnMessageListener {
+
+    public interface WebSocketFactory {
+
+        public WebSocketClient buildClient(URI socketUri, WebSocketClient.Listener listener,
+            List<BasicNameValuePair> headers);
+    }
+
+    private static class DefaultSocketFactory implements WebSocketFactory {
+
+        public WebSocketClient buildClient(URI socketUri, WebSocketClient.Listener listener,
+            List<BasicNameValuePair> headers) {
+            return new WebSocketClient(socketUri, listener, headers);
+        }
+
+    }
 
     public enum ConnectionStatus {
         DISCONNECTING, DISCONNECTED, CONNECTING, CONNECTED
@@ -34,7 +52,10 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     public static final String TAG = "Simperium.Websocket";
     private static final String WEBSOCKET_URL = "wss://api.simperium.com/sock/1/%s/websocket";
     private static final String USER_AGENT_HEADER = "User-Agent";
-    private static final String COMMAND_HEARTBEAT = "h";
+    static public final String COMMAND_HEARTBEAT = "h";
+    static public final String COMMAND_LOG = "log";
+    static public final String LOG_FORMAT = "%s:%s";
+
     private String appId, sessionId;
     private String clientId;
     private WebSocketClient socketClient;
@@ -47,7 +68,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
 
     private Timer heartbeatTimer, reconnectTimer;
-    private int heartbeatCount = 0;
+    private int heartbeatCount = 0, logLevel = 0;
     private long reconnectInterval = DEFAULT_RECONNECT_INTERVAL;
 
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
@@ -55,6 +76,11 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     protected Channel.Serializer mSerializer;
 
     public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer) {
+        this(appId, sessionId, channelSerializer, new DefaultSocketFactory());
+    }
+
+    public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer,
+        WebSocketFactory socketFactory) {
         this.appId = appId;
         this.sessionId = sessionId;
         mSerializer = channelSerializer;
@@ -62,13 +88,14 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
             new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
         );
         socketURI = URI.create(String.format(WEBSOCKET_URL, appId));
-        socketClient = new WebSocketClient(socketURI, this, headers);
+        socketClient = socketFactory.buildClient(socketURI, this, headers);
     }
 
     /**
      * Creates a channel for the bucket. Starts the websocket connection if not connected
      *
      */
+    @Override
     public Channel buildChannel(Bucket bucket) {
         // create a channel
         Channel channel = new Channel(appId, sessionId, bucket, mSerializer, this);
@@ -83,6 +110,35 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
             channel.onConnect();
         }
         return channel;
+    }
+
+    @Override
+    public void log(int level, CharSequence message) {
+
+        try {
+            JSONObject log = new JSONObject();
+            log.put(COMMAND_LOG, message.toString());
+            log(level, log);
+        } catch (JSONException e) {
+            Logger.log(TAG, "Could not send log", e);
+        }
+
+    }
+
+    protected void log(int level, JSONObject log) {
+
+        // no logging if disabled
+        if (logLevel == ChannelProvider.LOG_DISABLED) return;
+
+        if (level > logLevel) return;
+
+        if (!isConnected()) return;
+        socketClient.send(String.format(LOG_FORMAT, COMMAND_LOG, log));
+    }
+
+    @Override
+    public int getLogLevel() {
+        return logLevel;
     }
 
     public void connect() {
@@ -213,6 +269,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
      * Channel.OnMessageListener event listener
      *
      */
+    @Override
     public void onMessage(Channel.MessageEvent event) {
         Channel channel = (Channel)event.getSource();
         Integer channelId = channelIndex.get(channel);
@@ -224,6 +281,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         }
     }
 
+    @Override
     public void onClose(Channel fromChannel) {
         // if we're allready disconnected we can ignore
         if (isDisconnected()) return;
@@ -236,12 +294,23 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         disconnect();
     }
 
+    @Override
     public void onOpen(Channel fromChannel) {
         connect();
     }
 
-    public void onIdle(Channel fromChannel){
-        // no-op
+    static public final String BUCKET_NAME_KEY = "bucket";
+    @Override
+    public void onLog(Channel channel, int level, CharSequence message) {
+        try {
+            JSONObject log = new JSONObject();
+            log.put(COMMAND_LOG, message);
+            log.put(BUCKET_NAME_KEY, channel.getBucketName());
+            log(level, log);
+        } catch (JSONException e) {
+            Logger.log(TAG, "Unable to send channel log message", e);
+        }
+
     }
 
     /**
@@ -265,6 +334,9 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         String[] parts = message.split(":", 2);;
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             heartbeatCount = Integer.parseInt(parts[1]);
+            return;
+        } else if (parts[0].equals(COMMAND_LOG)) {
+            logLevel = Integer.parseInt(parts[1]);
             return;
         }
         try {

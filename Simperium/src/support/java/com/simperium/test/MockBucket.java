@@ -13,22 +13,23 @@ import com.simperium.client.RemoteChangeInvalidException;
 import com.simperium.client.SyncService;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
-import com.simperium.storage.MemoryStore;
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
 
 public class MockBucket<T extends Syncable> extends Bucket<T> {
 
     protected RemoteChangeListener mListener;
+    public MockGhostStore ghostStore;
 
     public interface RemoteChangeListener {
         public void onApplyRemoteChange(RemoteChange change);
         public void onAcknowledgeRemoteChange(RemoteChange change);
     }
 
-    public MockBucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache)
+    public MockBucket(SyncService syncService, String name, BucketSchema<T>schema, User user, BucketStore<T> storage, MockGhostStore ghostStore, ObjectCache<T> cache)
     throws BucketNameInvalid {
         super(syncService, name, schema, user, storage, ghostStore, cache);
+        this.ghostStore = ghostStore;
     }
 
     public void setRemoteChangeListener(RemoteChangeListener listener){
@@ -67,9 +68,8 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
     public static <T extends Syncable> MockBucket<T> buildBucket(BucketSchema<T> schema, ChannelProvider provider)
     throws BucketNameInvalid {
         User user = MockUser.buildUser();
-        StorageProvider storage = new MemoryStore();
-        BucketStore<T> store = storage.createStore(schema.getRemoteName(), schema);
-        GhostStorageProvider ghosts = new MockGhostStore();
+        BucketStore<T> store = new MockBucketStore<T>();
+        MockGhostStore ghosts = new MockGhostStore();
         MockCache<T> cache = new MockCache<T>();
 
         MockBucket<T> bucket = new MockBucket<T>(MockSyncService.service(), schema.getRemoteName(), schema, user, store, ghosts, cache);

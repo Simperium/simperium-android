@@ -46,6 +46,7 @@ public class Bucket<T extends Syncable> {
     public interface Channel {
         public Change queueLocalChange(Syncable object);
         public Change queueLocalDeletion(Syncable object);
+        public void log(int level, CharSequence message);
         public void start();
         public void stop();
         public void reset();
@@ -110,6 +111,15 @@ public class Bucket<T extends Syncable> {
         this.schema = schema;
         this.cache = cache;
         validateBucketName(name);
+    }
+
+    public void log(int level, CharSequence message) {
+        if (channel == null) return;
+        channel.log(level, message);
+    }
+
+    public void log(CharSequence message) {
+        log(ChannelProvider.LOG_VERBOSE, message);
     }
 
     /**
@@ -613,6 +623,13 @@ public class Bucket<T extends Syncable> {
     public Integer getKeyVersion(String key) throws GhostMissingException {
         Ghost ghost = ghostStore.getGhost(this, key);
         return ghost.getVersion();
+    }
+
+    /**
+     * Submit a Runnable to this Bucket's executor
+     */
+    public void submit(Runnable task){
+        syncService.submit(task);
     }
 
     public String uuid(){

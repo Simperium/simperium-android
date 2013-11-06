@@ -25,7 +25,7 @@ dependencies {
 android {
 
     compileSdkVersion 19
-    buildToolsVersion "18.1.1"
+    buildToolsVersion "19"
 
     defaultConfig {
         minSdkVersion 8
@@ -85,7 +85,6 @@ task versionConfig(group: "build", description: "Generate version class") {
 
     android.sourceSets.main.java.srcDir dir
 
-
     doLast {
         def describe = gitDescribe()
 
@@ -117,15 +116,43 @@ public final class Version {
 tasks.preBuild.dependsOn versionConfig
 
 task writePom << {
-    // if there's some trailing version cruft replace with SNAPSHOT
-    def artifactVersion = (project.version =~ /[^\d]$/) ? "$project.version-SNAPSHOT" : project.version
+    def dir = "${buildDir}/pom"
     ["simperium-android", "simperium-android-support"].each() { artifact ->
+        def file = new File(dir, "${artifact}.xml")
+        file.getParentFile().mkdirs()
         pom {
             project {
-                version artifactVersion
                 artifactId artifact
                 packaging "aar"
             }
-        }.writeTo("$buildDir/$artifact-pom.xml")
+        }.writeTo(file)
     }
 }
+
+task publishArtifacts {
+    def libDir = "${buildDir}/libs"
+    def pomDir = "${buildDir}/pom"
+    def baseName = "${project.name}-${project.version}"
+    def artifacts = [:]
+    artifacts[(new File(pomDir, "simperium-android.xml"))] =
+        new File(libDir, "${baseName}.aar")
+    artifacts[(new File(pomDir, "simperium-android-support.xml"))] =
+        new File(libDir, "${baseName}-debug.aar")
+
+    doLast {
+        if (!project.hasProperty("repository"))
+            throw new InvalidUserDataException("Project has no repository configured")
+
+        artifacts.each() { pomFile, file ->
+            exec {
+                commandLine "mvn", "deploy:deploy-file", "-Dfile=${file}",
+                    "-DpomFile=${pomFile}", "-Durl=${project.repository}"
+                standardOutput = new ByteArrayOutputStream()
+                
+            }
+        }
+    }
+}
+
+tasks.publishArtifacts.dependsOn tasks.assemble
+tasks.publishArtifacts.dependsOn tasks.writePom

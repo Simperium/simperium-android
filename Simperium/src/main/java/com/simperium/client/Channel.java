@@ -16,6 +16,8 @@
  */
 package com.simperium.client;
 
+import com.simperium.Version;
+
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 
@@ -29,6 +31,7 @@ import java.util.EventObject;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 
@@ -36,6 +39,7 @@ public class Channel implements Bucket.Channel {
 
     public interface OnMessageListener {
         void onMessage(MessageEvent event);
+        void onLog(Channel channel, int level, CharSequence message);
         void onClose(Channel channel);
         void onOpen(Channel channel);
     }
@@ -51,6 +55,7 @@ public class Channel implements Bucket.Channel {
     static public final String FIELD_LIBRARY         = "library";
     static public final String FIELD_LIBRARY_VERSION = "version";
 
+    static public final String SIMPERIUM_API_VERSION = "1.1";
     static public final String LIBRARY_NAME = "android";
     static public final Integer LIBRARY_VERSION = 0;
 
@@ -61,6 +66,7 @@ public class Channel implements Bucket.Channel {
     public static final String COMMAND_CHANGE    = "c";
     public static final String COMMAND_VERSION   = "cv";
     public static final String COMMAND_ENTITY    = "e";
+    static public final String COMMAND_INDEX_STATE = "index";
 
     static final String RESPONSE_UNKNOWN  = "?";
 
@@ -70,6 +76,7 @@ public class Channel implements Bucket.Channel {
     static final String EXPIRED_AUTH_CODE_KEY = "code";
     static final int EXPIRED_AUTH_INVALID_TOKEN_CODE = 401;
 
+    static public final int LOG_DEBUG = ChannelProvider.LOG_DEBUG;
 
     // Parameters for querying bucket
     static final Integer INDEX_PAGE_SIZE  = 50;
@@ -186,6 +193,31 @@ public class Channel implements Bucket.Channel {
 
         });
 
+        // Receive index command
+        command(COMMAND_INDEX_STATE, new Command() {
+
+            @Override
+            public void execute(String param){
+                sendIndexStatus();
+            }
+
+        });
+
+        // Receive cv:? command
+        command(COMMAND_VERSION, new Command() {
+
+            @Override
+            public void execute(String param) {
+
+                if (param.equals(RESPONSE_UNKNOWN)) {
+                    Logger.log(TAG, "CV is out of date");
+                    stopChangesAndRequestIndex();
+                }
+
+            }
+
+        });
+
         changeProcessor = new ChangeProcessor();
     }
 
@@ -257,8 +289,7 @@ public class Channel implements Bucket.Channel {
         // if we do have an index processor and the cv's match, add the page of items
         // to the queue.
         if (indexJson.equals(RESPONSE_UNKNOWN)) {
-            // refresh the index
-            getLatestVersions();
+            // noop, api 1.1 should not be sending ? here
             return;
         }
         JSONObject index;
@@ -301,9 +332,7 @@ public class Channel implements Bucket.Channel {
     private void handleRemoteChanges(String changesJson){
         JSONArray changes;
         if (changesJson.equals(RESPONSE_UNKNOWN)) {
-            Logger.log(TAG, "CV is out of date");
-            changeProcessor.reset();
-            getLatestVersions();
+            // noop API 1.1 does not send "?" here
             return;
         }
         try {
@@ -327,8 +356,83 @@ public class Channel implements Bucket.Channel {
 
     }
 
+    /**
+     * Stop sending changes and download a new index
+     */
+    private void stopChangesAndRequestIndex() {
+
+        // top the change processor from listening for changes
+        changeProcessor.stop();
+
+        // get the latest index
+        getLatestVersions();
+
+    }
+
+    /**
+     * Send index status JSON
+     */
+    private void sendIndexStatus() {
+        bucket.submit(new Runnable(){
+
+            @Override
+            public void run(){
+
+                int total = bucket.count();
+                JSONArray objectVersions = new JSONArray();
+                String idKey = "id";
+                String versionKey = "v";
+                Bucket.ObjectCursor objects = bucket.allObjects();
+
+                while(objects.moveToNext()) {
+                    try {
+                        JSONObject objectData = new JSONObject();
+                        Syncable object = objects.getObject();
+                        objectData.put(idKey, object.getSimperiumKey());
+                        objectData.put(versionKey, object.getVersion());
+                        objectVersions.put(objectData);
+                    } catch (JSONException e) {
+                        Logger.log(TAG, "Unable to add object version", e);
+                    }
+                }
+
+                JSONObject index = new JSONObject();
+                try {
+                    index.put("index", objectVersions);
+                    index.put("current", getChangeVersion());
+                } catch (JSONException e) {
+                    Logger.log(TAG, "Unable to build index response", e);
+                }
+
+                JSONObject extra = new JSONObject();
+                try {
+                    extra.put("bucketName", bucket.getName());
+                    extra.put("build", Version.BUILD);
+                    extra.put("version", Version.NUMBER);
+                    extra.put("client", Version.NAME);
+
+                    index.put("extra", extra);
+                } catch (JSONException e) {
+                    Logger.log(TAG, "Unable to add extra info", e);
+                }
+
+
+                sendMessage(String.format("%s:%s", COMMAND_INDEX_STATE, index));
+
+            }
+
+        });
+    }
+
     public Bucket getBucket(){
         return bucket;
+    }
+
+    public String getBucketName(){
+        if (bucket != null) {
+            return bucket.getName();
+        }
+        return "";
     }
 
     public User getUser(){
@@ -352,6 +456,12 @@ public class Channel implements Bucket.Channel {
      */
     public boolean isIdle(){
         return idle;
+    }
+
+    public void log(int level, CharSequence message) {
+        if (this.listener != null) {
+            this.listener.onLog(this, level, message);
+        }
     }
 
     /**
@@ -390,7 +500,7 @@ public class Channel implements Bucket.Channel {
 
         // Build the required json object for initializing
         HashMap<String,Object> init = new HashMap<String,Object>(6);
-        init.put(FIELD_API_VERSION, 1);
+        init.put(FIELD_API_VERSION, SIMPERIUM_API_VERSION);
         init.put(FIELD_CLIENT_ID, sessionId);
         init.put(FIELD_APP_ID, appId);
         init.put(FIELD_AUTH_TOKEN, bucket.getUser().getAccessToken());
@@ -437,7 +547,11 @@ public class Channel implements Bucket.Channel {
         String[] parts = message.split(":", MESSAGE_PARTS);
         String command = parts[COMMAND_PART];
 
-        executeCommand(command, parts[1]);
+        if (parts.length == 2) {
+            executeCommand(command, parts[1]);
+        } else if (parts.length == 1) {
+            executeCommand(command, "");
+        }
 
     }
 
@@ -836,6 +950,7 @@ public class Channel implements Bucket.Channel {
             synchronized(lock){
                 int length = changes.length();
                 Logger.log(TAG, String.format("Add remote changes to processor %d", length));
+                log(LOG_DEBUG, String.format(Locale.US, "Adding %d remote changes to queue", length));
                 for (int i = 0; i < length; i++) {
                     JSONObject change = changes.optJSONObject(i);
                     if (change != null) {
@@ -846,19 +961,15 @@ public class Channel implements Bucket.Channel {
             }
         }
 
-        public void addChange(JSONObject change) {
-            synchronized(lock){
-                remoteQueue.add(change);
-            }
-            start();
-        }
-
         /**
          * Local change to be queued
          */
         public void addChange(Change change){
             synchronized (lock){
                 // compress all changes for this same key
+                log(LOG_DEBUG, String.format(Locale.US, "Adding new change to queue %s.%d %s %s",
+                    change.getKey(), change.getVersion(), change.getOperation(), change.getChangeId()));
+
                 Iterator<Change> iterator = localQueue.iterator();
                 boolean isModify = change.isModifyOperation();
                 while(iterator.hasNext() && isModify){
@@ -960,11 +1071,13 @@ public class Channel implements Bucket.Channel {
                     synchronized(runLock){
                         try {
                             Logger.log(TAG, String.format("Waiting <%s> idle? %b", bucket.getName(), idle));
+                            log(LOG_DEBUG, "Change queue is empty, waiting for changes");
                             runLock.wait();
                         } catch (InterruptedException e) {
                             break;
                         }
                         Logger.log(TAG, "Waking change processor");
+                        log(LOG_DEBUG, "Processing changes");
                     }
                 }
             }
@@ -990,12 +1103,14 @@ public class Channel implements Bucket.Channel {
                         Logger.log(TAG, "Failed to build remote change", e);
                         continue;
                     }
+                    log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
                     Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
                     Change change = null;
                     change = pendingChanges.get(remoteChange.getKey());
                     if (remoteChange.isAcknowledgedBy(change)) {
+                        log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
                         serializer.onAcknowledgeChange(change);
                         // change is no longer pending so remove it
                         pendingChanges.remove(change.getKey());
@@ -1021,16 +1136,20 @@ public class Channel implements Bucket.Channel {
                                 }
                             } catch (RemoteChangeInvalidException e){
                                 Logger.log(TAG, "Remote change could not be acknowledged", e);
+                                log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
                             }
                         }
                     } else {
                         if (remoteChange.isError()){
                             Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
+                            log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
                         } else {
                             try {
                                 onRemote(remoteChange);
+                                Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
                             } catch (RemoteChangeInvalidException e) {
                                 Logger.log(TAG, "Remote change could not be applied", e);
+                                log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
                             }
                         }
                     }
@@ -1101,6 +1220,7 @@ public class Channel implements Bucket.Channel {
 
         @Override
         public void onRetry(Change change){
+            log(LOG_DEBUG, String.format("Retrying change %s", change.getChangeId()));
             sendChange(change);
         }
 
@@ -1131,8 +1251,8 @@ public class Channel implements Bucket.Channel {
                     }
                     map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
                 }
-               //  JSONObject changeJSON = Channel.serializeJSON(map);
-
+                //  JSONObject changeJSON = Channel.serializeJSON(map);
+                log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
                 sendMessage(String.format("c:%s", map.toString()));
                 serializer.onSendChange(change);
                 change.setSent();
