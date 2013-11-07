@@ -26,6 +26,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EventObject;
 import java.util.HashMap;
@@ -384,6 +385,7 @@ public class Channel implements Bucket.Channel {
                 String versionKey = "v";
                 Bucket.ObjectCursor objects = bucket.allObjects();
 
+                // collect all object keys and versions
                 while(objects.moveToNext()) {
                     try {
                         JSONObject objectData = new JSONObject();
@@ -396,14 +398,32 @@ public class Channel implements Bucket.Channel {
                     }
                 }
 
+                // collect all pending change keys, ccids and source versions
+                Collection<Change> pending = changeProcessor.pendingChanges();
+                JSONArray pendingData = new JSONArray();
+                for (Change change : pending) {
+                    try {
+                        JSONObject changeData = new JSONObject();
+                        changeData.put("id", change.getKey());
+                        changeData.put("sv", change.getVersion());
+                        changeData.put("ccid", change.getChangeId());
+                        pendingData.put(changeData);
+                    } catch (JSONException e) {
+                        Logger.log(TAG, "Unable to add change", e);
+                    }
+                }
+
+                // set up the index information
                 JSONObject index = new JSONObject();
                 try {
                     index.put("index", objectVersions);
                     index.put("current", getChangeVersion());
+                    index.put("pending", pendingData);
                 } catch (JSONException e) {
                     Logger.log(TAG, "Unable to build index response", e);
                 }
 
+                // add extra debugging info
                 JSONObject extra = new JSONObject();
                 try {
                     extra.put("bucketName", bucket.getName());
@@ -928,6 +948,10 @@ public class Channel implements Bucket.Channel {
 
         public ChangeProcessor() {
             restore();
+        }
+
+        public Collection<Change> pendingChanges() {
+            return pendingChanges.values();
         }
 
         /**
