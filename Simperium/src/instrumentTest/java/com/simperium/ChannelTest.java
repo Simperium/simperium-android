@@ -408,6 +408,9 @@ public class ChannelTest extends BaseSimperiumTest {
 
     public void testReceiveIndexRequest()
     throws Exception {
+        // make sure all sent items are pending
+        mListener.autoAcknowledge = false;
+
         String cv = "mock-cv-123";
         Map objects = new HashMap();
 
@@ -418,8 +421,24 @@ public class ChannelTest extends BaseSimperiumTest {
         startWithIndex(cv, objects);
         waitForIndex();
 
-        // 0:index:{ current: <cv>, index: { {id: <eid>, v: <version>}, ... }, pending: { { id: <eid>, sv: <version>, ccid: <ccid> }, ... }, extra: { ? } }
+        // send out a couple of edits
 
+        Note mock1 = mBucket.get("mock1");
+        mock1.setTitle("1.1 Lol");
+        mock1.save();
+
+        // make sure the change was sent
+        clearMessages();
+        waitForMessage(5000);
+
+        /*
+        0:index:{
+            current: <cv>,
+            index: [ {id: <eid>, v: <version>}, ... ],
+            pending: [ { id: <eid>, sv: <version>, ccid: <ccid> }, ... ],
+            extra: { ? }
+        }
+        */
         mChannel.receiveMessage("index");
 
         Channel.MessageEvent message = mListener.lastMessage;
@@ -441,6 +460,9 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(mBucket.getName(), index.getJSONObject("extra").getString("bucketName"));
         assertEquals(Version.BUILD, index.getJSONObject("extra").getString("build"));
         assertEquals(Version.NUMBER, index.getJSONObject("extra").getString("version"));
+
+        assertEquals("mock1", index.getJSONArray("pending").getJSONObject(0).getString("id"));
+        assertEquals(1, index.getJSONArray("pending").getJSONObject(0).getInt("sv"));
     }
 
     public void testSendLog()
