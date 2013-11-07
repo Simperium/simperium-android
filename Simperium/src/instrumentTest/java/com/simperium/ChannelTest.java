@@ -512,15 +512,19 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.receiveMessage(message);
     }
 
+    protected Channel.MessageEvent waitForMessage() throws InterruptedException {
+        return waitForMessage(2000);
+    }
+
     /**
      * Wait until a message received. More than likely clearMessages() should
      * be called before waitForMessage()
      */
-    protected Channel.MessageEvent waitForMessage() throws InterruptedException {
+    protected Channel.MessageEvent waitForMessage(int waitFor) throws InterruptedException {
 
         NewMessageFlagger flagger = new NewMessageFlagger();
 
-        waitUntil(flagger, "No message received", 2000);
+        waitUntil(flagger, "No message received", waitFor);
 
         return flagger.message;
 
