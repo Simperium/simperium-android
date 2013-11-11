@@ -374,7 +374,7 @@ public class Channel implements Bucket.Channel {
      * Send index status JSON
      */
     private void sendIndexStatus() {
-        bucket.submit(new Runnable(){
+        bucket.executeAsync(new Runnable(){
 
             @Override
             public void run(){
