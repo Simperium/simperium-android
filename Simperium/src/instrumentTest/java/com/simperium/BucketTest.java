@@ -11,7 +11,7 @@ import com.simperium.storage.MemoryStore;
 import com.simperium.test.MockCache;
 import com.simperium.test.MockChannel;
 import com.simperium.test.MockGhostStore;
-import com.simperium.test.MockSyncService;
+import com.simperium.test.MockExecutor;
 
 import static com.simperium.TestHelpers.makeUser;
 
@@ -35,7 +35,7 @@ public class BucketTest extends BaseSimperiumTest {
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MockGhostStore();
         MockCache<Note> cache = new MockCache<Note>();
-        mBucket = new Bucket<Note>(MockSyncService.service(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
+        mBucket = new Bucket<Note>(MockExecutor.service(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);
         mBucket.start();
