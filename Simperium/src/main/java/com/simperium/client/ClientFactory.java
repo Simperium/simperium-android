@@ -7,6 +7,8 @@ package com.simperium.client;
 
 import com.simperium.storage.StorageProvider;
 
+import java.util.concurrent.Executor;
+
 public interface ClientFactory {
 
     public AuthProvider buildAuthProvider(String appId, String appSecret);
@@ -14,6 +16,6 @@ public interface ClientFactory {
     public StorageProvider buildStorageProvider();
     public GhostStorageProvider buildGhostStorageProvider();
     public ObjectCacheProvider buildObjectCacheProvider();
-    public SyncService buildSyncService();
+    public Executor buildExecutor();
 
 }

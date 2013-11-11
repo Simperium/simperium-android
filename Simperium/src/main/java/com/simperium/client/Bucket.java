@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 public class Bucket<T extends Syncable> {
     
@@ -93,17 +94,17 @@ public class Bucket<T extends Syncable> {
     private BucketSchema<T> schema;
     private GhostStorageProvider ghostStore;
     private ObjectCache<T> cache;
-    final private SyncService syncService;
+    final private Executor executor;
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
      * @param name the name to use for the bucket namespace
      * @param user provides a way to namespace data if a different user logs in
      */
-    public Bucket(SyncService syncService, String name, BucketSchema<T>schema, User user,
+    public Bucket(Executor executor, String name, BucketSchema<T>schema, User user,
         BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache)
     throws BucketNameInvalid {
-        this.syncService = syncService;
+        this.executor = executor;
         this.name = name;
         this.user = user;
         this.storage = storage;
@@ -191,13 +192,13 @@ public class Bucket<T extends Syncable> {
      */
     public void sync(final T object){
         // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
-        syncService.submit(new Runnable(){
+        executor.execute(new Runnable(){
             @Override
             public void run(){
                 Boolean modified = object.isModified();
                 storage.save(object, schema.indexesFor(object));
 
-                Change change = channel.queueLocalChange(object);
+                channel.queueLocalChange(object);
 
                 if (modified){
                     // Notify listeners that an object has been saved, this was
@@ -213,10 +214,10 @@ public class Bucket<T extends Syncable> {
      */
     public void remove(final T object){
         cache.remove(object.getSimperiumKey());
-        syncService.submit(new Runnable() {
+        executor.execute(new Runnable() {
             @Override
             public void run() {
-                Change change = channel.queueLocalDeletion(object);
+                channel.queueLocalDeletion(object);
                 storage.delete(object);
                 notifyOnDeleteListeners(object);
             }
@@ -285,13 +286,11 @@ public class Bucket<T extends Syncable> {
      * Add an object to the bucket so simperium can start syncing it. Must
      * conform to the Diffable interface. So simperium can diff/apply patches.
      *
-     * @param (Diffable) the object to sync
      */
     public void add(T object){
         if (!object.getBucket().equals(this)) {
             object.setBucket(this);
         }
-        // TODO: sync the object over the socket
     }
 
     protected T buildObject(String key, JSONObject properties){
@@ -427,7 +426,7 @@ public class Bucket<T extends Syncable> {
      * came from an index request
      */
     protected void addObjectWithGhost(final Ghost ghost){
-        syncService.submit(new Runnable() {
+        executor.execute(new Runnable() {
 
             @Override
             public void run(){
@@ -628,8 +627,8 @@ public class Bucket<T extends Syncable> {
     /**
      * Submit a Runnable to this Bucket's executor
      */
-    public void submit(Runnable task){
-        syncService.submit(task);
+    public void executeAsync(Runnable task){
+        executor.execute(task);
     }
 
     public String uuid(){
