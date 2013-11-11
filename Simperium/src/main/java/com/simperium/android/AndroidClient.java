@@ -5,8 +5,11 @@ import android.database.sqlite.SQLiteDatabase;
 
 import com.simperium.Simperium;
 import com.simperium.client.ClientFactory;
-import com.simperium.util.BasicSyncService;
 import com.simperium.util.Uuid;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Refactoring as much of the android specific components of the client
@@ -18,6 +21,8 @@ public class AndroidClient implements ClientFactory {
 
     protected Context mContext;
     protected SQLiteDatabase mDatabase;
+
+    protected ExecutorService service = Executors.newFixedThreadPool(1);
 
     public AndroidClient(Context context){
         mContext = context;
@@ -52,7 +57,7 @@ public class AndroidClient implements ClientFactory {
     }
 
     @Override
-    public BasicSyncService buildSyncService(){
-        return new BasicSyncService();
+    public Executor buildExecutor(){
+        return service;
     }
 }
