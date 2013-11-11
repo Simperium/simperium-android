@@ -37,8 +37,8 @@ public class MockClient implements ClientFactory {
     }
 
     @Override
-    public MockSyncService buildSyncService(){
-        return new MockSyncService();
+    public MockExecutor buildExecutor(){
+        return new MockExecutor();
     }
 
 }
