@@ -309,6 +309,20 @@ public class JSONDiffTest extends TestCase {
         assertEquals(target, JSONDiff.apply((Object) origin, expected));
     }
 
+    public void testObjectEqualityWithListsAndUnsortedKeys()
+    throws Exception {
+        // same k/v but different order
+        // a = { "a":"b", "c":"d" }
+        // b = { "c":"d", "a":"b" }
+        JSONObject a = object("a", "b", "c", "d");
+        JSONObject b = object("c", "d", "a", "b");
+        JSONObject origin = object("a", list(a));
+        JSONObject target = object("a", list(b));
+        JSONObject diff = JSONDiff.diff(origin, target);
+
+        assertEquals(new JSONObject(), diff);
+    }
+
     /*
      * Convenient object building methods for test use
      *
