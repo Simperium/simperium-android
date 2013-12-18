@@ -63,6 +63,7 @@ public class JSONDiffTest extends TestCase {
 
     public void testListAppend()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
         // Buildint Java representation of {"o": "L", "v": {"1": {"o":"+", "v":4}}}
         JSONArray origin = list(1);
         JSONArray target = list(1,4);
@@ -82,6 +83,8 @@ public class JSONDiffTest extends TestCase {
 
     public void testListRemoveLast()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
+
         JSONObject diffs = new JSONObject();
         diffs.put("1", op(JSONDiff.OPERATION_REMOVE));
         JSONObject expected = list_op(diffs);
@@ -98,6 +101,8 @@ public class JSONDiffTest extends TestCase {
 
     public void testListRemoveFirst()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
+
         JSONObject diffs = new JSONObject();
         diffs.put("0", op(JSONDiff.OPERATION_REMOVE));
         JSONObject expected = list_op(diffs);
@@ -113,6 +118,8 @@ public class JSONDiffTest extends TestCase {
 
     public void testListRemove2Items()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
+
         JSONObject diffs = new JSONObject();
         diffs.put("0", op(JSONDiff.OPERATION_REPLACE, new Integer(2)));
         diffs.put("1", op(JSONDiff.OPERATION_REMOVE));
@@ -130,6 +137,8 @@ public class JSONDiffTest extends TestCase {
 
     public void testListRemoveFirstInsertMiddleAppend()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
+
         JSONObject diffs = new JSONObject();
         diffs.put("0", op(JSONDiff.OPERATION_REPLACE, new Integer(2)));
         diffs.put("1", op(JSONDiff.OPERATION_REPLACE, new Integer(6)));
@@ -277,6 +286,8 @@ public class JSONDiffTest extends TestCase {
 
     public void testRemoveArrayItemsThatAreSame()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
+
         JSONArray origin = list("a", "a", "a");
         JSONArray target = list("a");
         JSONObject operations = object("1", op(JSONDiff.OPERATION_REMOVE));
@@ -288,6 +299,7 @@ public class JSONDiffTest extends TestCase {
 
     public void testAddArrayItemsThatAreSame()
     throws Exception {
+        JSONDiff.enableArrayDiff = true;
         JSONArray origin = list("a");
         JSONArray target = list("a", "a", "a");
         JSONObject operations = object("1", op(JSONDiff.OPERATION_INSERT, "a"));
