@@ -114,9 +114,9 @@ public class JSONDiff {
             return diffs;
         }
 
-        Iterator keys = a.keys();
+        Iterator<String> keys = a.keys();
         while (keys.hasNext()) {
-            String key = keys.next().toString();
+            String key = keys.next();
             if (b.has(key)) {
                 if (!equals(a.get(key), b.get(key))) {
                     diffs.put(key, diff(a.get(key), b.get(key)));
@@ -295,11 +295,11 @@ public class JSONDiff {
     public static JSONObject apply(JSONObject origin, JSONObject patch)
     throws JSONException {
         JSONObject transformed = deepCopy(origin);
-        Iterator keys = patch.keys();
+        Iterator<String> keys = patch.keys();
 
         while (keys.hasNext()) {
 
-            String key = keys.next().toString();
+            String key = keys.next();
             JSONObject operation = patch.getJSONObject(key);
             String method = operation.getString(DIFF_OPERATION_KEY);
 
@@ -341,9 +341,9 @@ public class JSONDiff {
         List<Integer> deleted = new ArrayList<Integer>();
 
         // iterate the keys on the patch
-        Iterator keys = patch.keys();
+        Iterator<String> keys = patch.keys();
         while (keys.hasNext()){
-            String key = keys.next().toString();
+            String key = keys.next();
             indexes.add(Integer.parseInt(key));
         }
 
@@ -438,9 +438,9 @@ public class JSONDiff {
             return null;
         };
         Map<String,Object> copy = new HashMap<String,Object>(map.size());
-        Iterator keys = map.keySet().iterator();
+        Iterator<String> keys = map.keySet().iterator();
         while(keys.hasNext()){
-            String key = (String)keys.next();
+            String key = keys.next();
             Object val = map.get(key);
             if (val instanceof Map) {
                 copy.put(key, deepCopy((Map<String,Object>) val));
