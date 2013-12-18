@@ -219,12 +219,64 @@ public class JSONDiff {
     }
 
     public static boolean equals(JSONObject a, JSONObject b) {
-        android.util.Log.d("TestRunner", String.format("Equal? %b\n%s\n%s", a.equals(b), a, b));
-        return a.toString().equals(b.toString());
+
+        if (a == null || b == null) {
+            return false;
+        }
+
+        try {
+            // before iterating through keys make sure we have the same length
+            if (a.length() != b.length()) {
+                return false;
+            }
+
+            // make sure each key in a is the same as b
+            Iterator<String> keys = a.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+
+                // b is missing the key, so they're not equal
+                if (!b.has(key)) {
+                    return false;
+                }
+
+                // a[key] does not equal b[key] so a and b are not equal
+                if (!equals(a.get(key), b.get(key))) {
+                    return false;
+                }
+            }
+        } catch (JSONException e) {
+            return false;
+        }
+
+        // since a and b have the same number of keys, and each value each key
+        // in a is equal to that key in b, a and b are equal
+
+        return true;
     }
 
     public static boolean equals(JSONArray a, JSONArray b) {
-        return a.toString().equals(b.toString());
+
+        if (a == null || b == null) {
+            return false;
+        }
+
+        if (a.length() != b.length()) {
+            return false;
+        }
+
+        try {
+            for (int i=0; i<a.length(); i++) {
+                if (!equals(a.get(i), b.get(i))) {
+                    return false;
+                }
+            }
+        } catch (JSONException e) {
+            return false;
+        }
+
+        return true;
+
     }
 
     public static Object apply(Object origin, JSONObject patch)
