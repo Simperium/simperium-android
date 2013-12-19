@@ -17,6 +17,7 @@
 package com.simperium.client;
 
 import com.simperium.Version;
+import com.simperium.SimperiumException;
 
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
@@ -35,8 +36,26 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
+import java.util.concurrent.Executor;
+
 
 public class Channel implements Bucket.Channel {
+
+    public static class ChangeNotSentException extends SimperiumException {
+
+        final Change change;
+
+        public ChangeNotSentException(Change change, String message) {
+            super(message);
+            this.change = change;
+        }
+
+        public ChangeNotSentException(Change change, Throwable cause) {
+            super(cause);
+            this.change = change;
+        }
+
+    }
 
     public interface OnMessageListener {
         void onMessage(MessageEvent event);
@@ -1194,14 +1213,17 @@ public class Channel implements Bucket.Channel {
                         sendLater.add(localChange);
                         // let's get the next change
                     } else {
-                        // send the change to simperium, if the change ends up being empty
-                        // then we'll just skip it
-                        if(sendChange(localChange)) {
+                        try {
                             // add the change to pending changes
                             pendingChanges.put(localChange.getKey(), localChange);
+                            // send the change to simperium, if the change ends up being empty
+                            // then we'll just skip it
+                            sendChange(localChange);
                             localChange.setOnRetryListener(this);
                             // starts up the timer
                             retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
+                        } catch (ChangeNotSentException e) {
+                            pendingChanges.remove(localChange.getKey());
                         }
                     }
                 }
@@ -1226,14 +1248,19 @@ public class Channel implements Bucket.Channel {
         @Override
         public void onRetry(Change change){
             log(LOG_DEBUG, String.format("Retrying change %s", change.getChangeId()));
-            sendChange(change);
+            try {
+                sendChange(change);
+            } catch (ChangeNotSentException e) {
+                // do nothing the timer will trigger another send
+            }
         }
 
-        private Boolean sendChange(Change change) {
+        private void sendChange(Change change)
+        throws ChangeNotSentException {
             // send the change down the socket!
             if (!connected) {
                 // channel is not initialized, send on reconnect
-                return true;
+                return;
             }
 
             try {
@@ -1252,7 +1279,7 @@ public class Channel implements Bucket.Channel {
                     if (diff.length() == 0) {
                         Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
                         change.setComplete();
-                        return false;
+                        throw new ChangeNotSentException(change, "Change is empty");
                     }
                     map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
                 }
@@ -1261,10 +1288,9 @@ public class Channel implements Bucket.Channel {
                 sendMessage(String.format("c:%s", map.toString()));
                 serializer.onSendChange(change);
                 change.setSent();
-                return true;
             } catch (JSONException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
-                return false;
+                throw new ChangeNotSentException(change, e);
             }
 
         }
