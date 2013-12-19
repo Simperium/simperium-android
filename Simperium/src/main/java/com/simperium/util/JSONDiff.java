@@ -37,10 +37,18 @@ public class JSONDiff {
     public static JSONObject diff(JSONArray a, JSONArray b)
     throws JSONException {
 
-        if (!enableArrayDiff) diff((Object) a, (Object) b);
-
-        // HashMap<String,Object> list_diff = new HashMap<String,Object>();
         JSONObject list_diff = new JSONObject();
+
+        if (equals(a, b)) {
+            return list_diff;
+        }
+
+        if (!enableArrayDiff){
+            list_diff.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
+            list_diff.put(DIFF_VALUE_KEY, b);
+            return list_diff;
+        }
+
         list_diff.put(DIFF_OPERATION_KEY, OPERATION_LIST);
         JSONObject diffs = new JSONObject();
 
@@ -75,7 +83,7 @@ public class JSONDiff {
             if(i<size_a && i<size_b){
                 // both lists have index
                 // if values aren't equal add to diff
-                if (!a.get(i).equals(b.get(i))) {
+                if (!equals(a.get(i), b.get(i))) {
                     diffs.put(index, diff(a.get(i), b.get(i)));
                 }
             } else if(i<size_a){
@@ -102,11 +110,15 @@ public class JSONDiff {
             return diffs;
         }
 
-        Iterator keys = a.keys();
+        if (equals(a, b)) {
+            return diffs;
+        }
+
+        Iterator<String> keys = a.keys();
         while (keys.hasNext()) {
-            String key = keys.next().toString();
+            String key = keys.next();
             if (b.has(key)) {
-                if (!a.get(key).equals(b.get(key))) {
+                if (!equals(a.get(key), b.get(key))) {
                     diffs.put(key, diff(a.get(key), b.get(key)));
                 }
             } else {
@@ -142,7 +154,8 @@ public class JSONDiff {
         if (a==null || b==null) {
             return m;
         }
-        if (a.equals(b)) {
+
+        if (equals(a, b)) {
             return m;
         }
 
@@ -161,7 +174,7 @@ public class JSONDiff {
             return diff((String)a, (String)b);
         } else if(JSONObject.class.isInstance(a)){
             return diff((JSONObject) a, (JSONObject) b);
-        } else if (JSONArray.class.isInstance(a) && enableArrayDiff) {
+        } else if (JSONArray.class.isInstance(a)) {
             return diff((JSONArray) a, (JSONArray) b);
         } else {
             m.put(DIFF_OPERATION_KEY, OPERATION_REPLACE);
@@ -185,6 +198,87 @@ public class JSONDiff {
         return m;
     }
 
+    /**
+     * For testing equality of two objects.
+     */
+    public static boolean equals(Object a, Object b) {
+
+        // objects are not equal types
+        if (!a.getClass().isAssignableFrom(b.getClass())) {
+            return false;
+        }
+
+        if (JSONObject.class.isInstance(a)) {
+            return equals((JSONObject) a, (JSONObject) b);
+        } else if (JSONArray.class.isInstance(a)){
+            return equals((JSONArray) a, (JSONArray) b);
+        } else {
+            return a.equals(b);
+        }
+
+    }
+
+    public static boolean equals(JSONObject a, JSONObject b) {
+
+        if (a == null || b == null) {
+            return false;
+        }
+
+        try {
+            // before iterating through keys make sure we have the same length
+            if (a.length() != b.length()) {
+                return false;
+            }
+
+            // make sure each key in a is the same as b
+            Iterator<String> keys = a.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+
+                // b is missing the key, so they're not equal
+                if (!b.has(key)) {
+                    return false;
+                }
+
+                // a[key] does not equal b[key] so a and b are not equal
+                if (!equals(a.get(key), b.get(key))) {
+                    return false;
+                }
+            }
+        } catch (JSONException e) {
+            return false;
+        }
+
+        // since a and b have the same number of keys, and each value each key
+        // in a is equal to that key in b, a and b are equal
+
+        return true;
+    }
+
+    public static boolean equals(JSONArray a, JSONArray b) {
+
+        if (a == null || b == null) {
+            return false;
+        }
+
+        if (a.length() != b.length()) {
+            return false;
+        }
+
+        try {
+            for (int i=0; i<a.length(); i++) {
+                if (!equals(a.get(i), b.get(i))) {
+                    return false;
+                }
+            }
+        } catch (JSONException e) {
+            return false;
+        }
+
+        return true;
+
+    }
+
     public static Object apply(Object origin, JSONObject patch)
     throws JSONException {
         String method = (String)patch.get(DIFF_OPERATION_KEY);
@@ -201,11 +295,11 @@ public class JSONDiff {
     public static JSONObject apply(JSONObject origin, JSONObject patch)
     throws JSONException {
         JSONObject transformed = deepCopy(origin);
-        Iterator keys = patch.keys();
+        Iterator<String> keys = patch.keys();
 
         while (keys.hasNext()) {
 
-            String key = keys.next().toString();
+            String key = keys.next();
             JSONObject operation = patch.getJSONObject(key);
             String method = operation.getString(DIFF_OPERATION_KEY);
 
@@ -247,9 +341,9 @@ public class JSONDiff {
         List<Integer> deleted = new ArrayList<Integer>();
 
         // iterate the keys on the patch
-        Iterator keys = patch.keys();
+        Iterator<String> keys = patch.keys();
         while (keys.hasNext()){
-            String key = keys.next().toString();
+            String key = keys.next();
             indexes.add(Integer.parseInt(key));
         }
 
@@ -296,7 +390,7 @@ public class JSONDiff {
         int size = 0;
         for (int i=0; i<min_length; i++) {
             try {
-                if (!a.get(i).equals(b.get(i)))
+                if (!equals(a.get(i), b.get(i)))
                     break;
             } catch (JSONException e) {
                 return i;
@@ -313,7 +407,7 @@ public class JSONDiff {
         if (min_length ==0) return 0;
         for (int i=0; i<min_length; i++) {
             try {
-                if (!a.get(a_length-i-1).equals(b.get(b_length-i-1)))
+                if (!equals(a.get(a_length-i-1), b.get(b_length-i-1)))
                     return i;
             } catch (JSONException e) {
                 return i;
@@ -344,9 +438,9 @@ public class JSONDiff {
             return null;
         };
         Map<String,Object> copy = new HashMap<String,Object>(map.size());
-        Iterator keys = map.keySet().iterator();
+        Iterator<String> keys = map.keySet().iterator();
         while(keys.hasNext()){
-            String key = (String)keys.next();
+            String key = keys.next();
             Object val = map.get(key);
             if (val instanceof Map) {
                 copy.put(key, deepCopy((Map<String,Object>) val));
