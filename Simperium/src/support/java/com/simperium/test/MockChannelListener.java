@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import android.util.Log;
+
 public class MockChannelListener implements Channel.OnMessageListener {
 
     static public final String TAG = "Simperium.Test";
@@ -36,7 +38,7 @@ public class MockChannelListener implements Channel.OnMessageListener {
 
     @Override
     public void onMessage(Channel.MessageEvent event) {
-        android.util.Log.d(TAG, String.format("Channel listener received message: %s", event));
+        Log.d(TAG, String.format("Received message: %s", event));
         messages.add(event);
 
         Message message = parseMessage(event.message);
@@ -84,7 +86,7 @@ public class MockChannelListener implements Channel.OnMessageListener {
 
                 JSONArray responseJSON = new JSONArray();
                 responseJSON.put(ackJSON);
-                android.util.Log.d(TAG, String.format("Sending auto-acknowledge response: %s", responseJSON));
+                Log.d(TAG, String.format("Sending auto-acknowledge response: %s", responseJSON));
                 channel.receiveMessage(String.format("c:%s", responseJSON));
             } catch (JSONException e) {
                 throw new RuntimeException(String.format("Couldn't auto-acknowledge %s", event.message), e);
@@ -96,7 +98,7 @@ public class MockChannelListener implements Channel.OnMessageListener {
 
     @Override
     public void onLog(Channel channel, int level, CharSequence message) {
-        android.util.Log.d(TAG, String.format("%s (%d): %s", channel.getBucketName(), level, message));
+        Log.d(TAG, String.format("%s (%d): %s", channel.getBucketName(), level, message));
         logs.add(message.toString());
     }
 
