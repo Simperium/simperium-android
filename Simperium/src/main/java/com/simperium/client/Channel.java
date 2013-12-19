@@ -383,9 +383,6 @@ public class Channel implements Bucket.Channel {
      */
     private void stopChangesAndRequestIndex() {
 
-        // top the change processor from listening for changes
-        changeProcessor.stop();
-
         // get the latest index
         getLatestVersions();
 
@@ -561,7 +558,6 @@ public class Channel implements Bucket.Channel {
     public void stop(){
         startOnConnect = false;
         started = false;
-        changeProcessor.stop();
         if (listener != null) {
             listener.onClose(this);
         }
@@ -577,7 +573,6 @@ public class Channel implements Bucket.Channel {
     public void onDisconnect(){
         started = false;
         connected = false;
-        changeProcessor.stop();
     }
     /**
      * Receive a message from the WebSocketManager which already strips the channel
@@ -973,13 +968,6 @@ public class Channel implements Bucket.Channel {
 
         public Collection<Change> pendingChanges() {
             return pendingChanges.values();
-        }
-
-        /**
-         * If thread is running
-         */
-        public boolean isRunning(){
-            return thread != null && thread.isAlive();
         }
 
         private void restore(){
