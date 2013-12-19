@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Executor;
 
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -74,13 +75,15 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     private ConnectionStatus connectionStatus = ConnectionStatus.DISCONNECTED;
 
     protected Channel.Serializer mSerializer;
+    protected Executor mExecutor;
 
-    public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer) {
-        this(appId, sessionId, channelSerializer, new DefaultSocketFactory());
+    public WebSocketManager(Executor executor, String appId, String sessionId, Channel.Serializer channelSerializer) {
+        this(executor, appId, sessionId, channelSerializer, new DefaultSocketFactory());
     }
 
-    public WebSocketManager(String appId, String sessionId, Channel.Serializer channelSerializer,
+    public WebSocketManager(Executor executor, String appId, String sessionId, Channel.Serializer channelSerializer,
         WebSocketFactory socketFactory) {
+        mExecutor = executor;
         this.appId = appId;
         this.sessionId = sessionId;
         mSerializer = channelSerializer;
@@ -98,7 +101,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     @Override
     public Channel buildChannel(Bucket bucket) {
         // create a channel
-        Channel channel = new Channel(appId, sessionId, bucket, mSerializer, this);
+        Channel channel = new Channel(mExecutor, appId, sessionId, bucket, mSerializer, this);
         int channelId = channels.size();
         channelIndex.put(channel, channelId);
         channels.put(channelId, channel);

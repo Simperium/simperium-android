@@ -22,7 +22,7 @@ public class AndroidClient implements ClientFactory {
     protected Context mContext;
     protected SQLiteDatabase mDatabase;
 
-    protected ExecutorService service = Executors.newFixedThreadPool(1);
+    protected ExecutorService mExecutor = Executors.newFixedThreadPool(1);
 
     public AndroidClient(Context context){
         mContext = context;
@@ -38,7 +38,7 @@ public class AndroidClient implements ClientFactory {
     @Override
     public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
-        return new WebSocketManager(appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new QueueSerializer(mDatabase));
+        return new WebSocketManager(mExecutor, appId, String.format("%s-%s", Simperium.CLIENT_ID, Uuid.uuid().substring(0,6)), new QueueSerializer(mDatabase));
     }
 
     @Override
@@ -58,6 +58,6 @@ public class AndroidClient implements ClientFactory {
 
     @Override
     public Executor buildExecutor(){
-        return service;
+        return mExecutor;
     }
 }

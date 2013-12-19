@@ -100,6 +100,7 @@ public class Channel implements Bucket.Channel {
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
     private Serializer serializer;
+    protected Executor executor;
 
     // for sending and receiving changes
     final private ChangeProcessor changeProcessor;
@@ -129,7 +130,8 @@ public class Channel implements Bucket.Channel {
         }
     }
 
-    public Channel(String appId, String sessionId, final Bucket bucket, Serializer serializer, OnMessageListener listener){
+    public Channel(Executor executor, String appId, String sessionId, final Bucket bucket, Serializer serializer, OnMessageListener listener){
+        this.executor = executor;
         this.serializer = serializer;
         this.appId = appId;
         this.sessionId = sessionId;
@@ -374,7 +376,7 @@ public class Channel implements Bucket.Channel {
      * Send index status JSON
      */
     private void sendIndexStatus() {
-        bucket.executeAsync(new Runnable(){
+        executor.execute(new Runnable(){
 
             @Override
             public void run(){
@@ -1010,32 +1012,12 @@ public class Channel implements Bucket.Channel {
         }
 
         public void start(){
-            // channel must be started and have complete index
-            if (!started) {
-                return;
-            }
             if (retryTimer == null) {
                 retryTimer = new Timer();
             }
-            if (thread == null || thread.getState() == Thread.State.TERMINATED) {
-                thread = new Thread(this, String.format("simperium.processor.%s", getBucket().getName()));
-                thread.start();
-            } else {
-                // notify
-                synchronized(runLock){
-                    runLock.notify();
-                }
-            }
-        }
 
-        public void stop(){
-            // interrupt the thread
-            if (this.thread != null) {
-                this.thread.interrupt();
-                synchronized(runLock){
-                    runLock.notify();
-                }
-            }
+            // schedule a run on the executor
+            executor.execute(this);
         }
 
         protected void reset(){
@@ -1045,7 +1027,6 @@ public class Channel implements Bucket.Channel {
 
         protected void abort(){
             reset();
-            stop();
         }
 
         /**
