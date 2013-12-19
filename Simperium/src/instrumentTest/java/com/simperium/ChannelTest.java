@@ -474,6 +474,46 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * Don't send a delete request for object removals that originated from the
+     * socket.
+     * 
+     * See issue #58
+     */
+    public void testReceiveRemoteRemoveOperation()
+    throws Exception {
+
+        Map objects = new HashMap();
+        objects.put("mock1.1", "{\"data\":{\"title\":\"1.1\"}}");
+
+        startWithIndex("mock-cv", objects);
+
+        assertTrue("Bucket should have an instance of mock1", mBucket.containsKey("mock1"));
+        // receive a remotely initiated delete operation for mock1
+        JSONObject change = new JSONObject();
+        change.put("ccids", new JSONArray("[\"random-ccid\"]"));
+        change.put("clientid", "otherclient");
+        change.put("cv", "new-cv");
+        change.put("o", "-");
+        change.put("id", "mock1");
+        mChannel.receiveMessage(String.format("c:[%s]", change));
+
+        // pause bucket execution to simulate concurrent threads
+        mBucketExecutor.pause();
+        // applies the remote change
+        mExecutor.run();
+        // continue executing bucket tasks immediately
+        mBucketExecutor.play();
+
+        // After applying the remote remove operation, we should not be sending one of our own, this makes sure no messages are sent out from our client after applying a remote remove operation
+        mListener.clearMessages();
+        mExecutor.run();
+
+        assertNull(mListener.lastMessage);
+
+
+    }
+
+    /**
      * Get's the channel into a started state
      */
     protected void start(){
