@@ -948,12 +948,8 @@ public class Channel implements Bucket.Channel {
      */
     private class ChangeProcessor implements Runnable, Change.OnRetryListener {
 
-        // public static final Integer CAPACITY = 200;
-
-
-        public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
-        private Thread thread;
-
+        // wait 5 seconds for retries
+        public static final long RETRY_DELAY_MS = 5000; 
         private List<JSONObject> remoteQueue = Collections.synchronizedList(new ArrayList<JSONObject>(10));
         private List<Change> localQueue = Collections.synchronizedList(new ArrayList<Change>());
         private Map<String,Change> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
