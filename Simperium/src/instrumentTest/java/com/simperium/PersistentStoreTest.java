@@ -66,7 +66,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         mStore = new PersistentStore(mDatabase);
         mSchema = new Note.Schema();
         mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
-        mBucket = new Bucket<Note>(MockExecutor.service(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
         Bucket.Channel channel = new MockChannel(mBucket);
         mBucket.setChannel(channel);
         mNoteStore.prepare(mBucket);
@@ -221,7 +221,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        mBucket = new Bucket<Note>(MockExecutor.service(), BUCKET_NAME, mSchema, mUser, store, mGhostStore, mCache);
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, store, mGhostStore, mCache);
 
         store.prepare(mBucket);
 
@@ -291,7 +291,7 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Bucket<Note> bucket = new Bucket<Note>(MockExecutor.service(), bucketName, mSchema, mUser, store, mGhostStore, mCache);
+        Bucket<Note> bucket = new Bucket<Note>(MockExecutor.immediate(), bucketName, mSchema, mUser, store, mGhostStore, mCache);
         store.prepare(bucket);
         bucket.setChannel(new MockChannel(bucket));
         

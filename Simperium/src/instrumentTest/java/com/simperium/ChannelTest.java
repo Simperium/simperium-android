@@ -10,6 +10,7 @@ import com.simperium.models.Note;
 import com.simperium.test.MockBucket;
 import com.simperium.test.MockChannelListener;
 import com.simperium.test.MockChannelSerializer;
+import com.simperium.test.MockExecutor;
 import com.simperium.test.MockGhostStore;
 
 import java.util.HashMap;
@@ -38,6 +39,7 @@ public class ChannelTest extends BaseSimperiumTest {
     protected User.Status mAuthStatus;
 
     final private MockChannelListener mListener = new MockChannelListener();
+    final private MockExecutor.Playable mExecutor = new MockExecutor.Playable();
 
     /**
      * Build a Bucket instance that is wired up to a channel using a MockChannelSerializer and a
@@ -46,12 +48,13 @@ public class ChannelTest extends BaseSimperiumTest {
     protected void setUp() throws Exception {
         super.setUp();
         
+        mExecutor.clear();
         mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
 
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
                 mChannelSerializer = new MockChannelSerializer();
-                mChannel = new Channel(APP_ID, SESSION_ID, bucket, mChannelSerializer, mListener);
+                mChannel = new Channel(mExecutor, APP_ID, SESSION_ID, bucket, mChannelSerializer, mListener);
                 return mChannel;
             }
 
@@ -79,7 +82,6 @@ public class ChannelTest extends BaseSimperiumTest {
     protected void tearDown() throws Exception {
         mChannel.stop();
         mChannel.reset();
-        clearMessages();
         super.tearDown();
     }
 
@@ -103,8 +105,7 @@ public class ChannelTest extends BaseSimperiumTest {
         // the will queue up a change
         note.save();
 
-        clearMessages();
-        waitForMessage();
+        mExecutor.run();
 
         // make the channel disconnect as if it's offline
         mChannel.onDisconnect();
@@ -132,14 +133,11 @@ public class ChannelTest extends BaseSimperiumTest {
      */
     public void testReceiveUnknownCV() throws Exception {
         startWithEmptyIndex();
-        clearMessages();
-        waitForIndex();
 
         // channel gets a cv:?
-        clearMessages();
         mChannel.receiveMessage("cv:?");
 
-        waitForMessage();
+        mExecutor.run();
 
         // sends an index request
         assertEquals("i::::50", mListener.lastMessage.toString());
@@ -151,21 +149,17 @@ public class ChannelTest extends BaseSimperiumTest {
      */
     public void testReceiveUnknownC() throws Exception {
         startWithEmptyIndex();
-        clearMessages();
-        waitForIndex();
 
-        // channel gets a cv:?
-        clearMessages();
+        // channel gets a c:?
         mChannel.receiveMessage("c:?");
 
         boolean ignoredMessage = false;
-        try {
-            waitForMessage();
-        } catch (InterruptedException e) {
-            ignoredMessage = true;
-        }
 
-        assertTrue("Should have ignored c:?", ignoredMessage);
+        int messageCount = mListener.messages.size();
+        mExecutor.run();
+
+        // no messages should have been seent after receiving c:?
+        assertEquals(messageCount, mListener.messages.size());
 
     }
 
@@ -258,8 +252,7 @@ public class ChannelTest extends BaseSimperiumTest {
         note.setTitle("Hola mundo");
         note.save();
 
-        clearMessages();
-        waitForMessage();
+        mExecutor.run();
 
         note.setTitle("Second change");
         note.save();
@@ -280,14 +273,13 @@ public class ChannelTest extends BaseSimperiumTest {
     throws Exception {
 
         startWithEmptyIndex();
-        clearMessages();
         mListener.autoAcknowledge = true;
 
         Note note = mBucket.newObject();
         note.setTitle("Hola mundo");
         note.save();
 
-        waitForMessage();
+        mExecutor.run();
 
         assertEquals(1, mChannelSerializer.ackCount);
 
@@ -375,10 +367,9 @@ public class ChannelTest extends BaseSimperiumTest {
         Note note = mBucket.newObject("test-channel-object");
         note.setTitle("Hola mundo");
 
-        clearMessages();
         note.save();
 
-        waitForMessage();
+        mExecutor.run();
         // message should be a change message "c:{}"
         assertMatchesRegex("^c:\\{.*\\}$", mListener.lastMessage.toString());
 
@@ -399,7 +390,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         String errorMessage = "c:[{\"error\": 409, \"ccids\": [\"6c25afe49ac14c3f9b0e9fb7a629118e\"], \"clientid\": \"android-1.0-2dd0aa\", \"id\": \"welcome-android\"}]";
         mChannel.receiveMessage(errorMessage);
-        waitForMessage();
+        mExecutor.run();
 
         // make sure the RemoteChange error never makes it to the bucket at this point
         assertFalse("Bucket received remote change error", flagger.called);
@@ -419,17 +410,15 @@ public class ChannelTest extends BaseSimperiumTest {
         objects.put("mock3.5", "{\"data\":{\"title\":\"3.5\"}}");
 
         startWithIndex(cv, objects);
-        waitForIndex();
+        assertTrue(mChannel.haveCompleteIndex());
 
         // send out a couple of edits
-
         Note mock1 = mBucket.get("mock1");
         mock1.setTitle("1.1 Lol");
         mock1.save();
 
         // make sure the change was sent
-        clearMessages();
-        waitForMessage(5000);
+        mExecutor.run();
 
         /*
         0:index:{
@@ -440,6 +429,8 @@ public class ChannelTest extends BaseSimperiumTest {
         }
         */
         mChannel.receiveMessage("index");
+
+        mExecutor.run();
 
         Channel.MessageEvent message = mListener.lastMessage;
 
@@ -483,18 +474,15 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.receiveMessage("auth:user@example.com");
     }
 
-    protected void startWithEmptyIndex()
-    throws InterruptedException {
+    protected void startWithEmptyIndex() {
         start();
         sendEmptyIndex();
-        waitForIndex();
     }
 
     protected void startWithIndex(String cv, Map<String,String> objects)
-    throws JSONException, InterruptedException {
+    throws JSONException {
         start();
         sendIndex(cv, objects);
-        waitForIndex();
     }
 
     /**
@@ -532,41 +520,6 @@ public class ChannelTest extends BaseSimperiumTest {
 
     protected void sendMessage(String message){
         mChannel.receiveMessage(message);
-    }
-
-    protected Channel.MessageEvent waitForMessage() throws InterruptedException {
-        return waitForMessage(2000);
-    }
-
-    /**
-     * Wait until a message received. More than likely clearMessages() should
-     * be called before waitForMessage()
-     */
-    protected Channel.MessageEvent waitForMessage(int waitFor) throws InterruptedException {
-
-        NewMessageFlagger flagger = new NewMessageFlagger();
-
-        waitUntil(flagger, "No message received", waitFor);
-
-        return flagger.message;
-
-    }
-
-    /**
-     * Empties the list of received messages and sets last message to null
-     */
-    protected void clearMessages(){
-        mListener.clearMessages();
-    }
-
-    protected void waitForIndex()
-    throws InterruptedException {
-        waitUntil(new Flag(){
-            @Override
-            public boolean isComplete(){
-                return mChannel.haveCompleteIndex();
-            }
-        }, "Index never received", 5000);
     }
 
     private static class RemoteChangeFlagger implements MockBucket.RemoteChangeListener {

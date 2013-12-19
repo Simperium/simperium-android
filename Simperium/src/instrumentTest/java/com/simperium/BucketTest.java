@@ -35,7 +35,7 @@ public class BucketTest extends BaseSimperiumTest {
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MockGhostStore();
         MockCache<Note> cache = new MockCache<Note>();
-        mBucket = new Bucket<Note>(MockExecutor.service(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);
         mBucket.start();
