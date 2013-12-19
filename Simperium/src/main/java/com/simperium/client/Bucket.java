@@ -210,14 +210,29 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
-     * Tell the bucket to remove the object
+     * Delete the object from the bucket.
+     * 
+     * @param object the Syncable to remove from the bucket
      */
-    public void remove(final T object){
+    public void remove(T object){
+        remove(object, true);
+    }
+
+    /**
+     * Remove the object from the bucket. If isLocal is true, this will queue
+     * an operation to sync with the Simperium service.
+     * 
+     * @param object The Syncable to remove from the bucket
+     * @param isLocal if the operation originates from this client
+     */
+    private void remove(final T object, final boolean isLocal){
         cache.remove(object.getSimperiumKey());
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                channel.queueLocalDeletion(object);
+                if (isLocal)
+                    channel.queueLocalDeletion(object);
+
                 storage.delete(object);
                 notifyOnDeleteListeners(object);
             }
@@ -225,22 +240,14 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
-     * Update the change version and remove the object with the given key
-     */
-    protected void removeObjectWithKey(String changeVersion, String key)
-    throws BucketObjectMissingException {
-        removeObjectWithKey(key);
-        setChangeVersion(changeVersion);
-    }
-    /**
      * Given the key for an object in the bucket, remove it if it exists
      */
-    protected void removeObjectWithKey(String key)
+    private void removeObjectWithKey(String key)
     throws BucketObjectMissingException {
         T object = get(key);
         if (object != null) {
             // this will call onObjectRemoved on the listener
-            remove(object);
+            remove(object, false);
         }
     }
 
