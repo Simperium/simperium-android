@@ -17,6 +17,7 @@
 package com.simperium.client;
 
 import com.simperium.Version;
+import com.simperium.SimperiumException;
 
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
@@ -35,8 +36,26 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
+import java.util.concurrent.Executor;
+
 
 public class Channel implements Bucket.Channel {
+
+    public static class ChangeNotSentException extends SimperiumException {
+
+        final Change change;
+
+        public ChangeNotSentException(Change change, String message) {
+            super(message);
+            this.change = change;
+        }
+
+        public ChangeNotSentException(Change change, Throwable cause) {
+            super(cause);
+            this.change = change;
+        }
+
+    }
 
     public interface OnMessageListener {
         void onMessage(MessageEvent event);
@@ -100,6 +119,7 @@ public class Channel implements Bucket.Channel {
     private CommandInvoker commands = new CommandInvoker();
     private String appId, sessionId;
     private Serializer serializer;
+    protected Executor executor;
 
     // for sending and receiving changes
     final private ChangeProcessor changeProcessor;
@@ -129,7 +149,8 @@ public class Channel implements Bucket.Channel {
         }
     }
 
-    public Channel(String appId, String sessionId, final Bucket bucket, Serializer serializer, OnMessageListener listener){
+    public Channel(Executor executor, String appId, String sessionId, final Bucket bucket, Serializer serializer, OnMessageListener listener){
+        this.executor = executor;
         this.serializer = serializer;
         this.appId = appId;
         this.sessionId = sessionId;
@@ -362,9 +383,6 @@ public class Channel implements Bucket.Channel {
      */
     private void stopChangesAndRequestIndex() {
 
-        // top the change processor from listening for changes
-        changeProcessor.stop();
-
         // get the latest index
         getLatestVersions();
 
@@ -374,7 +392,7 @@ public class Channel implements Bucket.Channel {
      * Send index status JSON
      */
     private void sendIndexStatus() {
-        bucket.executeAsync(new Runnable(){
+        executor.execute(new Runnable(){
 
             @Override
             public void run(){
@@ -540,7 +558,6 @@ public class Channel implements Bucket.Channel {
     public void stop(){
         startOnConnect = false;
         started = false;
-        changeProcessor.stop();
         if (listener != null) {
             listener.onClose(this);
         }
@@ -556,7 +573,6 @@ public class Channel implements Bucket.Channel {
     public void onDisconnect(){
         started = false;
         connected = false;
-        changeProcessor.stop();
     }
     /**
      * Receive a message from the WebSocketManager which already strips the channel
@@ -932,12 +948,8 @@ public class Channel implements Bucket.Channel {
      */
     private class ChangeProcessor implements Runnable, Change.OnRetryListener {
 
-        // public static final Integer CAPACITY = 200;
-
-
-        public static final long RETRY_DELAY_MS       = 5000; // 5 seconds for retries?
-        private Thread thread;
-
+        // wait 5 seconds for retries
+        public static final long RETRY_DELAY_MS = 5000; 
         private List<JSONObject> remoteQueue = Collections.synchronizedList(new ArrayList<JSONObject>(10));
         private List<Change> localQueue = Collections.synchronizedList(new ArrayList<Change>());
         private Map<String,Change> pendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
@@ -952,13 +964,6 @@ public class Channel implements Bucket.Channel {
 
         public Collection<Change> pendingChanges() {
             return pendingChanges.values();
-        }
-
-        /**
-         * If thread is running
-         */
-        public boolean isRunning(){
-            return thread != null && thread.isAlive();
         }
 
         private void restore(){
@@ -1010,32 +1015,12 @@ public class Channel implements Bucket.Channel {
         }
 
         public void start(){
-            // channel must be started and have complete index
-            if (!started) {
-                return;
-            }
             if (retryTimer == null) {
                 retryTimer = new Timer();
             }
-            if (thread == null || thread.getState() == Thread.State.TERMINATED) {
-                thread = new Thread(this, String.format("simperium.processor.%s", getBucket().getName()));
-                thread.start();
-            } else {
-                // notify
-                synchronized(runLock){
-                    runLock.notify();
-                }
-            }
-        }
 
-        public void stop(){
-            // interrupt the thread
-            if (this.thread != null) {
-                this.thread.interrupt();
-                synchronized(runLock){
-                    runLock.notify();
-                }
-            }
+            // schedule a run on the executor
+            executor.execute(this);
         }
 
         protected void reset(){
@@ -1045,7 +1030,6 @@ public class Channel implements Bucket.Channel {
 
         protected void abort(){
             reset();
-            stop();
         }
 
         /**
@@ -1074,158 +1058,161 @@ public class Channel implements Bucket.Channel {
             }
         }
 
+        /**
+         * Change queue processes one change per run. If it has more work to do
+         * it schedules itself on the executor.
+         */
         public void run(){
+            // do no start processing changes until we have an index
             if(!haveCompleteIndex()) return;
-            idle = false;
-            Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
-            while(true){
-                try {
-                    processRemoteChanges();
-                    processLocalChanges();
-                } catch (InterruptedException e) {
-                    // shut down
-                    break;
-                }
-                if(!hasQueuedChanges()){
-                    // we've sent out every change that we can so far, if nothing is pending we can disconnect
-                    if (pendingChanges.isEmpty()) {
-                        idle = true;
-                    }
 
-                    synchronized(runLock){
-                        try {
-                            Logger.log(TAG, String.format("Waiting <%s> idle? %b", bucket.getName(), idle));
-                            log(LOG_DEBUG, "Change queue is empty, waiting for changes");
-                            runLock.wait();
-                        } catch (InterruptedException e) {
-                            break;
-                        }
-                        Logger.log(TAG, "Waking change processor");
-                        log(LOG_DEBUG, "Processing changes");
-                    }
-                }
-            }
-            retryTimer.cancel();
-            retryTimer = null;
-            Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
-        }
+            try {
 
-        private void processRemoteChanges()
-        throws InterruptedException {
-            synchronized(lock){
-                Logger.log(TAG, String.format("Processing remote changes %d", remoteQueue.size()));
-                // bail if thread is interrupted
-                while(remoteQueue.size() > 0){
-                    if (Thread.interrupted()) {
-                        throw new InterruptedException();
-                    }
-                    // take an item off the queue
-                    RemoteChange remoteChange = null;
-                    try {
-                        remoteChange = RemoteChange.buildFromMap(remoteQueue.remove(0));
-                    } catch (JSONException e) {
-                        Logger.log(TAG, "Failed to build remote change", e);
-                        continue;
-                    }
-                    log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
-                    Boolean acknowledged = false;
-                    // synchronizing on pendingChanges since we're looking up and potentially
-                    // removing an entry
-                    Change change = null;
-                    change = pendingChanges.get(remoteChange.getKey());
-                    if (remoteChange.isAcknowledgedBy(change)) {
-                        log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
-                        serializer.onAcknowledgeChange(change);
-                        // change is no longer pending so remove it
-                        pendingChanges.remove(change.getKey());
-                        if (remoteChange.isError()) {
-                            Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
-                            onError(remoteChange, change);
-                        } else {
-                            try {
-                                Ghost ghost = onAcknowledged(remoteChange, change);
-                                Change compressed = null;
-                                Iterator<Change> queuedChanges = localQueue.iterator();
-                                while(queuedChanges.hasNext()){
-                                    Change queuedChange = queuedChanges.next();
-                                    if (queuedChange.getKey().equals(change.getKey())) {
-                                        queuedChanges.remove();
-                                        if (!remoteChange.isRemoveOperation()) {
-                                            compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
-                                        }
-                                    }
-                                }
-                                if (compressed != null) {
-                                    localQueue.add(compressed);
-                                }
-                            } catch (RemoteChangeInvalidException e){
-                                Logger.log(TAG, "Remote change could not be acknowledged", e);
-                                log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
-                            }
-                        }
-                    } else {
-                        if (remoteChange.isError()){
-                            Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
-                            log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
-                        } else {
-                            try {
-                                onRemote(remoteChange);
-                                Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
-                            } catch (RemoteChangeInvalidException e) {
-                                Logger.log(TAG, "Remote change could not be applied", e);
-                                log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
-                            }
-                        }
-                    }
-                    if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
-                        Iterator<Change> iterator = localQueue.iterator();
-                        while(iterator.hasNext()){
-                            Change queuedChange = iterator.next();
-                            if (queuedChange.getKey().equals(remoteChange.getKey())) {
-                                iterator.remove();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        public void processLocalChanges()
-        throws InterruptedException {
-            synchronized(lock){
-                if (localQueue.isEmpty()) {
+                // if the channel is no longer running, or the service has
+                // been interrupted we need to exit without working
+                if (!started || Thread.interrupted()) throw new InterruptedException();
+
+                // we are doing work
+                idle = false;
+                Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
+
+                // if we have any remote changes queued perform a change
+                if (!remoteQueue.isEmpty()) {
+                    processRemoteChange();
+                    executor.execute(this);
                     return;
                 }
-                final List<Change> sendLater = new ArrayList<Change>();
-                // find the first local change whose key does not exist in the pendingChanges and there are no remote changes
-                while(!localQueue.isEmpty()){
-                    if (Thread.interrupted()) {
-                        localQueue.addAll(0, sendLater);
-                        throw new InterruptedException();
-                    }
 
-                    // take the first change of the queue
-                    Change localChange = localQueue.remove(0);
-                        // check if there's a pending change with the same key
-                    if (pendingChanges.containsKey(localChange.getKey())) {
-                        // we have a change for this key that has not been acked
-                        // so send it later
-                        sendLater.add(localChange);
-                        // let's get the next change
+                // if we have items on the local queue process the change
+                if (!localQueue.isEmpty()) {
+                    processLocalChange();
+                    executor.execute(this);
+                    return;
+                }
+
+            } catch (InterruptedException e) {
+                Logger.log(TAG, String.format("%s (%s) - change processor interrupted",
+                    getBucketName(), Thread.currentThread().getName()));
+            }
+
+            // if we got here we don't have any more work to do
+            idle = true;
+        }
+
+        /**
+         * Take the first remote change from the remoteQueue and process it
+         */
+        private void processRemoteChange() {
+
+            if (remoteQueue.isEmpty()) {
+                return;
+            }
+
+            JSONObject remoteJSON = remoteQueue.remove(0);
+
+            try {
+                RemoteChange remoteChange = RemoteChange.buildFromMap(remoteJSON);
+                log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
+
+                boolean acknowledged = false;
+                Change change = pendingChanges.get(remoteChange.getKey());
+
+                // one of our changes is being acknowledged
+                if (remoteChange.isAcknowledgedBy(change)) {
+                    log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
+                    serializer.onAcknowledgeChange(change);
+                    // change is no longer pending so remove it
+                    pendingChanges.remove(change.getKey());
+
+                    if (remoteChange.isError()) {
+                        Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
+                        onError(remoteChange, change);
                     } else {
-                        // send the change to simperium, if the change ends up being empty
-                        // then we'll just skip it
-                        if(sendChange(localChange)) {
-                            // add the change to pending changes
-                            pendingChanges.put(localChange.getKey(), localChange);
-                            localChange.setOnRetryListener(this);
-                            // starts up the timer
-                            retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
+                        try {
+                            Ghost ghost = onAcknowledged(remoteChange, change);
+                            Change compressed = null;
+                            Iterator<Change> queuedChanges = localQueue.iterator();
+                            while(queuedChanges.hasNext()){
+                                Change queuedChange = queuedChanges.next();
+                                if (queuedChange.getKey().equals(change.getKey())) {
+                                    queuedChanges.remove();
+                                    if (!remoteChange.isRemoveOperation()) {
+                                        compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
+                                    }
+                                }
+                            }
+                            if (compressed != null) {
+                                localQueue.add(compressed);
+                            }
+                        } catch (RemoteChangeInvalidException e){
+                            Logger.log(TAG, "Remote change could not be acknowledged", e);
+                            log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+                        }
+                    }
+                } else {
+                    if (remoteChange.isError()){
+                        Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
+                        log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
+                    } else {
+                        try {
+                            onRemote(remoteChange);
+                            Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
+                        } catch (RemoteChangeInvalidException e) {
+                            Logger.log(TAG, "Remote change could not be applied", e);
+                            log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
                         }
                     }
                 }
-                localQueue.addAll(0, sendLater);
+
+                if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
+                    Iterator<Change> iterator = localQueue.iterator();
+                    while(iterator.hasNext()){
+                        Change queuedChange = iterator.next();
+                        if (queuedChange.getKey().equals(remoteChange.getKey())) {
+                            iterator.remove();
+                        }
+                    }
+                }
+
+            } catch (JSONException e) {
+                Logger.log(TAG, "Failed to build remote change", e);
+                return;
             }
+
+        }
+
+        public void processLocalChange() {
+
+            if (localQueue.isEmpty()) {
+                return;
+            }
+
+            Change localChange = null;
+
+            for (Change change : localQueue){
+                // find a local change that has no corresponding pending change
+                if (!pendingChanges.containsKey(change.getKey())) {
+                    localChange = change;
+                    localQueue.remove(localChange);
+                    break;
+                }
+            }
+
+            // didn't find any changes to send
+            if (localChange == null) {
+                return;
+            }
+
+            try {
+                pendingChanges.put(localChange.getKey(), localChange);
+                sendChange(localChange);
+                localChange.setOnRetryListener(this);
+                retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(),
+                    RETRY_DELAY_MS, RETRY_DELAY_MS);                
+            } catch (ChangeNotSentException e) {
+                pendingChanges.remove(localChange.getKey());
+            }
+
         }
 
         private void resendPendingChanges(){
@@ -1245,14 +1232,19 @@ public class Channel implements Bucket.Channel {
         @Override
         public void onRetry(Change change){
             log(LOG_DEBUG, String.format("Retrying change %s", change.getChangeId()));
-            sendChange(change);
+            try {
+                sendChange(change);
+            } catch (ChangeNotSentException e) {
+                // do nothing the timer will trigger another send
+            }
         }
 
-        private Boolean sendChange(Change change) {
+        private void sendChange(Change change)
+        throws ChangeNotSentException {
             // send the change down the socket!
             if (!connected) {
                 // channel is not initialized, send on reconnect
-                return true;
+                return;
             }
 
             try {
@@ -1271,7 +1263,7 @@ public class Channel implements Bucket.Channel {
                     if (diff.length() == 0) {
                         Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
                         change.setComplete();
-                        return false;
+                        throw new ChangeNotSentException(change, "Change is empty");
                     }
                     map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
                 }
@@ -1280,10 +1272,9 @@ public class Channel implements Bucket.Channel {
                 sendMessage(String.format("c:%s", map.toString()));
                 serializer.onSendChange(change);
                 change.setSent();
-                return true;
             } catch (JSONException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
-                return false;
+                throw new ChangeNotSentException(change, e);
             }
 
         }

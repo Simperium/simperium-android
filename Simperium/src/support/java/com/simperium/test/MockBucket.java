@@ -73,7 +73,7 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
         MockGhostStore ghosts = new MockGhostStore();
         MockCache<T> cache = new MockCache<T>();
 
-        MockBucket<T> bucket = new MockBucket<T>(MockExecutor.service(), schema.getRemoteName(), schema, user, store, ghosts, cache);
+        MockBucket<T> bucket = new MockBucket<T>(MockExecutor.immediate(), schema.getRemoteName(), schema, user, store, ghosts, cache);
 
         Bucket.Channel channel = provider.buildChannel(bucket);
         bucket.setChannel(channel);

@@ -7,6 +7,7 @@ import com.simperium.models.Note;
 import com.simperium.test.MockChannelSerializer;
 import com.simperium.test.MockWebSocketClient;
 import com.simperium.test.MockBucket;
+import com.simperium.test.MockExecutor;
 
 import junit.framework.TestCase;
 
@@ -30,7 +31,7 @@ public class WebSocketManagerTest extends TestCase {
     protected void setUp() {
 
         mChannelSerializer = new MockChannelSerializer();
-        mSocketManager = new WebSocketManager(APP_ID, SESSION_ID, mChannelSerializer, new WebSocketManager.WebSocketFactory() {
+        mSocketManager = new WebSocketManager(MockExecutor.immediate(), APP_ID, SESSION_ID, mChannelSerializer, new WebSocketManager.WebSocketFactory() {
 
             @Override
             public WebSocketClient buildClient(URI socketURI, WebSocketClient.Listener listener,

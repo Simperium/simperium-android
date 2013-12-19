@@ -37,8 +37,8 @@ public class MockClient implements ClientFactory {
     }
 
     @Override
-    public MockExecutor buildExecutor(){
-        return new MockExecutor();
+    public MockExecutor.Immediate buildExecutor(){
+        return MockExecutor.immediate();
     }
 
 }
