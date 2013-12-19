@@ -20,7 +20,6 @@ import java.util.Map.Entry;
 
 import static android.test.MoreAsserts.assertMatchesRegex;
 import static com.simperium.TestHelpers.Flag;
-import static com.simperium.TestHelpers.waitUntil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,6 +39,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     final private MockChannelListener mListener = new MockChannelListener();
     final private MockExecutor.Playable mExecutor = new MockExecutor.Playable();
+    final private MockExecutor.Playable mBucketExecutor = new MockExecutor.Playable();
 
     /**
      * Build a Bucket instance that is wired up to a channel using a MockChannelSerializer and a
@@ -49,7 +49,12 @@ public class ChannelTest extends BaseSimperiumTest {
         super.setUp();
         
         mExecutor.clear();
-        mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
+        mExecutor.pause();
+
+        mBucketExecutor.clear();
+        mBucketExecutor.play();
+
+        mBucket = MockBucket.buildBucket(mBucketExecutor, new Note.Schema(), new ChannelProvider(){
 
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
@@ -60,7 +65,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
             @Override
             public void log(int level, CharSequence message) {
-                // noop
+                android.util.Log.d("Simperium.Test", String.format("(%d): $s", message));
             }
 
             @Override
@@ -235,6 +240,8 @@ public class ChannelTest extends BaseSimperiumTest {
         note2.setContent("This is the second note.");
         note2.save();
 
+        mExecutor.run();
+
         // two different notes are waiting to be sent
         assertEquals(2, mChannelSerializer.queue.queued.size());
 
@@ -256,6 +263,8 @@ public class ChannelTest extends BaseSimperiumTest {
 
         note.setTitle("Second change");
         note.save();
+
+        mExecutor.run();
 
         // first change has been sent and we're waiting to ack
         assertEquals(1, mChannelSerializer.queue.pending.size());
@@ -462,6 +471,46 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.log(0, message);
 
         assertEquals(mListener.logs.get(0), message);
+    }
+
+    /**
+     * Don't send a delete request for object removals that originated from the
+     * socket.
+     * 
+     * See issue #58
+     */
+    public void testReceiveRemoteRemoveOperation()
+    throws Exception {
+
+        Map objects = new HashMap();
+        objects.put("mock1.1", "{\"data\":{\"title\":\"1.1\"}}");
+
+        startWithIndex("mock-cv", objects);
+
+        assertTrue("Bucket should have an instance of mock1", mBucket.containsKey("mock1"));
+        // receive a remotely initiated delete operation for mock1
+        JSONObject change = new JSONObject();
+        change.put("ccids", new JSONArray("[\"random-ccid\"]"));
+        change.put("clientid", "otherclient");
+        change.put("cv", "new-cv");
+        change.put("o", "-");
+        change.put("id", "mock1");
+        mChannel.receiveMessage(String.format("c:[%s]", change));
+
+        // pause bucket execution to simulate concurrent threads
+        mBucketExecutor.pause();
+        // applies the remote change
+        mExecutor.run();
+        // continue executing bucket tasks immediately
+        mBucketExecutor.play();
+
+        // After applying the remote remove operation, we should not be sending one of our own, this makes sure no messages are sent out from our client after applying a remote remove operation
+        mListener.clearMessages();
+        mExecutor.run();
+
+        assertNull(mListener.lastMessage);
+
+
     }
 
     /**

@@ -1085,8 +1085,12 @@ public class Channel implements Bucket.Channel {
 
                 // if we have items on the local queue process the change
                 if (!localQueue.isEmpty()) {
-                    processLocalChange();
-                    executor.execute(this);
+                    Logger.log(TAG, "Processing local changes");
+
+                    if(processLocalChange()){
+                        executor.execute(this);
+                    };
+
                     return;
                 }
 
@@ -1094,6 +1098,8 @@ public class Channel implements Bucket.Channel {
                 Logger.log(TAG, String.format("%s (%s) - change processor interrupted",
                     getBucketName(), Thread.currentThread().getName()));
             }
+
+            Logger.log(TAG, "No changes left to process");
 
             // if we got here we don't have any more work to do
             idle = true;
@@ -1181,10 +1187,15 @@ public class Channel implements Bucket.Channel {
 
         }
 
-        public void processLocalChange() {
+        /**
+         * Sends out local changes for objects that have no pending changes. Returns true if there are still local changes send.
+         */
+        public boolean processLocalChange() {
+
+            Logger.log(TAG, String.format("Checking local queue for changes: %d", localQueue.size()));
 
             if (localQueue.isEmpty()) {
-                return;
+                return false;
             }
 
             Change localChange = null;
@@ -1200,7 +1211,8 @@ public class Channel implements Bucket.Channel {
 
             // didn't find any changes to send
             if (localChange == null) {
-                return;
+                Logger.log(TAG, String.format("All local changes waiting for acks"));
+                return false;
             }
 
             try {
@@ -1213,6 +1225,7 @@ public class Channel implements Bucket.Channel {
                 pendingChanges.remove(localChange.getKey());
             }
 
+            return true;
         }
 
         private void resendPendingChanges(){

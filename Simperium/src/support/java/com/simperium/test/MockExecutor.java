@@ -25,15 +25,35 @@ public class MockExecutor {
     public static class Playable implements Executor {
 
         final List<Runnable> pending = new ArrayList<Runnable>();
+        boolean mPaused = true;
+
+        @Override
+        public String toString(){
+            String status = mPaused ? "paused" : "playing";
+            return String.format("MockExecutor.Playable %s (pending: %d)", status, pending.size());
+        }
 
         @Override
         public void execute(Runnable runnable){
-            Log.d(TAG, String.format("Queuing runnable %s", runnable));
-            pending.add(runnable);
+            if (!mPaused) {
+                runnable.run();
+            } else {
+                Log.d(TAG, String.format("Queuing runnable %s", runnable));
+                pending.add(runnable);
+            }
         }
 
         public void clear(){
             pending.clear();
+        }
+
+        public void play(){
+            mPaused = false;
+            run();
+        }
+
+        public void pause(){
+            mPaused = true;
         }
 
         public void run(){
