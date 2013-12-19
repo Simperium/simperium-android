@@ -20,7 +20,6 @@ import java.util.Map.Entry;
 
 import static android.test.MoreAsserts.assertMatchesRegex;
 import static com.simperium.TestHelpers.Flag;
-import static com.simperium.TestHelpers.waitUntil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,6 +39,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
     final private MockChannelListener mListener = new MockChannelListener();
     final private MockExecutor.Playable mExecutor = new MockExecutor.Playable();
+    final private MockExecutor.Playable mBucketExecutor = new MockExecutor.Playable();
 
     /**
      * Build a Bucket instance that is wired up to a channel using a MockChannelSerializer and a
@@ -49,7 +49,12 @@ public class ChannelTest extends BaseSimperiumTest {
         super.setUp();
         
         mExecutor.clear();
-        mBucket = MockBucket.buildBucket(new Note.Schema(), new ChannelProvider(){
+        mExecutor.pause();
+
+        mBucketExecutor.clear();
+        mBucketExecutor.play();
+
+        mBucket = MockBucket.buildBucket(mBucketExecutor, new Note.Schema(), new ChannelProvider(){
 
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
@@ -60,7 +65,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
             @Override
             public void log(int level, CharSequence message) {
-                // noop
+                android.util.Log.d("Simperium.Test", String.format("(%d): $s", message));
             }
 
             @Override
@@ -235,6 +240,8 @@ public class ChannelTest extends BaseSimperiumTest {
         note2.setContent("This is the second note.");
         note2.save();
 
+        mExecutor.run();
+
         // two different notes are waiting to be sent
         assertEquals(2, mChannelSerializer.queue.queued.size());
 
@@ -256,6 +263,8 @@ public class ChannelTest extends BaseSimperiumTest {
 
         note.setTitle("Second change");
         note.save();
+
+        mExecutor.run();
 
         // first change has been sent and we're waiting to ack
         assertEquals(1, mChannelSerializer.queue.pending.size());
