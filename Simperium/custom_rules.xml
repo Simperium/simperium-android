@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="custom_rules">
+
+  <!-- Input directories -->
+  <property name="source.dir" value="src/main/java" />
+  <property name="source.absolute.dir" location="${source.dir}" />
+  <property name="gen.absolute.dir" location="gen" />
+  <property name="resource.absolute.dir" location="src/main/res" />
+  <property name="asset.dir" value="src/main/assets" />
+  <property name="asset.absolute.dir" location="${asset.dir}" />
+  <property name="jar.libs.dir" value="libs" />
+  <property name="jar.libs.absolute.dir" location="${jar.libs.dir}" />
+  <property name="native.libs.absolute.dir" location="libs" />
+
+  <property name="simperium.version.file" value="${source.dir}/com/simperium/Version.java" />
+
+  <target name="download-libs">
+    <get dest="${jar.libs.dir}">
+      <url url="http://simperium.github.io/simperium-android/com/codebutler/android-websockets/6c7c60d/android-websockets-6c7c60d.jar"/>
+      <url url="http://simperium.github.io/simperium-android/com/android/volley/4.4.2.1/volley-4.4.2.1.jar"/>
+    </get>
+  </target>
+
+  <target name="generate-version">
+    <exec command="git describe --always --dirty=dirty"
+      outputproperty="git.describe" />
+
+    <exec command="git rev-parse --verify --short HEAD"
+      outputproperty="git.hash" />
+
+    <script language="javascript">
+      // LOL Javascript
+      var describe = project.getProperty("git.describe");
+      project.setProperty(
+        "version.name",
+        describe.charAt(0) == "v" ? describe.slice(1) : describe
+      );
+    </script>
+
+    <echo file="${simperium.version.file}">/* auto-generated file do not modify */
+package com.simperium;
+
+public final class Version {
+
+    public static final String LIBRARY_NAME = "android";
+
+    public static final String NAME = "android-${version.name}";
+
+    /* project.version */
+    public static final String NUMBER = "${version.name}";
+
+    /* git rev-parse --short --verify HEAD */
+    public static final String BUILD = "${git.hash}";
+
+    /* git describe --always --dirty=-dirty */
+    public static final String DESCRIBE = "${git.describe}";
+}
+    </echo>
+  </target>
+
+  <target name="clean-version">
+    <delete file="${simperium.version.file}" />
+  </target>
+
+  <target name="-pre-build" depends="download-libs, generate-version" />
+  <target name="-pre-clean" depends="clean-version" />
+
+</project>
