@@ -3,7 +3,7 @@
   <groupId>com.simperium</groupId>
   <artifactId>simperium-android-support</artifactId>
   <versioning>
-    <release>0.4.0-beta4</release>
+    <release>0.4.1-beta</release>
     <versions>
       <version>0.3.2</version>
       <version>0.3.3</version>
@@ -14,7 +14,8 @@
       <version>0.4.0-beta2</version>
       <version>0.4.0-beta3</version>
       <version>0.4.0-beta4</version>
+      <version>0.4.1-beta</version>
     </versions>
-    <lastUpdated>20131218234416</lastUpdated>
+    <lastUpdated>20131220214839</lastUpdated>
   </versioning>
 </metadata>
