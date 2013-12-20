@@ -13,11 +13,15 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
+import android.util.Log;
+
 /**
  * Refactoring as much of the android specific components of the client
  * and decoupling different parts of the API.
  */
 public class AndroidClient implements ClientFactory {
+
+    public static final String TAG = "Simperium.AndroidClient";
 
     public static final String SHARED_PREFERENCES_NAME = "simperium";
 
@@ -28,9 +32,16 @@ public class AndroidClient implements ClientFactory {
     protected Context mContext;
     protected SQLiteDatabase mDatabase;
 
-    protected ExecutorService mExecutor = Executors.newFixedThreadPool(1);
+    protected ExecutorService mExecutor;
 
     public AndroidClient(Context context){
+        int threads = Runtime.getRuntime().availableProcessors();
+        if (threads > 1) {
+            threads -= 1;
+        }
+
+        Log.d(TAG, String.format("Using %d cores for executors", threads));
+        mExecutor = Executors.newFixedThreadPool(threads);
         mContext = context;
         mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
     }
