@@ -84,11 +84,13 @@ public class RemoteChange {
                     String.format("Local instance key %s does not match change key %s",
                         ghost.getSimperiumKey(), getKey())));
         }
+
         if (isModifyOperation() && !ghost.getVersion().equals(getSourceVersion())) {
             throw(new RemoteChangeInvalidException(
                     String.format("Local instance of %s has source version of %d and remote change has %d",
                     getKey(), ghost.getVersion(), getSourceVersion())));
         }
+
         if (isAddOperation() && ghost.getVersion() != 0) {
             throw(new RemoteChangeInvalidException(
                     String.format("Local instance has version greater than 0 with remote add operation")));
