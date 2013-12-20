@@ -10,10 +10,14 @@ import com.simperium.client.RemoteChangeInvalidException;
 import com.simperium.client.Syncable;
 import com.simperium.util.Uuid;
 
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 
 public class MockChannel implements Bucket.Channel {
+
+    public static final String TAG = "Simperium.Test";
 
     private Bucket mBucket;
     private boolean started = false;
@@ -47,7 +51,9 @@ public class MockChannel implements Bucket.Channel {
     }
 
     @Override
-    public void log(int level, CharSequence message) { }
+    public void log(int level, CharSequence message) {
+        Log.d(TAG, String.format("Remote log (%d): %s", level, message));
+    }
 
     @Override
     public void reset(){}
@@ -86,6 +92,8 @@ public class MockChannel implements Bucket.Channel {
         } catch (JSONException e) {
             throw new RemoteChangeInvalidException("Could not make remote chante", e);
         }
+        Log.d(TAG, String.format("Auto acknowledging %s", ack));
+        Log.d(TAG, String.format("Patch: %s", ack.getPatch()));
         ack.isAcknowledgedBy(change);
         mBucket.acknowledgeChange(ack, change);
     }
