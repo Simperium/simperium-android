@@ -101,6 +101,8 @@ public class RemoteChange {
             return new Ghost(getKey(), getObjectVersion(), properties);
         } catch (JSONException e) {
             throw new RemoteChangeInvalidException("Unable to apply diff", e);
+        } catch (IllegalArgumentException e) {
+            throw new RemoteChangeInvalidException("Invalid patch", e);
         }
 
     }

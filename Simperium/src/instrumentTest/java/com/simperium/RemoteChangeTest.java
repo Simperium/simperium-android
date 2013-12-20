@@ -70,6 +70,7 @@ public class RemoteChangeTest extends TestCase {
             change.apply(note);
         } catch (RemoteChangeInvalidException e) {
             caught = true;
+            assertEquals("Invalid patch", e.getMessage());
             assertAssignableFrom(IllegalArgumentException.class, e.getCause());
         }
 
