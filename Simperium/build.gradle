@@ -97,6 +97,8 @@ package com.simperium;
 
 public final class Version {
 
+    public static final String LIBRARY_NAME = "android";
+
     public static final String NAME = "android-${project.version}";
 
     /* project.version */

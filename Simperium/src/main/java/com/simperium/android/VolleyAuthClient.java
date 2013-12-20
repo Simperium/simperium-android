@@ -32,7 +32,6 @@ public class VolleyAuthClient implements AuthProvider {
     private static final String AUTHORIZE_PATH = "authorize/";
     private static final String JSON_CONTENT_TYPE = "application/json";
     private static final String API_KEY_HEADER_NAME = "X-Simperium-API-Key";
-    public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     public static final String USER_EMAIL_PREFERENCE = "user-email";
 
@@ -81,14 +80,14 @@ public class VolleyAuthClient implements AuthProvider {
 
     @Override
     public void restoreUser(User user) {
-        SharedPreferences preferences = getPreferences();
+        SharedPreferences preferences = AndroidClient.sharedPreferences(mContext);
         user.setAccessToken(preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null));
         user.setEmail(preferences.getString(USER_EMAIL_PREFERENCE, null));
     }
 
     @Override
     public void deauthorizeUser(User user) {
-        SharedPreferences.Editor editor = getPreferences().edit();
+        SharedPreferences.Editor editor = AndroidClient.sharedPreferences(mContext).edit();
         editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
         editor.remove(USER_EMAIL_PREFERENCE);
         editor.commit();
@@ -96,15 +95,10 @@ public class VolleyAuthClient implements AuthProvider {
 
     @Override
     public void saveUser(User user) {
-        SharedPreferences.Editor editor = getPreferences().edit();
+        SharedPreferences.Editor editor = AndroidClient.sharedPreferences(mContext).edit();
         editor.putString(USER_ACCESS_TOKEN_PREFERENCE, user.getAccessToken());
         editor.putString(USER_EMAIL_PREFERENCE, user.getEmail());
         editor.commit();
-    }
-
-    private SharedPreferences getPreferences() {
-        SharedPreferences preferences = mContext.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-        return preferences;
     }
 
     protected void sendRequest(String path, JSONObject body, final AuthResponseHandler handler){
