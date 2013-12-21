@@ -19,9 +19,14 @@ public class ChannelUtil {
 
     }
 
-    public static void sendModifyOperation(Channel channel, String objectId) {
+    public static void sendModifyOperation(Channel channel, String objectId, int sourceVersion, JSONObject diff) {
 
-        
+        try {
+            JSONObject modify = RemoteChangesUtil.modifyOperation(objectId, sourceVersion, diff);
+            channel.receiveMessage(String.format("c:[%s]", modify));
+        } catch (JSONException e) {
+            throw new RuntimeException("Could not build change", e);
+        }
 
     }
 

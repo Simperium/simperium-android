@@ -61,9 +61,13 @@ public class RemoteChangesUtil {
         return change;
     }
 
-    public static JSONObject modifyOperation(String id, int sourceVersion)
+    public static JSONObject modifyOperation(String id, int sourceVersion, JSONObject diff)
     throws JSONException {
         JSONObject change = addOperation(id);
+        change.put(RemoteChange.SOURCE_VERSION_KEY, sourceVersion);
+        change.put(RemoteChange.END_VERSION_KEY, sourceVersion + 1);
+        change.put(JSONDiff.DIFF_VALUE_KEY, diff);
+
         return change;
     }
 
