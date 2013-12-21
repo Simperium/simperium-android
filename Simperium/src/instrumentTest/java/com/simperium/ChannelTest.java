@@ -1,12 +1,18 @@
 package com.simperium;
 
 import com.simperium.Version;
+
 import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.User;
+
 import com.simperium.models.Note;
+
+import com.simperium.util.RemoteChangesUtil;
+import com.simperium.util.ChannelUtil;
+
 import com.simperium.test.MockBucket;
 import com.simperium.test.MockChannelListener;
 import com.simperium.test.MockChannelSerializer;
@@ -489,12 +495,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         assertTrue("Bucket should have an instance of mock1", mBucket.containsKey("mock1"));
         // receive a remotely initiated delete operation for mock1
-        JSONObject change = new JSONObject();
-        change.put("ccids", new JSONArray("[\"random-ccid\"]"));
-        change.put("clientid", "otherclient");
-        change.put("cv", "new-cv");
-        change.put("o", "-");
-        change.put("id", "mock1");
+        JSONObject change = RemoteChangesUtil.deleteOperation("mock1");
         mChannel.receiveMessage(String.format("c:[%s]", change));
 
         // pause bucket execution to simulate concurrent threads
