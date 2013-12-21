@@ -511,6 +511,25 @@ public class ChannelTest extends BaseSimperiumTest {
 
         assertNull(mListener.lastMessage);
 
+    }
+
+    /**
+     * If we receive a remote request for an object version we don't have,
+     * request the entire object.
+     */
+    public void testRequestObjectForUnseenVersion()
+    throws Exception {
+
+        startWithEmptyIndex();
+
+        // receive a change for an object we don't have
+        JSONObject diff = new JSONObject("{\"title\":{\"o\":\"r\",\"v\":\"My hovercraft is full of eels\"}}");
+        ChannelUtil.sendModifyOperation(mChannel, "unknown-key", 5, diff);
+
+        mExecutor.run();
+
+        // the channel should have requested unkown-key.5
+        assertEquals("e:unknown-key.6", mListener.lastMessage.toString());
 
     }
 
