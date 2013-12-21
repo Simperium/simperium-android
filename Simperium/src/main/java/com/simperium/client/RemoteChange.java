@@ -16,7 +16,7 @@ public class RemoteChange {
     public static final String ID_KEY             = "id";
     public static final String CLIENT_KEY         = "clientid";
     public static final String ERROR_KEY          = "error";
-    public static final String ENTITY_VERSION_KEY = "ev";
+    public static final String END_VERSION_KEY    = "ev";
     public static final String SOURCE_VERSION_KEY = "sv";
     public static final String CHANGE_VERSION_KEY = "cv";
     public static final String CHANGE_IDS_KEY     = "ccids";
@@ -244,7 +244,7 @@ public class RemoteChange {
 
         String operation = changeData.getString(OPERATION_KEY);
         Integer sourceVersion = changeData.optInt(SOURCE_VERSION_KEY);
-        Integer objectVersion = changeData.optInt(ENTITY_VERSION_KEY);
+        Integer objectVersion = changeData.optInt(END_VERSION_KEY);
         JSONObject patch = changeData.optJSONObject(VALUE_KEY);
         String changeVersion = changeData.getString(CHANGE_VERSION_KEY);
 
