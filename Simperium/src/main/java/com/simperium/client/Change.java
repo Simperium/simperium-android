@@ -184,6 +184,32 @@ public class Change {
         return version;
     }
 
+    protected JSONObject toJSONObject()
+    throws ChangeEmptyException, ChangeInvalidException {
+        try {
+            JSONObject json = new JSONObject();
+            json.put(ID_KEY, getKey());
+            json.put(CHANGE_ID_KEY, getChangeId());
+            json.put(JSONDiff.DIFF_OPERATION_KEY, getOperation());
+
+            Integer vresion = getVersion();
+            if (version != null && version > 0) {
+                json.put(SOURCE_VERSION_KEY, version);
+            }
+
+            JSONObject diff = getDiff();
+
+            if (requiresDiff() && diff.length() == 0) {
+                throw new ChangeEmptyException(this);
+            }
+
+            json.put(JSONDiff.DIFF_VALUE_KEY, diff);
+            return json;
+        } catch (JSONException e) {
+            throw new ChangeInvalidException(this, "Could not build change JSON", e);
+        }
+    }
+
     protected Map<String,Object> toJSONSerializable(){
         Map<String,Object> props = new HashMap<String,Object>(3);
         // key, version, origin, target, ccid

@@ -41,18 +41,14 @@ import java.util.concurrent.Executor;
 
 public class Channel implements Bucket.Channel {
 
-    public static class ChangeNotSentException extends SimperiumException {
-
-        final Change change;
+    public static class ChangeNotSentException extends ChangeException {
 
         public ChangeNotSentException(Change change, String message) {
-            super(message);
-            this.change = change;
+            super(change, message);
         }
 
         public ChangeNotSentException(Change change, Throwable cause) {
-            super(cause);
-            this.change = change;
+            super(change, cause);
         }
 
     }
@@ -603,18 +599,24 @@ public class Channel implements Bucket.Channel {
     public static class MessageEvent extends EventObject {
 
         public String message;
+        public final Channel channel;
 
-        public MessageEvent(Channel source, String message){
+        public MessageEvent(Channel source, String message) {
             super(source);
             this.message = message;
+            this.channel = source;
         }
 
-        public String getMessage(){
+        public String getMessage() {
             return message;
         }
 
-        public String toString(){
+        public String toString() {
             return getMessage();
+        }
+
+        public Channel getChannel() {
+            return this.channel;
         }
 
     }
@@ -1261,31 +1263,13 @@ public class Channel implements Bucket.Channel {
             }
 
             try {
-                JSONObject map = new JSONObject();
-                map.put(Change.ID_KEY, change.getKey());
-                map.put(Change.CHANGE_ID_KEY, change.getChangeId());
-                map.put(JSONDiff.DIFF_OPERATION_KEY, change.getOperation());
-
-                Integer version = change.getVersion();
-                if (version != null && version > 0) {
-                    map.put(Change.SOURCE_VERSION_KEY, version);
-                }
-
-                if (change.requiresDiff()) {
-                    JSONObject diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
-                    if (diff.length() == 0) {
-                        Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
-                        change.setComplete();
-                        throw new ChangeNotSentException(change, "Change is empty");
-                    }
-                    map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
-                }
-                //  JSONObject changeJSON = Channel.serializeJSON(map);
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
-                sendMessage(String.format("c:%s", map.toString()));
+                sendMessage(String.format("c:%s", change.toJSONObject()));
                 serializer.onSendChange(change);
                 change.setSent();
-            } catch (JSONException e) {
+            } catch (ChangeEmptyException e) {
+                change.setComplete();
+            } catch (ChangeException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);
             }
