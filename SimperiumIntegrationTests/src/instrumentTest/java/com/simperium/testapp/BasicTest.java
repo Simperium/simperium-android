@@ -23,7 +23,7 @@ public class BasicTest extends SimperiumTest {
     protected void setUp() throws Exception {
         super.setUp();
         clients = createClients(3);
-        String bucketSuffix = Uuid.uuid().substring(0,6);
+        String bucketSuffix = Uuid.uuid(6);
         buckets = createAndStartBuckets(clients, new Farm.Schema(bucketSuffix));
         leader = buckets.get(0);
     }

@@ -80,7 +80,7 @@ public class MockChannel implements Bucket.Channel {
             entityVersion = sourceVersion + 1;
         }
         JSONArray ccids = new JSONArray();
-        String cv = Uuid.uuid().substring(0, 0xF);
+        String cv = Uuid.uuid(0xF);
         ccids.put(change.getChangeId());
         RemoteChange ack;
         try {
