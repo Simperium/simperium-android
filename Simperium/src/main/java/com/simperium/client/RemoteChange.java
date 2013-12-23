@@ -6,6 +6,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Locale;
+
 /**
  * Encapsulates parsing and logic for remote changes
  */
@@ -81,19 +83,18 @@ public class RemoteChange {
         // keys and versions must match otherwise throw an error
         if (!ghost.getSimperiumKey().equals(getKey())) {
             throw(new RemoteChangeInvalidException(
-                    String.format("Local instance key %s does not match change key %s",
+                    String.format(Locale.US, "Local instance key %s does not match change key %s",
                         ghost.getSimperiumKey(), getKey())));
         }
 
         if (isModifyOperation() && !ghost.getVersion().equals(getSourceVersion())) {
             throw(new RemoteChangeInvalidException(
-                    String.format("Local instance of %s has source version of %d and remote change has %d",
+                    String.format(Locale.US, "Local instance of %s has source version of %d and remote change has %d",
                     getKey(), ghost.getVersion(), getSourceVersion())));
         }
 
         if (isAddOperation() && ghost.getVersion() != 0) {
-            throw(new RemoteChangeInvalidException(
-                    String.format("Local instance has version greater than 0 with remote add operation")));
+            throw(new RemoteChangeInvalidException("Local instance has version greater than 0 with remote add operation"));
         }
 
         try {
@@ -223,9 +224,9 @@ public class RemoteChange {
 
     public String toString(){
         if (!isError()) {
-            return String.format("RemoteChange %s %s %s %d-%d", getKey(), getChangeVersion(), operation, getSourceVersion(), getObjectVersion());
+            return String.format(Locale.US, "RemoteChange %s %s %s %d-%d", getKey(), getChangeVersion(), operation, getSourceVersion(), getObjectVersion());
         } else {
-            return String.format("RemoteChange %s Error %d", getKey(), getErrorCode());
+            return String.format(Locale.US, "RemoteChange %s Error %d", getKey(), getErrorCode());
         }
     }
 

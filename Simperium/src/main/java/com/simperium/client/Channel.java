@@ -719,7 +719,7 @@ public class Channel implements Bucket.Channel {
         }
 
         public String toString(){
-            return String.format("%s.%d", key, version);
+            return String.format(Locale.US, "%s.%d", key, version);
         }
 
         public static ObjectVersion parseString(String versionString)

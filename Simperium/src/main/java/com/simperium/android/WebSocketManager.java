@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -148,7 +149,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         // if we have channels, then connect, otherwise wait for a channel
         cancelReconnect();
         if (!isConnected() && !isConnecting() && !channels.isEmpty()) {
-            Logger.log(TAG, String.format("Connecting to %s", socketURI));
+            Logger.log(TAG, String.format(Locale.US, "Connecting to %s", socketURI));
             setConnectionStatus(ConnectionStatus.CONNECTING);
             reconnect = true;
             socketClient.connect();
@@ -226,7 +227,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
 
     synchronized private void sendHearbeat() {
         heartbeatCount ++;
-        String command = String.format("%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
+        String command = String.format(Locale.US, "%s:%d", COMMAND_HEARTBEAT, heartbeatCount);
 
         if(!isConnected()) return;
 
@@ -252,7 +253,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
                 connect();
             }
         }, retryIn);
-        Logger.log(String.format("Retrying in %d", retryIn));
+        Logger.log(String.format(Locale.US, "Retrying in %d", retryIn));
     }
 
     // duplicating javascript reconnect interval calculation
@@ -277,7 +278,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         Channel channel = (Channel)event.getSource();
         Integer channelId = channelIndex.get(channel);
         // Prefix the message with the correct channel id
-        String message = String.format("%d:%s", channelId, event.getMessage());
+        String message = String.format(Locale.US, "%d:%s", channelId, event.getMessage());
 
         if(isConnected()){
             socketClient.send(message);
@@ -293,7 +294,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
         for (Channel channel : channels.values()) {
             if (channel.isStarted()) return;
         }
-        Logger.log(TAG, String.format("%s disconnect from socket", Thread.currentThread().getName()));
+        Logger.log(TAG, String.format(Locale.US, "%s disconnect from socket", Thread.currentThread().getName()));
         disconnect();
     }
 
@@ -347,7 +348,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
             Channel channel = channels.get(channelId);
             channel.receiveMessage(parts[1]);
         } catch (NumberFormatException e) {
-            Logger.log(TAG, String.format("Unhandled message %s", parts[0]));
+            Logger.log(TAG, String.format(Locale.US, "Unhandled message %s", parts[0]));
         }
     }
 
@@ -355,7 +356,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onDisconnect(int code, String reason) {
-        Logger.log(TAG, String.format("Disconnect %d %s", code, reason));
+        Logger.log(TAG, String.format(Locale.US, "Disconnect %d %s", code, reason));
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         notifyChannelsDisconnected();
         cancelHeartbeat();
@@ -363,7 +364,7 @@ public class WebSocketManager implements ChannelProvider, WebSocketClient.Listen
     }
 
     public void onError(Exception error) {
-        Logger.log(TAG, String.format("Error: %s", error), error);
+        Logger.log(TAG, String.format(Locale.US, "Error: %s", error), error);
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && reconnect) {
             scheduleReconnect();
