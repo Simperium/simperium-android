@@ -21,7 +21,8 @@
                 android:layout_height="110dp"
                 android:src="@drawable/logo_login"
                 android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="16dp"
+                android:contentDescription="@string/app_name" />
 
         <EditText
                 android:id="@+id/email_address"

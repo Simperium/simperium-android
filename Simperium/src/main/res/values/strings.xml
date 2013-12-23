@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- String to be replaced by application -->
+    <string name="app_name">Simperium</string>
+
     <!-- account setup -->
     <string name="required_fields">Required Fields</string>
     <string name="username_password_required">Please fill in all of the fields before submitting.</string>
