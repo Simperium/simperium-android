@@ -676,7 +676,7 @@ public class Channel implements Bucket.Channel {
         private String mark = "";
         private Integer limit = INDEX_PAGE_SIZE;
 
-        public IndexQuery(){};
+        public IndexQuery(){}
 
         public IndexQuery(String mark){
             this(mark, INDEX_PAGE_SIZE);
@@ -958,7 +958,6 @@ public class Channel implements Bucket.Channel {
         private Timer retryTimer;
         
         private final Object lock = new Object();
-        public Object runLock = new Object();
 
         public ChangeProcessor() {
             restore();
@@ -1091,7 +1090,7 @@ public class Channel implements Bucket.Channel {
 
                     if(processLocalChange()){
                         executor.execute(this);
-                    };
+                    }
 
                     return;
                 }
@@ -1122,7 +1121,6 @@ public class Channel implements Bucket.Channel {
                 RemoteChange remoteChange = RemoteChange.buildFromMap(remoteJSON);
                 log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
 
-                boolean acknowledged = false;
                 Change change = pendingChanges.get(remoteChange.getKey());
 
                 // one of our changes is being acknowledged
@@ -1184,7 +1182,6 @@ public class Channel implements Bucket.Channel {
 
             } catch (JSONException e) {
                 Logger.log(TAG, "Failed to build remote change", e);
-                return;
             }
 
         }
