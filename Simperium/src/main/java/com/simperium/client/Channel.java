@@ -8,10 +8,6 @@
  * 
  * To get messages into a Channel, Channel.receiveMessage receives a Simperium
  * websocket API message stripped of the channel ID prefix.
- * 
- * TODO: instead of notifying the bucket about each individual item, there should be
- * a single event for when there's a "re-index" or after performing all changes in a
- * change operation.
  *
  */
 package com.simperium.client;
