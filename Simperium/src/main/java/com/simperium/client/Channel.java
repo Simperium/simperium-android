@@ -301,11 +301,6 @@ public class Channel implements Bucket.Channel {
         Logger.log(TAG, String.format("Received error from service %s", remoteChange));
     }
 
-    protected Ghost onRemote(RemoteChange remoteChange)
-    throws RemoteChangeInvalidException {
-        return bucket.applyRemoteChange(remoteChange);
-    }
-
     @Override
     public void reset(){
         changeProcessor.reset();
@@ -1314,7 +1309,7 @@ public class Channel implements Bucket.Channel {
                         log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
                     } else {
                         try {
-                            onRemote(remoteChange);
+                            bucket.applyRemoteChange(remoteChange);
                             Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
                         } catch (RemoteChangeInvalidException e) {
                             Logger.log(TAG, "Remote change could not be applied", e);
