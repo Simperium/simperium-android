@@ -674,7 +674,7 @@ public class Bucket<T extends Syncable> {
                 // update the object's ghost
                 object.setGhost(ghost);
             } catch (BucketObjectMissingException e) {
-                throw(new RemoteChangeInvalidException(e));
+                throw(new RemoteChangeInvalidException(remoteChange, e));
             }
         } else {
             ghostStore.deleteGhost(this, remoteChange.getKey());
@@ -693,7 +693,7 @@ public class Bucket<T extends Syncable> {
                 removeObjectWithKey(change.getKey());
                 ghostStore.deleteGhost(this, change.getKey());
             } catch (BucketObjectMissingException e) {
-                throw(new RemoteChangeInvalidException(e));
+                throw(new RemoteChangeInvalidException(change, e));
             }
         } else {
             try {
@@ -720,7 +720,7 @@ public class Bucket<T extends Syncable> {
                 }
             } catch(SimperiumException e) {
                 Logger.log(TAG, String.format("Unable to apply remote change %s", change), e);
-                throw(new RemoteChangeInvalidException(e));
+                throw(new RemoteChangeInvalidException(change, e));
             }
         }
         setChangeVersion(change.getChangeVersion());

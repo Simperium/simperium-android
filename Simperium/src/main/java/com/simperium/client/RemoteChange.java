@@ -105,28 +105,28 @@ public class RemoteChange {
     protected Ghost apply(Ghost ghost) throws RemoteChangeInvalidException {
         // keys and versions must match otherwise throw an error
         if (!ghost.getSimperiumKey().equals(getKey())) {
-            throw(new RemoteChangeInvalidException(
+            throw(new RemoteChangeInvalidException(this,
                     String.format(Locale.US, "Local instance key %s does not match change key %s",
                         ghost.getSimperiumKey(), getKey())));
         }
 
         if (isModifyOperation() && !ghost.getVersion().equals(getSourceVersion())) {
-            throw(new RemoteChangeInvalidException(
+            throw(new RemoteChangeInvalidException(this,
                     String.format(Locale.US, "Local instance of %s has source version of %d and remote change has %d",
                     getKey(), ghost.getVersion(), getSourceVersion())));
         }
 
         if (isAddOperation() && ghost.getVersion() != 0) {
-            throw(new RemoteChangeInvalidException("Local instance has version greater than 0 with remote add operation"));
+            throw(new RemoteChangeInvalidException(this, "Local instance has version greater than 0 with remote add operation"));
         }
 
         try {
             JSONObject properties = jsondiff.apply(ghost.getDiffableValue(), getPatch());
             return new Ghost(getKey(), getObjectVersion(), properties);
         } catch (JSONException e) {
-            throw new RemoteChangeInvalidException("Unable to apply diff", e);
+            throw new RemoteChangeInvalidException(this, String.format("Unable to apply patch: %s", getPatch()), e);
         } catch (IllegalArgumentException e) {
-            throw new RemoteChangeInvalidException("Invalid patch", e);
+            throw new RemoteChangeInvalidException(this, "Invalid patch", e);
         }
 
     }
