@@ -534,6 +534,50 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * Handle receiving an entity when index has already been downloaded
+     */
+    public void testReceiveObjectDataWithExistingIndex()
+    throws Exception {
+
+        startWithEmptyIndex();
+
+        JSONObject data = new JSONObject();
+        data.put("title", "my hovercraft is full of eels");
+        ChannelUtil.sendObject(mChannel, "object", 5, data);
+
+        mExecutor.run();
+
+        Note note = mBucket.get("object");
+
+        assertEquals(5, (int) note.getVersion());
+        assertEquals("my hovercraft is full of eels", note.getTitle());
+
+    }
+
+    /**
+     * Receive full object data for an object we already have
+     */
+    public void testReceiveObjectDataWithExistingObject()
+    throws Exception {
+
+        Map<String,String> index = new HashMap<String,String>(1);
+        index.put("object.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"my hovercraft was full of eels\"}}");
+        startWithIndex("version-x", index);
+
+        JSONObject data = new JSONObject();
+        data.put("title", "my hovercraft is full of eels");
+        ChannelUtil.sendObject(mChannel, "object", 5, data);
+
+        mExecutor.run();
+
+        Note note = mBucket.get("object");
+
+        assertEquals(5, (int) note.getVersion());
+        assertEquals("my hovercraft is full of eels", note.getTitle());
+
+    }
+
+    /**
      * Get's the channel into a started state
      */
     protected void start(){
