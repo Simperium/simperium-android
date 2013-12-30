@@ -33,8 +33,8 @@ public class MockChannel implements Bucket.Channel {
         Change change = new Change(Change.OPERATION_REMOVE, object);
         try {
             if(started && autoAcknowledge) acknowledge(change);
-        } catch (RemoteChangeInvalidException e) {
-            throw( new RuntimeException(e));
+        } catch (Exception e) {
+            throw(new RuntimeException(e));
         }
         return change;
     }
@@ -44,7 +44,7 @@ public class MockChannel implements Bucket.Channel {
         Change change = new Change(Change.OPERATION_MODIFY, object);
         try {
             if(started && autoAcknowledge) acknowledge(change);
-        } catch (RemoteChangeInvalidException e) {
+        } catch (Exception e) {
             throw(new RuntimeException(e));
         }
         return change;
@@ -70,7 +70,7 @@ public class MockChannel implements Bucket.Channel {
      * Simulate an acknowledged change
      */
     protected void acknowledge(Change change)
-    throws RemoteChangeInvalidException {
+    throws Exception {
 
         Integer sourceVersion = change.getVersion();
         Integer entityVersion = null;
@@ -82,16 +82,15 @@ public class MockChannel implements Bucket.Channel {
         JSONArray ccids = new JSONArray();
         String cv = Uuid.uuid(0xF);
         ccids.put(change.getChangeId());
+
         RemoteChange ack;
-        try {
-            if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
-                ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
-            } else {
-                ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
-            }
-        } catch (JSONException e) {
-            throw new RemoteChangeInvalidException("Could not make remote chante", e);
+
+        if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
+        } else {
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
         }
+
         Log.d(TAG, String.format("Auto acknowledging %s", ack));
         Log.d(TAG, String.format("Patch: %s", ack.getPatch()));
         ack.isAcknowledgedBy(change);
