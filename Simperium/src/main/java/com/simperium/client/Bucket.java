@@ -497,6 +497,7 @@ public class Bucket<T extends Syncable> {
         storage.save(object, schema.indexesFor(object));
         // notify listeners that an object has been added
     }
+
     /**
      * Updates an existing object
      */
@@ -504,6 +505,7 @@ public class Bucket<T extends Syncable> {
         object.setBucket(this);
         storage.save(object, schema.indexesFor(object));
     }
+
     /**
      *
      */
