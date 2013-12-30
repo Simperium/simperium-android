@@ -434,18 +434,42 @@ public class Bucket<T extends Syncable> {
 
         });
     }
+
     /**
      * Update the ghost data
      */
-    protected void updateObjectWithGhost(String changeVersion, Ghost ghost){
-        setChangeVersion(changeVersion);
-        ghostStore.saveGhost(this, ghost);
+    protected void updateObjectWithGhost(final Ghost ghost){
+        ghostStore.saveGhost(Bucket.this, ghost);
         T object = buildObject(ghost);
         updateObject(object);
     }
-    protected void updateGhost(Ghost ghost){
-        ghostStore.saveGhost(this, ghost);
+
+    protected void updateGhost(final Ghost ghost, final Runnable complete){
+        executor.execute(new Runnable(){
+
+            @Override
+            public void run() {
+                // find the object
+                try {
+                    T object = get(ghost.getSimperiumKey());
+                    if (object.isModified()) {
+                        // TODO: we already have the object, how do we handle if we have modifications?
+                    } else {
+                        updateObjectWithGhost(ghost);
+                    }
+                } catch (BucketObjectMissingException e) {
+                    // The object doesn't exist, insert the new object
+                    updateObjectWithGhost(ghost);
+                }
+
+                if (complete != null) {
+                    complete.run();
+                }
+            }
+
+        });
     }
+
     protected Ghost getGhost(String key) throws GhostMissingException {
         return ghostStore.getGhost(this, key);
     }
