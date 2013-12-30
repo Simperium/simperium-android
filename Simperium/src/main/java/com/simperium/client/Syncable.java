@@ -2,6 +2,8 @@ package com.simperium.client;
 
 import org.json.JSONObject;
 
+import com.simperium.util.JSONDiff;
+
 /**
  * An object that can be diffed and changes sent
  */
@@ -34,7 +36,7 @@ public abstract class Syncable implements Diffable {
      * Does the local object have modifications?
      */
     public Boolean isModified(){
-        return !getDiffableValue().equals(ghost.getDiffableValue());
+        return !JSONDiff.equals(getDiffableValue(), ghost.getDiffableValue());
     }
 
     public String getBucketName(){
