@@ -191,7 +191,6 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(final T object){
-        // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
         executor.execute(new Runnable(){
             @Override
             public void run(){
@@ -417,15 +416,6 @@ public class Bucket<T extends Syncable> {
         ghostStore.saveGhost(this, ghost);
         cache.put(name, object);
         return object;
-    }
-
-    /**
-     * Save the ghost data and update the change version, tell the storage provider
-     * that a new object has been added
-     */
-    protected void addObjectWithGhost(String changeVersion, Ghost ghost){
-        setChangeVersion(changeVersion);
-        addObjectWithGhost(ghost);
     }
 
     /**
