@@ -184,7 +184,7 @@ public class Change {
         return version;
     }
 
-    protected JSONObject toJSONObject()
+    public JSONObject toJSONObject()
     throws ChangeEmptyException, ChangeInvalidException {
         try {
             JSONObject json = new JSONObject();
@@ -198,12 +198,16 @@ public class Change {
             }
 
             JSONObject diff = getDiff();
+            boolean requiresDiff = requiresDiff();
 
-            if (requiresDiff() && diff.length() == 0) {
+            if (requiresDiff && diff.length() == 0) {
                 throw new ChangeEmptyException(this);
             }
 
-            json.put(JSONDiff.DIFF_VALUE_KEY, diff);
+            if (requiresDiff) {
+                json.put(JSONDiff.DIFF_VALUE_KEY, diff.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+            }
+
             return json;
         } catch (JSONException e) {
             throw new ChangeInvalidException(this, "Could not build change JSON", e);
@@ -253,7 +257,7 @@ public class Change {
     /**
      * The change message requires a diff value in the JSON payload
      */
-    public Boolean requiresDiff(){
+    public boolean requiresDiff(){
         return operation.equals(OPERATION_MODIFY);
     }
 
