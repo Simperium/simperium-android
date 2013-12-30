@@ -245,7 +245,59 @@ public class Channel implements Bucket.Channel {
         return bucket.acknowledgeChange(remoteChange, acknowledgedChange);
     }
 
+    /**
+     * Handle errors from simperium service
+     * see <a href="https://gist.github.com/beaucollins/6998802#error-responses">Error Responses</a>
+     */
     protected void onError(RemoteChange remoteChange, Change erroredChange){
+        RemoteChange.ResponseCode errorCode = remoteChange.getResponseCode();
+        switch (errorCode) {
+            case INVALID_VERSION:
+                // Bad version, client referencing a wrong or missing sv. This is a potential data
+                // loss scenario: server may not have enough history to resolve conflicts. Client
+                // has two options:
+                //
+                // - re-load the entity (via e command) then overwrite the local changes
+                // - send a change with full object (which will overwrite remote changes, history
+                //   will still be available) referencing the current sv
+                break;
+            case INVALID_DIFF:
+                // Server could not apply diff, resend the change with additional parameter d that
+                // contains the whole JSON data object. Current known scenarios where this could
+                // happen:
+                //
+                // - Client generated an invalid diff (some old versions of iOS library)
+                // - Client is sending string diffs and using a different encoding than server
+            case UNAUTHORIZED:
+                // Grab a new authentication token (or possible you just don't
+                // have access to that document).
+
+                // TODO: update unauthorized state for User
+                break;
+            case NOT_FOUND:
+                // Client is referencing an object that does not exist on server.
+                // If client is insistent, then changing the diff such that it is creating the
+                // object instead should make this succeed.
+                // TODO: Allow clients to handle NOT_FOUND
+                break;
+            case INVALID_ID:
+                // If it was an invalid id, changing the id could make the call succeed. If it was a
+                // schema violation, then correction will depend on the schema. If client cannot
+                // tell, then do not re-send since unless something changes, 400 will be sent every
+                // time.
+                // TODO: Allow client implemenations to handle INVALID_ID
+            case EXCEEDS_MAX_SIZE:
+                // Nothing to do except reduce the size of the object
+                // TODO: Allow client implementations to handle EXCEEDS_MAX_SIZE
+            case DUPLICATE_CHANGE:
+                // Duplicate change, client can safely throw away the change it is attempting to send
+            case EMPTY_CHANGE:
+                // Empty change, nothing was changed on the server, client can ignore (and stop
+                // sending change).
+            case OK:
+                // noop
+                break;
+        }
         Logger.log(TAG, String.format("Received error from service %s", remoteChange));
     }
 

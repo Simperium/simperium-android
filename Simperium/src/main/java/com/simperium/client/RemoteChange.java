@@ -13,6 +13,29 @@ import java.util.Locale;
  */
 public class RemoteChange {
 
+    /**
+     * Possible simperium response errors
+     * @see https://gist.github.com/beaucollins/6998802#error-responses
+     */
+    public enum ResponseCode {
+        OK               (200),
+        INVALID_ID       (400),
+        UNAUTHORIZED     (401),
+        NOT_FOUND        (404),
+        INVALID_VERSION  (405),
+        DUPLICATE_CHANGE (409),
+        EMPTY_CHANGE     (412),
+        EXCEEDS_MAX_SIZE (413),
+        INVALID_DIFF     (440);
+
+        public final int code;
+
+        ResponseCode(int code) {
+            this.code = code;
+        }
+
+    }
+
     static public final String TAG = "Simperium.RemoteChange";
 
     public static final String ID_KEY             = "id";
@@ -158,6 +181,10 @@ public class RemoteChange {
         return operation.equals(OPERATION_MODIFY) && (sourceVersion == null || sourceVersion <= 0);
     }
 
+    public ResponseCode getResponseCode() {
+        return responseForCode(getErrorCode());
+    }
+
     public Integer getErrorCode(){
         return errorCode;
     }
@@ -251,6 +278,20 @@ public class RemoteChange {
 
         return new RemoteChange(client_id, id, ccids, changeVersion, sourceVersion, objectVersion, operation, patch);
 
+    }
+
+    public static ResponseCode responseForCode(Integer code) {
+
+        if (code == null)
+            return ResponseCode.OK;
+
+        for (ResponseCode responseCode : ResponseCode.values()) {
+            if (responseCode.code == code) {
+                return responseCode;
+            }
+        }
+
+        return ResponseCode.OK;
     }
 
 }
