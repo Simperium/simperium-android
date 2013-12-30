@@ -6,17 +6,42 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Locale;
+
 /**
  * Encapsulates parsing and logic for remote changes
  */
 public class RemoteChange {
+
+    /**
+     * Possible simperium response errors
+     * @see https://gist.github.com/beaucollins/6998802#error-responses
+     */
+    public enum ResponseCode {
+        OK               (200),
+        INVALID_ID       (400),
+        UNAUTHORIZED     (401),
+        NOT_FOUND        (404),
+        INVALID_VERSION  (405),
+        DUPLICATE_CHANGE (409),
+        EMPTY_CHANGE     (412),
+        EXCEEDS_MAX_SIZE (413),
+        INVALID_DIFF     (440);
+
+        public final int code;
+
+        ResponseCode(int code) {
+            this.code = code;
+        }
+
+    }
 
     static public final String TAG = "Simperium.RemoteChange";
 
     public static final String ID_KEY             = "id";
     public static final String CLIENT_KEY         = "clientid";
     public static final String ERROR_KEY          = "error";
-    public static final String ENTITY_VERSION_KEY = "ev";
+    public static final String END_VERSION_KEY    = "ev";
     public static final String SOURCE_VERSION_KEY = "sv";
     public static final String CHANGE_VERSION_KEY = "cv";
     public static final String CHANGE_IDS_KEY     = "ccids";
@@ -80,29 +105,28 @@ public class RemoteChange {
     protected Ghost apply(Ghost ghost) throws RemoteChangeInvalidException {
         // keys and versions must match otherwise throw an error
         if (!ghost.getSimperiumKey().equals(getKey())) {
-            throw(new RemoteChangeInvalidException(
-                    String.format("Local instance key %s does not match change key %s",
+            throw(new RemoteChangeInvalidException(this,
+                    String.format(Locale.US, "Local instance key %s does not match change key %s",
                         ghost.getSimperiumKey(), getKey())));
         }
 
         if (isModifyOperation() && !ghost.getVersion().equals(getSourceVersion())) {
-            throw(new RemoteChangeInvalidException(
-                    String.format("Local instance of %s has source version of %d and remote change has %d",
+            throw(new RemoteChangeInvalidException(this,
+                    String.format(Locale.US, "Local instance of %s has source version of %d and remote change has %d",
                     getKey(), ghost.getVersion(), getSourceVersion())));
         }
 
         if (isAddOperation() && ghost.getVersion() != 0) {
-            throw(new RemoteChangeInvalidException(
-                    String.format("Local instance has version greater than 0 with remote add operation")));
+            throw(new RemoteChangeInvalidException(this, "Local instance has version greater than 0 with remote add operation"));
         }
 
         try {
             JSONObject properties = jsondiff.apply(ghost.getDiffableValue(), getPatch());
             return new Ghost(getKey(), getObjectVersion(), properties);
         } catch (JSONException e) {
-            throw new RemoteChangeInvalidException("Unable to apply diff", e);
+            throw new RemoteChangeInvalidException(this, String.format("Unable to apply patch: %s", getPatch()), e);
         } catch (IllegalArgumentException e) {
-            throw new RemoteChangeInvalidException("Invalid patch", e);
+            throw new RemoteChangeInvalidException(this, "Invalid patch", e);
         }
 
     }
@@ -155,6 +179,10 @@ public class RemoteChange {
     public boolean isAddOperation(){
         if (operation == null) return false;
         return operation.equals(OPERATION_MODIFY) && (sourceVersion == null || sourceVersion <= 0);
+    }
+
+    public ResponseCode getResponseCode() {
+        return responseForCode(getErrorCode());
     }
 
     public Integer getErrorCode(){
@@ -223,9 +251,9 @@ public class RemoteChange {
 
     public String toString(){
         if (!isError()) {
-            return String.format("RemoteChange %s %s %s %d-%d", getKey(), getChangeVersion(), operation, getSourceVersion(), getObjectVersion());
+            return String.format(Locale.US, "RemoteChange %s %s %s %d-%d", getKey(), getChangeVersion(), operation, getSourceVersion(), getObjectVersion());
         } else {
-            return String.format("RemoteChange %s Error %d", getKey(), getErrorCode());
+            return String.format(Locale.US, "RemoteChange %s Error %d", getKey(), getErrorCode());
         }
     }
 
@@ -244,12 +272,26 @@ public class RemoteChange {
 
         String operation = changeData.getString(OPERATION_KEY);
         Integer sourceVersion = changeData.optInt(SOURCE_VERSION_KEY);
-        Integer objectVersion = changeData.optInt(ENTITY_VERSION_KEY);
+        Integer objectVersion = changeData.optInt(END_VERSION_KEY);
         JSONObject patch = changeData.optJSONObject(VALUE_KEY);
         String changeVersion = changeData.getString(CHANGE_VERSION_KEY);
 
         return new RemoteChange(client_id, id, ccids, changeVersion, sourceVersion, objectVersion, operation, patch);
 
+    }
+
+    public static ResponseCode responseForCode(Integer code) {
+
+        if (code == null)
+            return ResponseCode.OK;
+
+        for (ResponseCode responseCode : ResponseCode.values()) {
+            if (responseCode.code == code) {
+                return responseCode;
+            }
+        }
+
+        return ResponseCode.OK;
     }
 
 }

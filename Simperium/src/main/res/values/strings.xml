@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- String to be replaced by application -->
+    <string name="app_name">Simperium</string>
+
     <!-- account setup -->
     <string name="required_fields">Required Fields</string>
-    <string name="required_field">Required Field</string>
     <string name="username_password_required">Please fill in all of the fields before submitting.</string>
     <string name="invalid_email_title">Invalid email</string>
     <string name="invalid_email_message">Your email address is not valid.</string>
@@ -17,26 +19,17 @@
     <string name="signin_label">Sign In</string>
     <string name="no_network_title">No network available</string>
     <string name="no_network_message">There is no network available. Please connect to a network and try again.</string>
-    <string name="account_setup">Account Setup</string>
-    <string name="signing_up">Signing up...</string>
-    <string name="signing_in">Signing in...</string>
+    <string name="signing_up">Signing up…</string>
+    <string name="signing_in">Signing in…</string>
     <string name="agree_terms_of_service">By signing up, you agree to our <u>Terms of Service.</u></string>
     <string name="login_failed_message">Could not login with the provided email address and password.</string>
     <string name="login_failed_account_exists">An account with this email already exists.</string>
-    <string name="create_account">Create a New Account</string>
     <string name="forgot_password">Forgot your password?</string>
     
     <!-- errors -->
     <string name="error">Error</string>
-    <string name="new_task">New Task</string>
-    <string name="edit_task">Edit Task</string>
-    <string name="delete_task">Delete Task</string>
     <string name="ok">OK</string>
-    <string name="cancel">Cancel</string>
-    <string name="new_task_dialog_title">Add Task</string>
-    <string name="task_label_hint">Describe task</string>
-    <string name="or">or</string>
-    <string name="no_account">Don\'t have an account yet?</string>
+    <string name="no_account">Don’t have an account yet?</string>
     <string name="have_account">Already have an account?</string>
 
 </resources>

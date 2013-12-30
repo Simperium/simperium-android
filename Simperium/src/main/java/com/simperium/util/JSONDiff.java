@@ -79,7 +79,7 @@ public class JSONDiff {
         int max = Math.max(size_a, size_b);
 
         for (int i=0; i<max; i++) {
-            String index = new Integer(i+prefix_length).toString();
+            String index = String.valueOf(i+prefix_length);
             if(i<size_a && i<size_b){
                 // both lists have index
                 // if values aren't equal add to diff

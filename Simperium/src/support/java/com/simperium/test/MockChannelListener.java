@@ -2,6 +2,7 @@ package com.simperium.test;
 
 import com.simperium.client.Channel;
 import com.simperium.util.Uuid;
+import com.simperium.util.ChannelUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -65,32 +66,7 @@ public class MockChannelListener implements Channel.OnMessageListener {
         }
 
         if (autoAcknowledge == true && message.isCommand(Channel.COMMAND_CHANGE)) {
-            try {
-                Channel channel = (Channel) event.getSource();
-                JSONObject changeJSON = new JSONObject(event.message.substring(2));
-                JSONObject ackJSON = new JSONObject();
-                JSONArray ccids = new JSONArray();
-                ccids.put(changeJSON.get("ccid"));
-                ackJSON.put("clientid", channel.getSessionId());
-                ackJSON.put("id", changeJSON.getString("id"));
-                ackJSON.put("o", changeJSON.getString("o"));
-                ackJSON.put("v", changeJSON.getJSONObject("v"));
-                ackJSON.put("ccids", ccids);
-                ackJSON.put("cv", Uuid.uuid());
-                int sv = -1;
-                if (changeJSON.has("sv")) {
-                    sv = changeJSON.getInt("sv");
-                    ackJSON.put("sv", changeJSON.getInt("sv"));
-                }
-                ackJSON.put("ev", sv + 1);
-
-                JSONArray responseJSON = new JSONArray();
-                responseJSON.put(ackJSON);
-                Log.d(TAG, String.format("Sending auto-acknowledge response: %s", responseJSON));
-                channel.receiveMessage(String.format("c:%s", responseJSON));
-            } catch (JSONException e) {
-                throw new RuntimeException(String.format("Couldn't auto-acknowledge %s", event.message), e);
-            }
+            ChannelUtil.acknowledgeChange(event);
         }
 
         lastMessage = event;

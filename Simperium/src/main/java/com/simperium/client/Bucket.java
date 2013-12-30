@@ -191,7 +191,6 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(final T object){
-        // we want to do all the hard work in a different thread, let's just build one right here and see what kind of improvements we get
         executor.execute(new Runnable(){
             @Override
             public void run(){
@@ -420,15 +419,6 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
-     * Save the ghost data and update the change version, tell the storage provider
-     * that a new object has been added
-     */
-    protected void addObjectWithGhost(String changeVersion, Ghost ghost){
-        setChangeVersion(changeVersion);
-        addObjectWithGhost(ghost);
-    }
-
-    /**
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
      */
@@ -444,18 +434,42 @@ public class Bucket<T extends Syncable> {
 
         });
     }
+
     /**
      * Update the ghost data
      */
-    protected void updateObjectWithGhost(String changeVersion, Ghost ghost){
-        setChangeVersion(changeVersion);
-        ghostStore.saveGhost(this, ghost);
+    protected void updateObjectWithGhost(final Ghost ghost){
+        ghostStore.saveGhost(Bucket.this, ghost);
         T object = buildObject(ghost);
         updateObject(object);
     }
-    protected void updateGhost(Ghost ghost){
-        ghostStore.saveGhost(this, ghost);
+
+    protected void updateGhost(final Ghost ghost, final Runnable complete){
+        executor.execute(new Runnable(){
+
+            @Override
+            public void run() {
+                // find the object
+                try {
+                    T object = get(ghost.getSimperiumKey());
+                    if (object.isModified()) {
+                        // TODO: we already have the object, how do we handle if we have modifications?
+                    } else {
+                        updateObjectWithGhost(ghost);
+                    }
+                } catch (BucketObjectMissingException e) {
+                    // The object doesn't exist, insert the new object
+                    updateObjectWithGhost(ghost);
+                }
+
+                if (complete != null) {
+                    complete.run();
+                }
+            }
+
+        });
     }
+
     protected Ghost getGhost(String key) throws GhostMissingException {
         return ghostStore.getGhost(this, key);
     }
@@ -483,6 +497,7 @@ public class Bucket<T extends Syncable> {
         storage.save(object, schema.indexesFor(object));
         // notify listeners that an object has been added
     }
+
     /**
      * Updates an existing object
      */
@@ -490,6 +505,7 @@ public class Bucket<T extends Syncable> {
         object.setBucket(this);
         storage.save(object, schema.indexesFor(object));
     }
+
     /**
      *
      */
@@ -658,7 +674,7 @@ public class Bucket<T extends Syncable> {
                 // update the object's ghost
                 object.setGhost(ghost);
             } catch (BucketObjectMissingException e) {
-                throw(new RemoteChangeInvalidException(e));
+                throw(new RemoteChangeInvalidException(remoteChange, e));
             }
         } else {
             ghostStore.deleteGhost(this, remoteChange.getKey());
@@ -677,7 +693,7 @@ public class Bucket<T extends Syncable> {
                 removeObjectWithKey(change.getKey());
                 ghostStore.deleteGhost(this, change.getKey());
             } catch (BucketObjectMissingException e) {
-                throw(new RemoteChangeInvalidException(e));
+                throw(new RemoteChangeInvalidException(change, e));
             }
         } else {
             try {
@@ -704,7 +720,7 @@ public class Bucket<T extends Syncable> {
                 }
             } catch(SimperiumException e) {
                 Logger.log(TAG, String.format("Unable to apply remote change %s", change), e);
-                throw(new RemoteChangeInvalidException(e));
+                throw(new RemoteChangeInvalidException(change, e));
             }
         }
         setChangeVersion(change.getChangeVersion());

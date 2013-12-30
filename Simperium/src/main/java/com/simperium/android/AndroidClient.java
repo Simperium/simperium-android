@@ -71,7 +71,7 @@ public class AndroidClient implements ClientFactory {
         }
 
         if (sessionToken == null) {
-            sessionToken = Uuid.uuid().substring(0,6);
+            sessionToken = Uuid.uuid(6);
             preferences.edit().putString(SESSION_ID_PREFERENCE, sessionToken).apply();
         }
 

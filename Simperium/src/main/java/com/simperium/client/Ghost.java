@@ -2,6 +2,8 @@ package com.simperium.client;
 
 import org.json.JSONObject;
 
+import java.util.Locale;
+
 public class Ghost implements Diffable {
 
     private String key;
@@ -29,9 +31,9 @@ public class Ghost implements Diffable {
         return properties;
     }
     public String getVersionId(){
-        return String.format("%s.%d", key, version);
+        return String.format(Locale.US, "%s.%d", key, version);
     }
     public String toString(){
-        return String.format("Ghost %s", getVersionId());
+        return String.format(Locale.US, "Ghost %s", getVersionId());
     }
 }

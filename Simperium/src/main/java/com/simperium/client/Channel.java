@@ -8,10 +8,6 @@
  * 
  * To get messages into a Channel, Channel.receiveMessage receives a Simperium
  * websocket API message stripped of the channel ID prefix.
- * 
- * TODO: instead of notifying the bucket about each individual item, there should be
- * a single event for when there's a "re-index" or after performing all changes in a
- * change operation.
  *
  */
 package com.simperium.client;
@@ -41,18 +37,14 @@ import java.util.concurrent.Executor;
 
 public class Channel implements Bucket.Channel {
 
-    public static class ChangeNotSentException extends SimperiumException {
-
-        final Change change;
+    public static class ChangeNotSentException extends ChangeException {
 
         public ChangeNotSentException(Change change, String message) {
-            super(message);
-            this.change = change;
+            super(change, message);
         }
 
         public ChangeNotSentException(Change change, Throwable cause) {
-            super(cause);
-            this.change = change;
+            super(change, cause);
         }
 
     }
@@ -253,13 +245,60 @@ public class Channel implements Bucket.Channel {
         return bucket.acknowledgeChange(remoteChange, acknowledgedChange);
     }
 
+    /**
+     * Handle errors from simperium service
+     * see <a href="https://gist.github.com/beaucollins/6998802#error-responses">Error Responses</a>
+     */
     protected void onError(RemoteChange remoteChange, Change erroredChange){
-        Logger.log(TAG, String.format("Received error from service %s", remoteChange));
-    }
+        RemoteChange.ResponseCode errorCode = remoteChange.getResponseCode();
+        switch (errorCode) {
+            case INVALID_VERSION:
+                // Bad version, client referencing a wrong or missing sv. This is a potential data
+                // loss scenario: server may not have enough history to resolve conflicts. Client
+                // has two options:
+                //
+                // - re-load the entity (via e command) then overwrite the local changes
+                // - send a change with full object (which will overwrite remote changes, history
+                //   will still be available) referencing the current sv
+                break;
+            case INVALID_DIFF:
+                // Server could not apply diff, resend the change with additional parameter d that
+                // contains the whole JSON data object. Current known scenarios where this could
+                // happen:
+                //
+                // - Client generated an invalid diff (some old versions of iOS library)
+                // - Client is sending string diffs and using a different encoding than server
+            case UNAUTHORIZED:
+                // Grab a new authentication token (or possible you just don't
+                // have access to that document).
 
-    protected Ghost onRemote(RemoteChange remoteChange)
-    throws RemoteChangeInvalidException {
-        return bucket.applyRemoteChange(remoteChange);
+                // TODO: update unauthorized state for User
+                break;
+            case NOT_FOUND:
+                // Client is referencing an object that does not exist on server.
+                // If client is insistent, then changing the diff such that it is creating the
+                // object instead should make this succeed.
+                // TODO: Allow clients to handle NOT_FOUND
+                break;
+            case INVALID_ID:
+                // If it was an invalid id, changing the id could make the call succeed. If it was a
+                // schema violation, then correction will depend on the schema. If client cannot
+                // tell, then do not re-send since unless something changes, 400 will be sent every
+                // time.
+                // TODO: Allow client implemenations to handle INVALID_ID
+            case EXCEEDS_MAX_SIZE:
+                // Nothing to do except reduce the size of the object
+                // TODO: Allow client implementations to handle EXCEEDS_MAX_SIZE
+            case DUPLICATE_CHANGE:
+                // Duplicate change, client can safely throw away the change it is attempting to send
+            case EMPTY_CHANGE:
+                // Empty change, nothing was changed on the server, client can ignore (and stop
+                // sending change).
+            case OK:
+                // noop
+                break;
+        }
+        Logger.log(TAG, String.format("Received error from service %s", remoteChange));
     }
 
     @Override
@@ -369,12 +408,33 @@ public class Channel implements Bucket.Channel {
 
     private static final String ENTITY_DATA_KEY = "data";
     private void handleVersionResponse(String versionData){
-        // versionData will be: key.version\n{"data":ENTITY}
-        // we need to parse out the key and version, parse the json payload and
-        // retrieve the data
-        if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
-            Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
+
+        try {
+            // versionData will be: key.version\n{"data":ENTITY}
+            ObjectVersionData objectVersion = ObjectVersionData.parseString(versionData);
+
+            if (indexProcessor == null)
+                throw new ObjectVersionUnexpectedException(objectVersion);
+
+            indexProcessor.addObjectData(objectVersion);
+
+        } catch (ObjectVersionUnexpectedException e) {
+
+            ObjectVersionData data = e.versionData;
+
+            Ghost ghost = new Ghost(data.getKey(), data.getVersion(),
+                data.getData());
+
+            bucket.updateGhost(ghost, changeProcessor);
+
+        } catch (ObjectVersionUnknownException e) {
+            log(LOG_DEBUG, String.format(Locale.US, "Object version does not exist %s", e.version));
+        } catch (ObjectVersionDataInvalidException e) {
+            log(LOG_DEBUG, String.format(Locale.US, "Object version JSON data malformed %s", e.version));
+        } catch (ObjectVersionParseException e) {
+            log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
+
 
     }
 
@@ -603,18 +663,24 @@ public class Channel implements Bucket.Channel {
     public static class MessageEvent extends EventObject {
 
         public String message;
+        public final Channel channel;
 
-        public MessageEvent(Channel source, String message){
+        public MessageEvent(Channel source, String message) {
             super(source);
             this.message = message;
+            this.channel = source;
         }
 
-        public String getMessage(){
+        public String getMessage() {
             return message;
         }
 
-        public String toString(){
+        public String toString() {
             return getMessage();
+        }
+
+        public Channel getChannel() {
+            return this.channel;
         }
 
     }
@@ -674,7 +740,7 @@ public class Channel implements Bucket.Channel {
         private String mark = "";
         private Integer limit = INDEX_PAGE_SIZE;
 
-        public IndexQuery(){};
+        public IndexQuery(){}
 
         public IndexQuery(String mark){
             this(mark, INDEX_PAGE_SIZE);
@@ -700,8 +766,9 @@ public class Channel implements Bucket.Channel {
     }
 
     public static class ObjectVersion {
-        private String key;
-        private Integer version;
+
+        public final String key;
+        public final Integer version;
 
         public ObjectVersion(String key, Integer version){
             this.key = key;
@@ -717,20 +784,125 @@ public class Channel implements Bucket.Channel {
         }
 
         public String toString(){
-            return String.format("%s.%d", key, version);
+            return String.format(Locale.US, "%s.%d", key, version);
         }
 
         public static ObjectVersion parseString(String versionString)
-        throws java.text.ParseException {
+        throws ObjectVersionParseException {
             int lastDot = versionString.lastIndexOf(".");
             if (lastDot == -1) {
-                throw new java.text.ParseException(String.format("Missing version string: %s", versionString), versionString.length());
+                throw new ObjectVersionParseException(versionString);
             }
             String key = versionString.substring(0, lastDot);
             String version = versionString.substring(lastDot + 1);
             return new ObjectVersion(key, Integer.parseInt(version));
         }
     }
+
+    public static class ObjectVersionData {
+
+        public final ObjectVersion version;
+        public final JSONObject data;
+
+        public ObjectVersionData(ObjectVersion version, JSONObject data) {
+            this.version = version;
+            this.data = data;
+        }
+
+        public String toString() {
+            return this.version.toString();
+        }
+
+        public String getKey() {
+            return this.version.key;
+        }
+
+        public Integer getVersion() {
+            return this.version.version;
+        }
+
+        public JSONObject getData(){
+            return this.data;
+        }
+
+        public static ObjectVersionData parseString(String versionString)
+        throws ObjectVersionParseException, ObjectVersionUnknownException,
+        ObjectVersionDataInvalidException {
+
+            String[] objectParts = versionString.split("\n");
+            String prefix = objectParts[0];
+            String payload = objectParts[1];
+
+            ObjectVersion objectVersion;
+
+            objectVersion = ObjectVersion.parseString(prefix);
+
+            if (payload.equals(RESPONSE_UNKNOWN)) {
+                throw new ObjectVersionUnknownException(objectVersion);
+            }
+
+            try {
+                JSONObject data = new JSONObject(payload);
+                return new ObjectVersionData(objectVersion, data.getJSONObject(ENTITY_DATA_KEY));
+            } catch (JSONException e) {
+                throw new ObjectVersionDataInvalidException(objectVersion, e);
+            }
+
+        }
+
+    }
+
+    /**
+     * Thrown when e:id.v\n? received
+     */
+    public static class ObjectVersionUnknownException extends SimperiumException {
+
+        public final ObjectVersion version;
+
+        public ObjectVersionUnknownException(ObjectVersion version) {
+            super();
+            this.version = version;
+        }
+
+    }
+
+    /**
+     * Unable to parse the object key and version number from e:key.v
+     */
+    public static class ObjectVersionParseException extends SimperiumException {
+
+        public final String versionString;
+
+        public ObjectVersionParseException(String versionString) {
+            super();
+            this.versionString = versionString;
+        }
+
+    }
+
+    /**
+     * Invalid data received for e:key.v\nJSON
+     */
+    public static class ObjectVersionDataInvalidException extends SimperiumException {
+
+        public final ObjectVersion version;
+        public ObjectVersionDataInvalidException(ObjectVersion version, Throwable cause) {
+            super(cause);
+            this.version = version;
+        }
+
+    }
+
+    public static class ObjectVersionUnexpectedException extends SimperiumException {
+        public final ObjectVersionData versionData;
+
+        public ObjectVersionUnexpectedException(ObjectVersionData versionData) {
+            super();
+            this.versionData = versionData;
+        }
+
+    }
+
     private interface IndexProcessorListener {
         
         void onComplete(String cv);
@@ -764,39 +936,18 @@ public class Channel implements Bucket.Channel {
             this.listener = listener;
         }
 
-        public Boolean addObjectData(String versionData){
+        /**
+         * Receive an object's version data and store it. Send the request for the
+         * next object.
+         */
+        public void addObjectData(ObjectVersionData objectVersion)
+        throws ObjectVersionUnexpectedException {
 
-            String[] objectParts = versionData.split("\n");
-            String prefix = objectParts[0];
-            String payload = objectParts[1];
-
-            ObjectVersion objectVersion;
-            try {
-                objectVersion = ObjectVersion.parseString(prefix);
-            } catch (java.text.ParseException e) {
-                Logger.log(TAG, "Failed to add object data", e);
-                return false;
-            }
-            if (payload.equals(RESPONSE_UNKNOWN)) {
-                Logger.log(TAG, String.format("Object unkown to simperium: %s", objectVersion));
-                return false;
-            }
-
-            if (!queue.remove(objectVersion.toString())) {
-                return false;
-            }
-
-            JSONObject data = null;
-            try {
-                JSONObject payloadJSON = new JSONObject(payload);
-                data = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
-            } catch (JSONException e) {
-                Logger.log(TAG, "Failed to parse object JSON", e);
-                return false;
-            }
+            if (!queue.remove(objectVersion.toString()))
+                throw new ObjectVersionUnexpectedException(objectVersion);
 
             // build the ghost and update
-            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), data);
+            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), objectVersion.getData());
             bucket.addObjectWithGhost(ghost);
             indexedCount ++;
 
@@ -805,7 +956,6 @@ public class Channel implements Bucket.Channel {
                 notifyProgress();
             }
             next();
-            return true;
         }
 
         public void start(JSONObject indexPage){
@@ -820,7 +970,7 @@ public class Channel implements Bucket.Channel {
                 ObjectVersion version;
                 try {
                     version = ObjectVersion.parseString(versionString);
-                } catch (java.text.ParseException e) {
+                } catch (ObjectVersionParseException e) {
                     Logger.log(TAG, "Failed to parse version string, skipping", e);
                     queue.remove(versionString);
                     next();
@@ -956,7 +1106,6 @@ public class Channel implements Bucket.Channel {
         private Timer retryTimer;
         
         private final Object lock = new Object();
-        public Object runLock = new Object();
 
         public ChangeProcessor() {
             restore();
@@ -1089,7 +1238,7 @@ public class Channel implements Bucket.Channel {
 
                     if(processLocalChange()){
                         executor.execute(this);
-                    };
+                    }
 
                     return;
                 }
@@ -1120,7 +1269,6 @@ public class Channel implements Bucket.Channel {
                 RemoteChange remoteChange = RemoteChange.buildFromMap(remoteJSON);
                 log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
 
-                boolean acknowledged = false;
                 Change change = pendingChanges.get(remoteChange.getKey());
 
                 // one of our changes is being acknowledged
@@ -1161,11 +1309,14 @@ public class Channel implements Bucket.Channel {
                         log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
                     } else {
                         try {
-                            onRemote(remoteChange);
+                            bucket.applyRemoteChange(remoteChange);
                             Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
                         } catch (RemoteChangeInvalidException e) {
                             Logger.log(TAG, "Remote change could not be applied", e);
                             log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+                            // request the entire object
+                            ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
+                            sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
                         }
                     }
                 }
@@ -1182,7 +1333,6 @@ public class Channel implements Bucket.Channel {
 
             } catch (JSONException e) {
                 Logger.log(TAG, "Failed to build remote change", e);
-                return;
             }
 
         }
@@ -1261,31 +1411,13 @@ public class Channel implements Bucket.Channel {
             }
 
             try {
-                JSONObject map = new JSONObject();
-                map.put(Change.ID_KEY, change.getKey());
-                map.put(Change.CHANGE_ID_KEY, change.getChangeId());
-                map.put(JSONDiff.DIFF_OPERATION_KEY, change.getOperation());
-
-                Integer version = change.getVersion();
-                if (version != null && version > 0) {
-                    map.put(Change.SOURCE_VERSION_KEY, version);
-                }
-
-                if (change.requiresDiff()) {
-                    JSONObject diff = change.getDiff(); // jsondiff.diff(change.getOrigin(), change.getTarget());
-                    if (diff.length() == 0) {
-                        Logger.log(TAG, String.format("Discarding empty change %s diff: %s", change.getChangeId(), diff));
-                        change.setComplete();
-                        throw new ChangeNotSentException(change, "Change is empty");
-                    }
-                    map.put(JSONDiff.DIFF_VALUE_KEY, diff.get(JSONDiff.DIFF_VALUE_KEY));
-                }
-                //  JSONObject changeJSON = Channel.serializeJSON(map);
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
-                sendMessage(String.format("c:%s", map.toString()));
+                sendMessage(String.format("c:%s", change.toJSONObject()));
                 serializer.onSendChange(change);
                 change.setSent();
-            } catch (JSONException e) {
+            } catch (ChangeEmptyException e) {
+                change.setComplete();
+            } catch (ChangeException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);
             }

@@ -1,5 +1,6 @@
 package com.simperium.test;
 
+import java.util.Locale;
 import java.util.concurrent.Executor;
 
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public class MockExecutor {
         @Override
         public String toString(){
             String status = mPaused ? "paused" : "playing";
-            return String.format("MockExecutor.Playable %s (pending: %d)", status, pending.size());
+            return String.format(Locale.US, "MockExecutor.Playable %s (pending: %d)", status, pending.size());
         }
 
         @Override
@@ -38,7 +39,7 @@ public class MockExecutor {
             if (!mPaused) {
                 runnable.run();
             } else {
-                Log.d(TAG, String.format("Queuing runnable %s", runnable));
+                Log.d(TAG, String.format(Locale.US, "Queuing runnable %s", runnable));
                 pending.add(runnable);
             }
         }

@@ -1,12 +1,18 @@
 package com.simperium;
 
 import com.simperium.Version;
+
 import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.User;
+
 import com.simperium.models.Note;
+
+import com.simperium.util.RemoteChangesUtil;
+import com.simperium.util.ChannelUtil;
+
 import com.simperium.test.MockBucket;
 import com.simperium.test.MockChannelListener;
 import com.simperium.test.MockChannelSerializer;
@@ -489,12 +495,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         assertTrue("Bucket should have an instance of mock1", mBucket.containsKey("mock1"));
         // receive a remotely initiated delete operation for mock1
-        JSONObject change = new JSONObject();
-        change.put("ccids", new JSONArray("[\"random-ccid\"]"));
-        change.put("clientid", "otherclient");
-        change.put("cv", "new-cv");
-        change.put("o", "-");
-        change.put("id", "mock1");
+        JSONObject change = RemoteChangesUtil.deleteOperation("mock1");
         mChannel.receiveMessage(String.format("c:[%s]", change));
 
         // pause bucket execution to simulate concurrent threads
@@ -510,6 +511,91 @@ public class ChannelTest extends BaseSimperiumTest {
 
         assertNull(mListener.lastMessage);
 
+    }
+
+    /**
+     * If we receive a remote change for an object version we don't have,
+     * request the entire object.
+     */
+    public void testRequestObjectForUnseenVersion()
+    throws Exception {
+
+        startWithEmptyIndex();
+
+        // receive a change for an object we don't have
+        JSONObject diff = new JSONObject("{\"title\":{\"o\":\"r\",\"v\":\"My hovercraft is full of eels\"}}");
+        ChannelUtil.sendModifyOperation(mChannel, "unknown-key", 5, diff);
+
+        mExecutor.run();
+
+        // the channel should have requested unkown-key.6
+        assertEquals("e:unknown-key.6", mListener.lastMessage.toString());
+
+    }
+
+    /**
+     * If we receive a remote change we can't apply, request the entire object
+     */
+        public void testRequestObjectForInvalidChange()
+        throws Exception {
+
+            Map objects = new HashMap();
+            objects.put("mock.4", "{\"data\":{\"title\":\"Hello world.\"}}");
+            startWithIndex("mockcv", objects);
+
+            // diff cannot be applied
+            JSONObject diff = new JSONObject("{\"title\":{\"o\":\"d\",\"v\":\"=14\\t-1\\t+wa\\t=10\"}}");
+            ChannelUtil.sendModifyOperation(mChannel, "mock", 4, diff);
+
+            mExecutor.run();
+
+            // the channel should have requested unkown-key.5
+            assertEquals("e:mock.5", mListener.lastMessage.toString());
+
+        }
+
+
+    /**
+     * Handle receiving an entity when index has already been downloaded
+     */
+    public void testReceiveObjectDataWithExistingIndex()
+    throws Exception {
+
+        startWithEmptyIndex();
+
+        JSONObject data = new JSONObject();
+        data.put("title", "my hovercraft is full of eels");
+        ChannelUtil.sendObject(mChannel, "object", 5, data);
+
+        mExecutor.run();
+
+        Note note = mBucket.get("object");
+
+        assertEquals(5, (int) note.getVersion());
+        assertEquals("my hovercraft is full of eels", note.getTitle());
+
+    }
+
+    /**
+     * Receive full object data for an object we already have
+     */
+    public void testReceiveObjectDataWithExistingObject()
+    throws Exception {
+
+        Map<String,String> index = new HashMap<String,String>(1);
+        index.put("object.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"my hovercraft was full of eels\"}}");
+        startWithIndex("version-x", index);
+
+        JSONObject data = new JSONObject();
+        data.put("title", "my hovercraft is full of eels");
+        ChannelUtil.sendObject(mChannel, "object", 5, data);
+
+        mExecutor.run();
+
+        Note note = mBucket.get("object");
+
+        assertEquals(5, (int) note.getVersion());
+        assertEquals("my hovercraft is full of eels", note.getTitle());
 
     }
 
