@@ -413,12 +413,33 @@ public class Channel implements Bucket.Channel {
 
     private static final String ENTITY_DATA_KEY = "data";
     private void handleVersionResponse(String versionData){
-        // versionData will be: key.version\n{"data":ENTITY}
-        // we need to parse out the key and version, parse the json payload and
-        // retrieve the data
-        if (indexProcessor == null || !indexProcessor.addObjectData(versionData)) {
-            Logger.log(TAG, String.format("Unkown Object for index: %s", versionData));
+
+        try {
+            // versionData will be: key.version\n{"data":ENTITY}
+            ObjectVersionData objectVersion = ObjectVersionData.parseString(versionData);
+
+            if (indexProcessor == null)
+                throw new ObjectVersionUnexpectedException(objectVersion);
+
+            indexProcessor.addObjectData(objectVersion);
+
+        } catch (ObjectVersionUnexpectedException e) {
+
+            ObjectVersionData data = e.versionData;
+
+            Ghost ghost = new Ghost(data.getKey(), data.getVersion(),
+                data.getData());
+
+            bucket.updateGhost(ghost, changeProcessor);
+
+        } catch (ObjectVersionUnknownException e) {
+            log(LOG_DEBUG, String.format(Locale.US, "Object version does not exist %s", e.version));
+        } catch (ObjectVersionDataInvalidException e) {
+            log(LOG_DEBUG, String.format(Locale.US, "Object version JSON data malformed %s", e.version));
+        } catch (ObjectVersionParseException e) {
+            log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
+
 
     }
 
@@ -750,8 +771,9 @@ public class Channel implements Bucket.Channel {
     }
 
     public static class ObjectVersion {
-        private String key;
-        private Integer version;
+
+        public final String key;
+        public final Integer version;
 
         public ObjectVersion(String key, Integer version){
             this.key = key;
@@ -771,16 +793,121 @@ public class Channel implements Bucket.Channel {
         }
 
         public static ObjectVersion parseString(String versionString)
-        throws java.text.ParseException {
+        throws ObjectVersionParseException {
             int lastDot = versionString.lastIndexOf(".");
             if (lastDot == -1) {
-                throw new java.text.ParseException(String.format("Missing version string: %s", versionString), versionString.length());
+                throw new ObjectVersionParseException(versionString);
             }
             String key = versionString.substring(0, lastDot);
             String version = versionString.substring(lastDot + 1);
             return new ObjectVersion(key, Integer.parseInt(version));
         }
     }
+
+    public static class ObjectVersionData {
+
+        public final ObjectVersion version;
+        public final JSONObject data;
+
+        public ObjectVersionData(ObjectVersion version, JSONObject data) {
+            this.version = version;
+            this.data = data;
+        }
+
+        public String toString() {
+            return this.version.toString();
+        }
+
+        public String getKey() {
+            return this.version.key;
+        }
+
+        public Integer getVersion() {
+            return this.version.version;
+        }
+
+        public JSONObject getData(){
+            return this.data;
+        }
+
+        public static ObjectVersionData parseString(String versionString)
+        throws ObjectVersionParseException, ObjectVersionUnknownException,
+        ObjectVersionDataInvalidException {
+
+            String[] objectParts = versionString.split("\n");
+            String prefix = objectParts[0];
+            String payload = objectParts[1];
+
+            ObjectVersion objectVersion;
+
+            objectVersion = ObjectVersion.parseString(prefix);
+
+            if (payload.equals(RESPONSE_UNKNOWN)) {
+                throw new ObjectVersionUnknownException(objectVersion);
+            }
+
+            try {
+                JSONObject data = new JSONObject(payload);
+                return new ObjectVersionData(objectVersion, data.getJSONObject(ENTITY_DATA_KEY));
+            } catch (JSONException e) {
+                throw new ObjectVersionDataInvalidException(objectVersion, e);
+            }
+
+        }
+
+    }
+
+    /**
+     * Thrown when e:id.v\n? received
+     */
+    public static class ObjectVersionUnknownException extends SimperiumException {
+
+        public final ObjectVersion version;
+
+        public ObjectVersionUnknownException(ObjectVersion version) {
+            super();
+            this.version = version;
+        }
+
+    }
+
+    /**
+     * Unable to parse the object key and version number from e:key.v
+     */
+    public static class ObjectVersionParseException extends SimperiumException {
+
+        public final String versionString;
+
+        public ObjectVersionParseException(String versionString) {
+            super();
+            this.versionString = versionString;
+        }
+
+    }
+
+    /**
+     * Invalid data received for e:key.v\nJSON
+     */
+    public static class ObjectVersionDataInvalidException extends SimperiumException {
+
+        public final ObjectVersion version;
+        public ObjectVersionDataInvalidException(ObjectVersion version, Throwable cause) {
+            super(cause);
+            this.version = version;
+        }
+
+    }
+
+    public static class ObjectVersionUnexpectedException extends SimperiumException {
+        public final ObjectVersionData versionData;
+
+        public ObjectVersionUnexpectedException(ObjectVersionData versionData) {
+            super();
+            this.versionData = versionData;
+        }
+
+    }
+
     private interface IndexProcessorListener {
         
         void onComplete(String cv);
@@ -814,39 +941,18 @@ public class Channel implements Bucket.Channel {
             this.listener = listener;
         }
 
-        public Boolean addObjectData(String versionData){
+        /**
+         * Receive an object's version data and store it. Send the request for the
+         * next object.
+         */
+        public void addObjectData(ObjectVersionData objectVersion)
+        throws ObjectVersionUnexpectedException {
 
-            String[] objectParts = versionData.split("\n");
-            String prefix = objectParts[0];
-            String payload = objectParts[1];
-
-            ObjectVersion objectVersion;
-            try {
-                objectVersion = ObjectVersion.parseString(prefix);
-            } catch (java.text.ParseException e) {
-                Logger.log(TAG, "Failed to add object data", e);
-                return false;
-            }
-            if (payload.equals(RESPONSE_UNKNOWN)) {
-                Logger.log(TAG, String.format("Object unkown to simperium: %s", objectVersion));
-                return false;
-            }
-
-            if (!queue.remove(objectVersion.toString())) {
-                return false;
-            }
-
-            JSONObject data = null;
-            try {
-                JSONObject payloadJSON = new JSONObject(payload);
-                data = payloadJSON.getJSONObject(ENTITY_DATA_KEY);
-            } catch (JSONException e) {
-                Logger.log(TAG, "Failed to parse object JSON", e);
-                return false;
-            }
+            if (!queue.remove(objectVersion.toString()))
+                throw new ObjectVersionUnexpectedException(objectVersion);
 
             // build the ghost and update
-            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), data);
+            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), objectVersion.getData());
             bucket.addObjectWithGhost(ghost);
             indexedCount ++;
 
@@ -855,7 +961,6 @@ public class Channel implements Bucket.Channel {
                 notifyProgress();
             }
             next();
-            return true;
         }
 
         public void start(JSONObject indexPage){
@@ -870,7 +975,7 @@ public class Channel implements Bucket.Channel {
                 ObjectVersion version;
                 try {
                     version = ObjectVersion.parseString(versionString);
-                } catch (java.text.ParseException e) {
+                } catch (ObjectVersionParseException e) {
                     Logger.log(TAG, "Failed to parse version string, skipping", e);
                     queue.remove(versionString);
                     next();
@@ -1214,6 +1319,9 @@ public class Channel implements Bucket.Channel {
                         } catch (RemoteChangeInvalidException e) {
                             Logger.log(TAG, "Remote change could not be applied", e);
                             log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+                            // request the entire object
+                            ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
+                            sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
                         }
                     }
                 }
