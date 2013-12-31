@@ -651,6 +651,38 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * https://github.com/Simperium/simperium-android/issues/67
+     */
+    public void testMergeRemoteWithLocalModifications()
+    throws Exception {
+
+        mListener.autoAcknowledge = true;
+
+        Map<String,String> map = new HashMap<String,String>();
+        map.put("object.5", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"Hello world\", \"content\":\"Line 1\\n\"}}");
+        startWithIndex(map);
+
+        Note note = mBucket.get("object");
+
+        JSONObject remote = new JSONObject(note.getDiffableValue().toString());
+        remote.put("content", "Line 1\nLine 2");
+
+        // queue a remote change
+        ChannelUtil.sendRemoteChange(mChannel, note, remote);
+
+        // modify the note locally
+        note.setContent("Line 1\nLine 3\n");
+
+        // process the remote changes
+        mExecutor.run();
+
+        // content should now have a merged content field
+        assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
+
+
+    }
+
+    /**
      * Get's the channel into a started state
      */
     protected void start(){
