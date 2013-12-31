@@ -27,6 +27,7 @@ public class MockChannelListener implements Channel.OnMessageListener {
     public Channel.MessageEvent lastMessage;
     public Map<String,String> indexData = new HashMap<String,String>();
     public JSONArray indexVersions;
+    public Integer replyWithError = null;
 
     public void sendEmptyIndex(Channel channel){
         channel.receiveMessage("i:{\"index\":[]}");
@@ -65,8 +66,15 @@ public class MockChannelListener implements Channel.OnMessageListener {
             }
         }
 
-        if (autoAcknowledge == true && message.isCommand(Channel.COMMAND_CHANGE)) {
-            ChannelUtil.acknowledgeChange(event);
+        if (message.isCommand(Channel.COMMAND_CHANGE)) {
+
+            if (replyWithError != null) {
+                ChannelUtil.replyWithError(event, replyWithError);
+                replyWithError = 409;
+            } else if (autoAcknowledge) {
+                ChannelUtil.acknowledgeChange(event);
+            }
+
         }
 
         lastMessage = event;
