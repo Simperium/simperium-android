@@ -491,7 +491,7 @@ public class ChannelTest extends BaseSimperiumTest {
         Map objects = new HashMap();
         objects.put("mock1.1", "{\"data\":{\"title\":\"1.1\"}}");
 
-        startWithIndex("mock-cv", objects);
+        startWithIndex(objects);
 
         assertTrue("Bucket should have an instance of mock1", mBucket.containsKey("mock1"));
         // receive a remotely initiated delete operation for mock1
@@ -584,7 +584,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         Map<String,String> index = new HashMap<String,String>(1);
         index.put("object.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"my hovercraft was full of eels\"}}");
-        startWithIndex("version-x", index);
+        startWithIndex(index);
 
         JSONObject data = new JSONObject();
         data.put("title", "my hovercraft is full of eels");
@@ -663,6 +663,11 @@ public class ChannelTest extends BaseSimperiumTest {
     protected void startWithEmptyIndex() {
         start();
         sendEmptyIndex();
+    }
+
+    protected void startWithIndex(Map<String,String> objects)
+    throws JSONException {
+        startWithIndex("mock-cv", objects);
     }
 
     protected void startWithIndex(String cv, Map<String,String> objects)
