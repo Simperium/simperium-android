@@ -10,6 +10,34 @@ import java.util.Locale;
 
 public class ChannelUtil {
 
+    public static JSONObject parseChangeData(Channel.MessageEvent event)
+    throws JSONException {
+        if (event.message.substring(0,2).equals("c:")) {
+            JSONObject change = new JSONObject(event.message.substring(2));
+            return change;
+        }
+
+        throw new RuntimeException("Not a change message: " + event.message);
+    }
+
+    public static void replyWithError(Channel.MessageEvent event, Integer error) {
+
+        try {
+            JSONObject change = parseChangeData(event);
+            JSONObject reply = new JSONObject();
+            reply.put("ccids", new JSONArray("[\"" + change.getString("ccid") + "\"]"));
+            reply.put("id", change.getString("id"));
+            reply.put("clientid", event.channel.getSessionId());
+            reply.put("error", error);
+
+            event.channel.receiveMessage("c:[" + reply.toString() + "]");
+
+        } catch (JSONException e) {
+            throw new RuntimeException(String.format("Couldn't reply with error %s", event.message), e);
+        }
+
+    }
+
     public static void acknowledgeChange(Channel.MessageEvent event) {
 
         try {
