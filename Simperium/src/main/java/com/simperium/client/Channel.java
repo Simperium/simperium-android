@@ -670,7 +670,7 @@ public class Channel implements Bucket.Channel {
 
     public static class MessageEvent extends EventObject {
 
-        public String message;
+        public final String message;
         public final Channel channel;
 
         public MessageEvent(Channel source, String message) {
