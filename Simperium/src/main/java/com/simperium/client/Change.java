@@ -28,6 +28,16 @@ public class Change {
         public void onComplete(Change change);
     }
 
+    public static final String OPERATION_MODIFY   = "M";
+    public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
+    public static final String ID_KEY             = "id";
+    public static final String CHANGE_ID_KEY      = "ccid";
+    public static final String SOURCE_VERSION_KEY = "sv";
+    public static final String TARGET_KEY         = "target";
+    public static final String ORIGIN_KEY         = "origin";
+    public static final String OPERATION_KEY      = "o";
+    public static final String OBJECT_DATA_KEY    = "d";
+
     private String operation;
     private String key, bucketName;
     private Integer version;
@@ -40,16 +50,8 @@ public class Change {
     private OnAcknowledgedListener acknowledgedListener;
     private Change compressed;
     private JSONDiff jsondiff = new JSONDiff();
-
-    public static final String OPERATION_MODIFY   = "M";
-    public static final String OPERATION_REMOVE   = JSONDiff.OPERATION_REMOVE;
-    public static final String ID_KEY             = "id";
-    public static final String CHANGE_ID_KEY      = "ccid";
-    public static final String SOURCE_VERSION_KEY = "sv";
-    public static final String TARGET_KEY         = "target";
-    public static final String ORIGIN_KEY         = "origin";
-    public static final String OPERATION_KEY      = "o";
-
+    private boolean sendFullObject = false;
+    private TimerTask retryTimer;
 
     /**
      * Constructs a change object from a map of values
@@ -98,6 +100,8 @@ public class Change {
             this.origin = JSONDiff.deepCopy(origin);
             this.target = JSONDiff.deepCopy(target);
         }
+
+        this.resetTimer();
     }
 
     public boolean isModifyOperation(){
@@ -123,10 +127,10 @@ public class Change {
     public boolean isAcknowledged(){
         return acknowledged;
     }
-    
+
     protected void setAcknowledged(){
         acknowledged = true;
-        stopRetryTimer();
+        resetTimer();
         if (acknowledgedListener != null) {
             acknowledgedListener.onAcknowledged(this);
         }
@@ -243,8 +247,20 @@ public class Change {
         retryListener = listener;
     }
 
-    protected void stopRetryTimer(){
-        retryTimer.cancel();
+    protected void resetTimer(){
+        if (retryTimer != null) {
+            retryTimer.cancel();
+        }
+
+        retryTimer = new TimerTask(){
+            @Override
+            public void run(){
+                Logger.log("Simperium.Channel", String.format("Retry change: %s", Change.this));
+                if (retryListener != null) {
+                    retryListener.onRetry(Change.this);
+                }
+            }
+        };
     }
 
     protected TimerTask getRetryTimer(){
@@ -276,15 +292,5 @@ public class Change {
         // protected Change(String operation, String key, Integer sourceVersion, Map<String,Object> origin, Map<String,Object> target){
         return new Change(operation, bucketName, key, sourceVersion, origin, target, this);
     }
-    
-    private TimerTask retryTimer = new TimerTask(){
-        @Override
-        public void run(){
-            Logger.log("Simperium.Channel", String.format("Retry change: %s", Change.this));
-            if (retryListener != null) {
-                retryListener.onRetry(Change.this);
-            }
-        }
-    };
 
 }
