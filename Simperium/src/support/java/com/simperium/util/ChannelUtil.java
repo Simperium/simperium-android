@@ -1,5 +1,7 @@
 package com.simperium.util;
 
+import com.simperium.client.Syncable;
+
 import com.simperium.client.Channel;
 
 import org.json.JSONArray;
@@ -18,6 +20,25 @@ public class ChannelUtil {
         }
 
         throw new RuntimeException("Not a change message: " + event.message);
+    }
+
+    /**
+     * Send a remote change message to the channel that ransforms Syncable origin
+     * to contain target representation.
+     * 
+     * Generates a random `cv` and increments the `sv` by one.
+     */
+    public static void sendRemoteChange(Channel channel, Syncable origin, JSONObject target) {
+        try {
+            String id = origin.getSimperiumKey();
+            int version = origin.getVersion();
+            JSONObject diff = JSONDiff.diff(origin.getDiffableValue(), target);
+            JSONObject modify = RemoteChangesUtil.modifyOperation(id, version, diff.getJSONObject("v"));
+
+            channel.receiveMessage("c:[" + modify.toString() + "]");
+        } catch (JSONException e) {
+            throw new RuntimeException("Unable to send remote change", e);
+        }
     }
 
     public static void replyWithError(Channel.MessageEvent event, Integer error) {
