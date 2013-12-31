@@ -600,6 +600,57 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * See https://github.com/Simperium/simperium-android/issues/63
+     */
+    public void testResendChangeWithFullObjectAfterReceiving440()
+    throws Exception {
+
+        // we will be sending a 440 error response
+        mListener.autoAcknowledge = true;
+        mListener.replyWithError = 440;
+
+        startWithEmptyIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("My hovercraft is full of eels");
+        note.save();
+
+        mExecutor.run();
+
+        JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
+        JSONObject data = change.getJSONObject("d");
+
+        assertEquals(note.getDiffableValue().toString(), data.toString());
+
+    }
+
+    /**
+     * See https://github.com/Simperium/simperium-android/issues/63
+     */
+    public void testResendChangeWithFullObjectAfterReceiving405()
+    throws Exception {
+
+        // we will be sending a 440 error response
+        mListener.autoAcknowledge = true;
+        mListener.replyWithError = 405;
+
+        startWithEmptyIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("My hovercraft is full of eels");
+        note.save();
+
+        mExecutor.run();
+
+        JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
+        JSONObject data = change.getJSONObject("d");
+
+        assertEquals(note.getDiffableValue().toString(), data.toString());
+
+
+    }
+
+    /**
      * Get's the channel into a started state
      */
     protected void start(){
