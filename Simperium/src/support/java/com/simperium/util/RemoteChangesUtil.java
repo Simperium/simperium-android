@@ -41,7 +41,7 @@ public class RemoteChangesUtil {
     }
 
     /**
-     * Generate a delete operation for they give object id with a random ccid
+     * Generate a delete operation for the given object id with a random ccid
      * and cv.
      */
     public static JSONObject deleteOperation(String id)
