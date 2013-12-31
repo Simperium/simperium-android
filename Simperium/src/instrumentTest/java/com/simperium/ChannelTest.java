@@ -536,23 +536,23 @@ public class ChannelTest extends BaseSimperiumTest {
     /**
      * If we receive a remote change we can't apply, request the entire object
      */
-        public void testRequestObjectForInvalidChange()
-        throws Exception {
+    public void testRequestObjectForInvalidChange()
+    throws Exception {
 
-            Map objects = new HashMap();
-            objects.put("mock.4", "{\"data\":{\"title\":\"Hello world.\"}}");
-            startWithIndex("mockcv", objects);
+        Map objects = new HashMap();
+        objects.put("mock.4", "{\"data\":{\"title\":\"Hello world.\"}}");
+        startWithIndex(objects);
 
-            // diff cannot be applied
-            JSONObject diff = new JSONObject("{\"title\":{\"o\":\"d\",\"v\":\"=14\\t-1\\t+wa\\t=10\"}}");
-            ChannelUtil.sendModifyOperation(mChannel, "mock", 4, diff);
+        // diff cannot be applied
+        JSONObject diff = new JSONObject("{\"title\":{\"o\":\"d\",\"v\":\"=14\\t-1\\t+wa\\t=10\"}}");
+        ChannelUtil.sendModifyOperation(mChannel, "mock", 4, diff);
 
-            mExecutor.run();
+        mExecutor.run();
 
-            // the channel should have requested unkown-key.5
-            assertEquals("e:mock.5", mListener.lastMessage.toString());
+        // the channel should have requested unkown-key.5
+        assertEquals("e:mock.5", mListener.lastMessage.toString());
 
-        }
+    }
 
 
     /**
