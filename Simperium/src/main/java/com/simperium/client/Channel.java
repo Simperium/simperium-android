@@ -260,6 +260,7 @@ public class Channel implements Bucket.Channel {
                 // - re-load the entity (via e command) then overwrite the local changes
                 // - send a change with full object (which will overwrite remote changes, history
                 //   will still be available) referencing the current sv
+                requeueChangeWithFullObject(erroredChange);
                 break;
             case INVALID_DIFF:
                 // Server could not apply diff, resend the change with additional parameter d that
@@ -268,6 +269,8 @@ public class Channel implements Bucket.Channel {
                 //
                 // - Client generated an invalid diff (some old versions of iOS library)
                 // - Client is sending string diffs and using a different encoding than server
+                requeueChangeWithFullObject(erroredChange);
+                break;
             case UNAUTHORIZED:
                 // Grab a new authentication token (or possible you just don't
                 // have access to that document).
@@ -338,6 +341,11 @@ public class Channel implements Bucket.Channel {
         Change change = new Change(Change.OPERATION_REMOVE, object);
         changeProcessor.addChange(change);
         return change;
+    }
+
+    protected void requeueChangeWithFullObject(Change change) {
+        change.setSendFullObject(true);
+        changeProcessor.addChange(change);
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";

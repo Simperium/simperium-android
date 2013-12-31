@@ -188,6 +188,10 @@ public class Change {
         return version;
     }
 
+    public void setSendFullObject(boolean sendFullObject) {
+        this.sendFullObject = sendFullObject;
+    }
+
     public JSONObject toJSONObject()
     throws ChangeEmptyException, ChangeInvalidException {
         try {
@@ -210,6 +214,10 @@ public class Change {
 
             if (requiresDiff) {
                 json.put(JSONDiff.DIFF_VALUE_KEY, diff.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+            }
+
+            if (sendFullObject) {
+                json.put(OBJECT_DATA_KEY, target);
             }
 
             return json;
