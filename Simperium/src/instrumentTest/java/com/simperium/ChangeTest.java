@@ -21,19 +21,18 @@ public class ChangeTest extends TestCase {
     throws Exception {
 
         mBucket = MockBucket.buildBucket(new Note.Schema());
+        mNote = mBucket.newObject();
+        mNote.setTitle("Hello world");
 
     }
 
     public void testModifyPayload()
     throws Exception {
 
-        Note note = mBucket.newObject();
-        note.setTitle("Hello world");
-
-        Change change = new Change(Change.OPERATION_MODIFY, note);
+        Change change = new Change(Change.OPERATION_MODIFY, mNote);
 
         assertTrue(change.isModifyOperation());
-        assertValidChangeObject(note, change);
+        assertValidChangeObject(mNote, change);
 
         JSONObject diff = change.toJSONObject().getJSONObject("v");
 
@@ -45,15 +44,23 @@ public class ChangeTest extends TestCase {
     public void testDeletePayload()
     throws Exception {
 
-        Note note = mBucket.newObject();
-        note.setTitle("Hello world");
-        note.save();
+        mNote.save();
 
-        Change change = new Change(Change.OPERATION_REMOVE, note);
+        Change change = new Change(Change.OPERATION_REMOVE, mNote);
 
         assertTrue(change.isRemoveOperation());
-        assertValidChangeObject(note, change);
+        assertValidChangeObject(mNote, change);
 
+    }
+
+    public void testChangeWithFullObjectDataPaylaod()
+    throws Exception {
+
+        Change change = new Change(Change.OPERATION_MODIFY, mNote);
+        change.setSendFullObject(true);
+
+        assertValidChangeObject(mNote, change);
+        assertEquals(mNote.getDiffableValue().toString(), change.toJSONObject().getJSONObject("d").toString());
     }
 
     public static void assertValidChangeObject(Syncable object, Change change)
@@ -67,8 +74,12 @@ public class ChangeTest extends TestCase {
 
         if (change.isRemoveOperation()) {
             assertFalse("Remove operation has a diff value", changeJSON.has("v"));
+            assertFalse("Remove operation has sv", changeJSON.has("sv"));
         } else {
             assertNotNull("Modify operation has no patch", changeJSON.optJSONObject("v"));
+            if (object.getVersion() > 0) {
+                assertEquals("Modify change did not have sv", (int) object.getVersion(), (int) changeJSON.getInt("sv"));
+            }
         }
     }
 
