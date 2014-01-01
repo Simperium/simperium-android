@@ -97,9 +97,39 @@ public class RemoteChange {
     }
 
     protected Ghost apply(Syncable object) throws RemoteChangeInvalidException {
-        Ghost gost = apply(object.getGhost());
-        object.setGhost(gost);
-        return gost;
+
+        Ghost currentGhost = object.getGhost();
+
+        if (!isAcknowledged() && isModifyOperation()) {
+            // this wasn't our change, we need to see if there's a potential 3-way merge
+            JSONObject source = currentGhost.getDiffableValue();
+
+            try {
+                JSONObject diff = JSONDiff.diff(source, object.getDiffableValue());
+                if (diff.has(VALUE_KEY)) {
+                    JSONObject o_diff = diff.getJSONObject(VALUE_KEY);
+
+                    // if there is no change, or it's the same change as the remote change then we don't need to do anything to the local instance
+                    if (o_diff.length() > 0 && !JSONDiff.equals(o_diff, value)) {
+
+                        // TODO: transform diff o_diff to be incoming diff + o_diff
+                        JSONObject transformedDiff = JSONDiff.transform(o_diff, value, source);
+                        JSONObject transformedData = JSONDiff.apply(source, transformedDiff);
+
+                        throw new RuntimeException(String.format("Check for three-way merge:\n%s\n%s", transformedData, transformedDiff));
+                    }
+                }
+            } catch (JSONException e) {
+                // TODO: this should be logged not thrown
+                throw new RuntimeException("Could not generate local diff", e);
+            }
+
+        }
+
+        Ghost ghost = apply(currentGhost);
+
+        object.setGhost(ghost);
+        return ghost;
     }
 
     protected Ghost apply(Ghost ghost) throws RemoteChangeInvalidException {
