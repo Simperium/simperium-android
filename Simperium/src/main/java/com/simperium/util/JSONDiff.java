@@ -34,19 +34,13 @@ public class JSONDiff {
 
     private static diff_match_patch dmp = new diff_match_patch();
 
-    public static JSONObject transform(String o_diff, String diff, String source) {
+    public static JSONObject transform(String o_diff, String diff, String source)
+    throws JSONException {
 
         JSONObject transformed = new JSONObject();
 
-        // a_patches = jsondiff.dmp.patch_make sk, jsondiff.dmp.diff_fromDelta sk, aop['v']
-        // b_patches = jsondiff.dmp.patch_make sk, jsondiff.dmp.diff_fromDelta sk, bop['v']
-
         LinkedList<Patch> o_patches = dmp.patch_make(source, dmp.diff_fromDelta(source, o_diff));
         LinkedList<Patch> patches = dmp.patch_make(source, dmp.diff_fromDelta(source, diff));
-
-
-        // b_text = (jsondiff.dmp.patch_apply b_patches, sk)[0]
-        // ab_text = (jsondiff.dmp.patch_apply a_patches, b_text)[0]
 
         String text = (String) dmp.patch_apply(patches, source)[0];
         String combined = (String) dmp.patch_apply(o_patches, text)[0];
@@ -67,18 +61,10 @@ public class JSONDiff {
             return transformed;
         }
 
-        try {
-            transformed.put(DIFF_OPERATION_KEY, OPERATION_DIFF);
-            transformed.put(DIFF_VALUE_KEY, dmp.diff_toDelta(diffs));
-        } catch (JSONException e) {
-            return new JSONObject();
-        }
+        transformed.put(DIFF_OPERATION_KEY, OPERATION_DIFF);
+        transformed.put(DIFF_VALUE_KEY, dmp.diff_toDelta(diffs));
 
         return transformed;
-    }
-
-    public static JSONObject transform(JSONObject o_diff, JSONObject diff, JSONArray source){
-        throw new RuntimeException("Not implemented");
     }
 
     /**
@@ -109,8 +95,8 @@ public class JSONDiff {
             String o_type = o_operation.getString(DIFF_OPERATION_KEY);
             String type = operation.getString(DIFF_OPERATION_KEY);
 
-            Object o_value = o_operation.get(DIFF_VALUE_KEY);
-            Object value = operation.get(DIFF_VALUE_KEY);
+            Object o_value = o_operation.opt(DIFF_VALUE_KEY);
+            Object value = operation.opt(DIFF_VALUE_KEY);
 
             // both are inserts
             if (o_type.equals(OPERATION_INSERT) && type.equals(OPERATION_INSERT)) {
@@ -125,20 +111,22 @@ public class JSONDiff {
                 // we're both removing the same key
                 transformed_diff.remove(key);
             } else if (type.equals(OPERATION_REMOVE) && !o_type.equals(OPERATION_REMOVE)) {
-                // add the value back
-                if (o_type.equals(OPERATION_REPLACE)) {
-                    continue;
-                }
 
+                // they removed a key that we're replacing, insert the key
                 JSONObject restore_op = new JSONObject();
                 restore_op.put(DIFF_OPERATION_KEY, OPERATION_INSERT);
-                restore_op.put(DIFF_VALUE_KEY, apply(source.get(key), (JSONObject) o_value));
+
+                if (o_type.equals(OPERATION_REPLACE)) {
+                    restore_op.put(DIFF_VALUE_KEY, o_value);
+                } else {
+                    // apply the patch for the value to insert
+                    restore_op.put(DIFF_VALUE_KEY, apply(source.get(key), o_operation));
+                }
 
                 transformed_diff.put(key, restore_op);
+
             } else if (o_type.equals(OPERATION_OBJECT) && type.equals(OPERATION_OBJECT)) {
                 operation.put(DIFF_VALUE_KEY, transform((JSONObject)o_value, (JSONObject)value, source.getJSONObject(key)));
-            } else if (o_type.equals(OPERATION_LIST) && type.equals(OPERATION_LIST)) {
-                operation.put(DIFF_VALUE_KEY, transform((JSONObject)o_value, (JSONObject)value, source.getJSONArray(key)));
             } else if (o_type.equals(OPERATION_DIFF) && type.equals(OPERATION_DIFF)) {
                 JSONObject diff_operation = transform((String)o_value, (String)value, source.getString(key));
                 if (diff_operation.length() == 0) {
@@ -147,7 +135,6 @@ public class JSONDiff {
                     transformed_diff.put(key, diff_operation);
                 }
             }
-
 
         }
 
