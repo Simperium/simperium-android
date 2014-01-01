@@ -67,7 +67,7 @@ public class RemoteChangeTest extends TestCase {
 
         boolean caught = false;
         try {
-            change.apply(note);
+            change.apply(note.getGhost());
         } catch (RemoteChangeInvalidException e) {
             caught = true;
             assertEquals("Invalid patch", e.getMessage());
