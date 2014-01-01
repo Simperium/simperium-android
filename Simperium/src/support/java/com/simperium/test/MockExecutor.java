@@ -27,11 +27,18 @@ public class MockExecutor {
 
         final List<Runnable> pending = new ArrayList<Runnable>();
         boolean mPaused = true;
+        String name = "Playable";
+
+        public Playable(){}
+
+        public Playable(String name) {
+            this.name = name;
+        }
 
         @Override
         public String toString(){
             String status = mPaused ? "paused" : "playing";
-            return String.format(Locale.US, "MockExecutor.Playable %s (pending: %d)", status, pending.size());
+            return String.format(Locale.US, "MockExecutor.Playable %s %s (pending: %d)", name, status, pending.size());
         }
 
         @Override
@@ -39,7 +46,7 @@ public class MockExecutor {
             if (!mPaused) {
                 runnable.run();
             } else {
-                Log.d(TAG, String.format(Locale.US, "Queuing runnable %s", runnable));
+                Log.d(TAG, String.format(Locale.US, "%s: Queuing runnable %s", name, runnable));
                 pending.add(runnable);
             }
         }

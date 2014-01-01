@@ -44,8 +44,8 @@ public class ChannelTest extends BaseSimperiumTest {
     protected User.Status mAuthStatus;
 
     final private MockChannelListener mListener = new MockChannelListener();
-    final private MockExecutor.Playable mExecutor = new MockExecutor.Playable();
-    final private MockExecutor.Playable mBucketExecutor = new MockExecutor.Playable();
+    final private MockExecutor.Playable mExecutor = new MockExecutor.Playable("ChannelExecutor");
+    final private MockExecutor.Playable mBucketExecutor = new MockExecutor.Playable("BucketExecutor");
 
     /**
      * Build a Bucket instance that is wired up to a channel using a MockChannelSerializer and a
