@@ -323,6 +323,71 @@ public class JSONDiffTest extends TestCase {
         assertEquals(new JSONObject(), diff);
     }
 
+    public void testTransformStringDiff()
+    throws Exception {
+
+        String origin = "Hello World.";
+        String target = "Hello world. Thanks. Good bye.";
+
+        JSONObject diff_1 = JSONDiff.diff(origin, "Hello world.");
+        JSONObject diff_2 = JSONDiff.diff(origin, "Hello World. Thanks. Good bye.");
+
+        JSONObject transformed = JSONDiff.transform(diff_2.getString("v"), diff_1.getString("v"), origin);
+
+        assertEquals(target, JSONDiff.apply(origin, transformed));
+
+    }
+
+    public void testTransformObjectDiffChangeRemovedKey()
+    throws Exception {
+
+        JSONObject origin = object("a", 1);
+        JSONObject target = object("a", 2);
+
+        target.put("b", 3);
+
+        JSONObject diff_1 = JSONDiff.diff(origin, object("b", 3));
+        JSONObject diff_2 = JSONDiff.diff(origin, target);
+
+        JSONObject transformed = JSONDiff.transform(diff_2.getJSONObject("v"), diff_1.getJSONObject("v"), origin);
+        assertEquals(target, JSONDiff.apply(JSONDiff.apply(origin, diff_1.getJSONObject("v")), transformed));
+
+    }
+
+    public void testTransformBothAdd()
+    throws Exception {
+
+        JSONObject origin = object("a", "b");
+        JSONObject target = object("a", "b", "c", "d", "e", "f");
+
+        JSONObject diff_1 = JSONDiff.diff(origin, object("a", "b", "c", "d"));
+        JSONObject diff_2 = JSONDiff.diff(origin, target);
+
+        JSONObject transformed = JSONDiff.transform(diff_2.getJSONObject("v"), diff_1.getJSONObject("v"), origin);
+
+        // transformed diff should not add c key since diff_1 does
+        assertFalse(diff_2.has("c"));
+        assertEquals(object("a", "b", "e", "f"), JSONDiff.apply(origin, transformed));
+
+    }
+
+    public void testTransformBothRemove()
+    throws Exception {
+
+        JSONObject origin = object("a", "b", "c", "d");
+
+        // remove the a key
+        JSONObject diff_1 = JSONDiff.diff(origin, object("c", "d"));
+        // remove a add e
+        JSONObject diff_2 = JSONDiff.diff(origin, object("c", "d", "e", "f"));
+
+        JSONObject transformed = JSONDiff.transform(diff_2.getJSONObject("v"), diff_1.getJSONObject("v"), origin);
+
+        // transformed diff will not remove a key since diff_1 does
+        assertEquals(object("a", "b", "c", "d", "e", "f"), JSONDiff.apply(origin, transformed));
+
+    }
+
     /*
      * Convenient object building methods for test use
      *
