@@ -87,7 +87,7 @@ public class RemoteChangeTest extends TestCase {
 
         // create a note and sync it
         Note note = notes.newObject("mock");
-        note.setContent("Line 1");
+        note.setContent("Line 1\n");
         note.save();
 
         // create a 3rd party modification
