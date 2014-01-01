@@ -710,9 +710,12 @@ public class Bucket<T extends Syncable> {
                 ghost = change.apply(object);
                 // persist the ghost to storage
                 ghostStore.saveGhost(this, ghost);
+
                 // allow the schema to update the object instance with the new
-                // data
-                schema.updateWithDefaults(object, JSONDiff.deepCopy(ghost.getDiffableValue()));
+                if (isNew) {
+                    schema.updateWithDefaults(object, JSONDiff.deepCopy(ghost.getDiffableValue()));
+                }
+
                 if (isNew) {
                     addObject(object);
                 } else {
