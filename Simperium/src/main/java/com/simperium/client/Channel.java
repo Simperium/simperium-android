@@ -1278,7 +1278,7 @@ public class Channel implements Bucket.Channel {
                 log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
 
                 Change change = pendingChanges.get(remoteChange.getKey());
-
+                Ghost updatedGhost = null;
                 // one of our changes is being acknowledged
                 if (remoteChange.isAcknowledgedBy(change)) {
                     log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
@@ -1291,22 +1291,9 @@ public class Channel implements Bucket.Channel {
                         onError(remoteChange, change);
                     } else {
                         try {
-                            Ghost ghost = onAcknowledged(remoteChange, change);
-                            Change compressed = null;
-                            Iterator<Change> queuedChanges = localQueue.iterator();
-                            while(queuedChanges.hasNext()){
-                                Change queuedChange = queuedChanges.next();
-                                if (queuedChange.getKey().equals(change.getKey())) {
-                                    queuedChanges.remove();
-                                    if (!remoteChange.isRemoveOperation()) {
-                                        compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
-                                    }
-                                }
-                            }
-                            if (compressed != null) {
-                                localQueue.add(compressed);
-                            }
+                            updatedGhost = onAcknowledged(remoteChange, change);
                         } catch (RemoteChangeInvalidException e){
+                            updatedGhost = null;
                             Logger.log(TAG, "Remote change could not be acknowledged", e);
                             log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
                         }
@@ -1317,26 +1304,40 @@ public class Channel implements Bucket.Channel {
                         log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
                     } else {
                         try {
-                            bucket.applyRemoteChange(remoteChange);
+                            updatedGhost = bucket.applyRemoteChange(remoteChange);
                             Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
                         } catch (RemoteChangeInvalidException e) {
+                            updatedGhost = null;
                             Logger.log(TAG, "Remote change could not be applied", e);
                             log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
                             // request the entire object
                             ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
                             sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
                         }
+
+                    }
+
+                }
+
+                if (remoteChange.isError()){
+                    return;
+                }
+
+                Change compressed = null;
+                Iterator<Change> iterator = localQueue.iterator();
+                while(iterator.hasNext()) {
+                    Change queuedChange = iterator.next();
+                    if (queuedChange.getKey().equals(remoteChange.getKey())) {
+                        serializer.onDequeueChange(queuedChange);
+                        iterator.remove();
+                        if (!remoteChange.isRemoveOperation() && updatedGhost != null) {
+                            compressed = queuedChange.reapplyOrigin(updatedGhost.getVersion(), updatedGhost.getDiffableValue());
+                        }
                     }
                 }
 
-                if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
-                    Iterator<Change> iterator = localQueue.iterator();
-                    while(iterator.hasNext()){
-                        Change queuedChange = iterator.next();
-                        if (queuedChange.getKey().equals(remoteChange.getKey())) {
-                            iterator.remove();
-                        }
-                    }
+                if (compressed != null) {
+                    addChange(compressed);
                 }
 
             } catch (JSONException e) {
