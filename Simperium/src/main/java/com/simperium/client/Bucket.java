@@ -34,6 +34,7 @@ import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Collections;
@@ -187,6 +188,7 @@ public class Bucket<T extends Syncable> {
         }
 
     }
+
     /**
      * Tell the bucket to sync changes.
      */
@@ -669,7 +671,7 @@ public class Bucket<T extends Syncable> {
             try {
                 T object = get(remoteChange.getKey());
                 // apply the diff to the underyling object
-                ghost = remoteChange.apply(object);
+                ghost = remoteChange.apply(object.getGhost());
                 ghostStore.saveGhost(this, ghost);
                 // update the object's ghost
                 object.setGhost(ghost);
@@ -687,7 +689,7 @@ public class Bucket<T extends Syncable> {
 
     public Ghost applyRemoteChange(RemoteChange change)
     throws RemoteChangeInvalidException {
-        Ghost ghost = null;
+        Ghost updatedGhost = null;
         if (change.isRemoveOperation()) {
             try {
                 removeObjectWithKey(change.getKey());
@@ -699,6 +701,7 @@ public class Bucket<T extends Syncable> {
             try {
                 T object = null;
                 Boolean isNew = false;
+
                 if (change.isAddOperation()) {
                     object = newObject(change.getKey());
                     isNew = true;
@@ -706,21 +709,50 @@ public class Bucket<T extends Syncable> {
                     object = getObject(change.getKey());
                     isNew = false;
                 }
+
+                Ghost ghost = object.getGhost();
+                JSONObject localModifications = null;
+                JSONObject currentProperties = ghost.getDiffableValue();
+
+                try {
+                    localModifications = JSONDiff.diff(currentProperties, object.getDiffableValue());
+                } catch (JSONException e) {
+                    localModifications = new JSONObject();
+                }
+
                 // updates the ghost and sets it on the object
-                ghost = change.apply(object);
+                updatedGhost = change.apply(ghost);
+                JSONObject updatedProperties = JSONDiff.deepCopy(updatedGhost.getDiffableValue());
+
                 // persist the ghost to storage
-                ghostStore.saveGhost(this, ghost);
+                ghostStore.saveGhost(this, updatedGhost);
+                object.setGhost(updatedGhost);
 
                 // allow the schema to update the object instance with the new
                 if (isNew) {
-                    schema.updateWithDefaults(object, JSONDiff.deepCopy(ghost.getDiffableValue()));
-                }
-
-                if (isNew) {
+                    schema.updateWithDefaults(object, updatedProperties);
                     addObject(object);
                 } else {
+
+                    if (localModifications != null && localModifications.length() > 0) {
+                        try {
+                            JSONObject incomingDiff = change.getPatch();
+                            JSONObject localDiff = localModifications.getJSONObject(JSONDiff.DIFF_VALUE_KEY);
+
+                            JSONObject transformedDiff = JSONDiff.transform(localDiff, incomingDiff, currentProperties);
+
+                            updatedProperties = JSONDiff.apply(currentProperties, transformedDiff);
+
+                        } catch (JSONException e) {
+                            // could not transform properties
+                            // continue with updated properties
+                        }
+                    }
+
+                    schema.update(object, updatedProperties);
                     updateObject(object);
                 }
+
             } catch(SimperiumException e) {
                 Logger.log(TAG, String.format("Unable to apply remote change %s", change), e);
                 throw(new RemoteChangeInvalidException(change, e));
@@ -730,7 +762,7 @@ public class Bucket<T extends Syncable> {
         change.setApplied();
         ChangeType type = change.isRemoveOperation() ? ChangeType.REMOVE : ChangeType.MODIFY;
         notifyOnNetworkChangeListeners(type, change.getKey());
-        return ghost;
+        return updatedGhost;
     }
 
     static public final String BUCKET_OBJECT_NAME_REGEX = "^[a-zA-Z0-9_\\.\\-%@]{1,256}$";
