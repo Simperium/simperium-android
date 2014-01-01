@@ -32,7 +32,7 @@ public class ChannelUtil {
         try {
             String id = origin.getSimperiumKey();
             int version = origin.getVersion();
-            JSONObject diff = JSONDiff.diff(origin.getDiffableValue(), target);
+            JSONObject diff = JSONDiff.diff(origin.getUnmodifiedValue(), target);
             JSONObject modify = RemoteChangesUtil.modifyOperation(id, version, diff.getJSONObject("v"));
 
             channel.receiveMessage("c:[" + modify.toString() + "]");
