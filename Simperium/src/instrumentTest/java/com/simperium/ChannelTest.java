@@ -540,7 +540,7 @@ public class ChannelTest extends BaseSimperiumTest {
     throws Exception {
 
         Map objects = new HashMap();
-        objects.put("mock.4", "{\"data\":{\"title\":\"Hello world.\"}}");
+        objects.put("mock.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"Hello world.\"}}");
         startWithIndex(objects);
 
         // diff cannot be applied
@@ -665,13 +665,13 @@ public class ChannelTest extends BaseSimperiumTest {
         Note note = mBucket.get("object");
 
         JSONObject remote = new JSONObject(note.getDiffableValue().toString());
-        remote.put("content", "Line 1\nLine 2");
-
-        // queue a remote change
-        ChannelUtil.sendRemoteChange(mChannel, note, remote);
+        remote.put("content", "Line 1\nLine 2\n");
 
         // modify the note locally
         note.setContent("Line 1\nLine 3\n");
+
+        // queue a remote change from other client
+        ChannelUtil.sendRemoteChange(mChannel, note, remote);
 
         // process the remote changes
         mExecutor.run();
