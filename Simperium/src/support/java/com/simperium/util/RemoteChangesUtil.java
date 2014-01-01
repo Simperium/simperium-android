@@ -3,6 +3,7 @@ package com.simperium.util;
 import com.simperium.client.Change;
 import com.simperium.client.Channel;
 import com.simperium.client.RemoteChange;
+import com.simperium.client.Syncable;
 
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Uuid;
@@ -41,7 +42,7 @@ public class RemoteChangesUtil {
     }
 
     /**
-     * Generate a delete operation for they give object id with a random ccid
+     * Generate a delete operation for the given object id with a random ccid
      * and cv.
      */
     public static JSONObject deleteOperation(String id)
@@ -101,6 +102,17 @@ public class RemoteChangesUtil {
         response.put(ack);
 
         return response;
+    }
+
+    public static RemoteChange buildRemoteChange(Syncable origin, JSONObject target)
+    throws JSONException {
+
+        String id = origin.getSimperiumKey();
+        int version = origin.getVersion();
+        JSONObject diff = JSONDiff.diff(origin.getUnmodifiedValue(), target);
+        JSONObject modify = modifyOperation(id, version, diff.getJSONObject("v"));
+
+        return RemoteChange.buildFromMap(modify);
     }
 
 }

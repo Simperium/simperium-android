@@ -4,6 +4,8 @@ import com.simperium.client.RemoteChange;
 
 import com.simperium.test.MockBucket;
 
+import com.simperium.util.RemoteChangesUtil;
+
 import com.simperium.models.Note;
 
 import org.json.JSONObject;
@@ -78,5 +80,32 @@ public class RemoteChangeTest extends TestCase {
 
     }
 
+    public void testMergeLocalModifications()
+    throws Exception {
+
+        MockBucket<Note> notes = MockBucket.buildBucket(new Note.Schema());
+
+        // create a note and sync it
+        Note note = notes.newObject("mock");
+        note.setContent("Line 1\n");
+        note.save();
+
+        // create a 3rd party modification
+        JSONObject external = new JSONObject(note.getDiffableValue().toString());
+        external.put("content", "Line 1\nLine 2\n");
+
+        // make a local modification
+        note.setContent("Line 1\nLine 3\n");
+
+        // build remote change based on 3rd party modification
+        RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, external);
+
+        // apply the remote change to the object
+        change.apply(note);
+
+        // the content field sould be a merge of the two changes
+        assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
+
+    }
 
 }

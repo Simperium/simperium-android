@@ -44,8 +44,8 @@ public class ChannelTest extends BaseSimperiumTest {
     protected User.Status mAuthStatus;
 
     final private MockChannelListener mListener = new MockChannelListener();
-    final private MockExecutor.Playable mExecutor = new MockExecutor.Playable();
-    final private MockExecutor.Playable mBucketExecutor = new MockExecutor.Playable();
+    final private MockExecutor.Playable mExecutor = new MockExecutor.Playable("ChannelExecutor");
+    final private MockExecutor.Playable mBucketExecutor = new MockExecutor.Playable("BucketExecutor");
 
     /**
      * Build a Bucket instance that is wired up to a channel using a MockChannelSerializer and a
@@ -491,7 +491,7 @@ public class ChannelTest extends BaseSimperiumTest {
         Map objects = new HashMap();
         objects.put("mock1.1", "{\"data\":{\"title\":\"1.1\"}}");
 
-        startWithIndex("mock-cv", objects);
+        startWithIndex(objects);
 
         assertTrue("Bucket should have an instance of mock1", mBucket.containsKey("mock1"));
         // receive a remotely initiated delete operation for mock1
@@ -536,23 +536,23 @@ public class ChannelTest extends BaseSimperiumTest {
     /**
      * If we receive a remote change we can't apply, request the entire object
      */
-        public void testRequestObjectForInvalidChange()
-        throws Exception {
+    public void testRequestObjectForInvalidChange()
+    throws Exception {
 
-            Map objects = new HashMap();
-            objects.put("mock.4", "{\"data\":{\"title\":\"Hello world.\"}}");
-            startWithIndex("mockcv", objects);
+        Map objects = new HashMap();
+        objects.put("mock.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"Hello world.\"}}");
+        startWithIndex(objects);
 
-            // diff cannot be applied
-            JSONObject diff = new JSONObject("{\"title\":{\"o\":\"d\",\"v\":\"=14\\t-1\\t+wa\\t=10\"}}");
-            ChannelUtil.sendModifyOperation(mChannel, "mock", 4, diff);
+        // diff cannot be applied
+        JSONObject diff = new JSONObject("{\"title\":{\"o\":\"d\",\"v\":\"=14\\t-1\\t+wa\\t=10\"}}");
+        ChannelUtil.sendModifyOperation(mChannel, "mock", 4, diff);
 
-            mExecutor.run();
+        mExecutor.run();
 
-            // the channel should have requested unkown-key.5
-            assertEquals("e:mock.5", mListener.lastMessage.toString());
+        // the channel should have requested unkown-key.5
+        assertEquals("e:mock.5", mListener.lastMessage.toString());
 
-        }
+    }
 
 
     /**
@@ -584,7 +584,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         Map<String,String> index = new HashMap<String,String>(1);
         index.put("object.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"my hovercraft was full of eels\"}}");
-        startWithIndex("version-x", index);
+        startWithIndex(index);
 
         JSONObject data = new JSONObject();
         data.put("title", "my hovercraft is full of eels");
@@ -651,6 +651,38 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * https://github.com/Simperium/simperium-android/issues/67
+     */
+    public void testMergeRemoteWithLocalModifications()
+    throws Exception {
+
+        mListener.autoAcknowledge = true;
+
+        Map<String,String> map = new HashMap<String,String>();
+        map.put("object.5", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"Hello world\", \"content\":\"Line 1\\n\"}}");
+        startWithIndex(map);
+
+        Note note = mBucket.get("object");
+
+        JSONObject remote = new JSONObject(note.getDiffableValue().toString());
+        remote.put("content", "Line 1\nLine 2\n");
+
+        // modify the note locally
+        note.setContent("Line 1\nLine 3\n");
+
+        // queue a remote change from other client
+        ChannelUtil.sendRemoteChange(mChannel, note, remote);
+
+        // process the remote changes
+        mExecutor.run();
+
+        // content should now have a merged content field
+        assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
+
+
+    }
+
+    /**
      * Get's the channel into a started state
      */
     protected void start(){
@@ -663,6 +695,11 @@ public class ChannelTest extends BaseSimperiumTest {
     protected void startWithEmptyIndex() {
         start();
         sendEmptyIndex();
+    }
+
+    protected void startWithIndex(Map<String,String> objects)
+    throws JSONException {
+        startWithIndex("mock-cv", objects);
     }
 
     protected void startWithIndex(String cv, Map<String,String> objects)

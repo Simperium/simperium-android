@@ -34,6 +34,114 @@ public class JSONDiff {
 
     private static diff_match_patch dmp = new diff_match_patch();
 
+    public static JSONObject transform(String o_diff, String diff, String source)
+    throws JSONException {
+
+        JSONObject transformed = new JSONObject();
+
+        LinkedList<Patch> o_patches = dmp.patch_make(source, dmp.diff_fromDelta(source, o_diff));
+        LinkedList<Patch> patches = dmp.patch_make(source, dmp.diff_fromDelta(source, diff));
+
+        String text = (String) dmp.patch_apply(patches, source)[0];
+        String combined = (String) dmp.patch_apply(o_patches, text)[0];
+
+        if (text.equals(combined)) {
+            // text is the same, return empty diff
+            return transformed;
+        }
+
+        LinkedList<Diff> diffs = dmp.diff_main(source, combined);
+
+        if (diffs.size() > 2) {
+            dmp.diff_cleanupEfficiency(diffs);
+        }
+
+        if (diffs.size() == 0) {
+            // no diffs, text is the same, return empty diff
+            return transformed;
+        }
+
+        transformed.put(DIFF_OPERATION_KEY, OPERATION_DIFF);
+        transformed.put(DIFF_VALUE_KEY, dmp.diff_toDelta(diffs));
+
+        return transformed;
+    }
+
+    /**
+     * Given two object diffs (o_diff and diff) and a source object, calculate
+     * the transformed o_diff that merges the changes of source + diff and
+     * source + o_diff
+     * 
+     * For reference:
+     * https://github.com/Simperium/jsondiff/blob/eb61ad1e4554450cc14af1938847f18513db946b/src/jsondiff.coffee#L458-L503
+     */
+    public static JSONObject transform(JSONObject o_diff, JSONObject diff, JSONObject source)
+    throws JSONException {
+
+        JSONObject transformed_diff = deepCopy(o_diff);
+
+        // iterate the keys of o_diff
+        Iterator<String> keys = o_diff.keys();
+        while(keys.hasNext()) {
+            String key = keys.next();
+
+            if (!diff.has(key)) {
+                continue;
+            }
+
+            JSONObject o_operation = o_diff.getJSONObject(key);
+            JSONObject operation = diff.getJSONObject(key);
+
+            String o_type = o_operation.getString(DIFF_OPERATION_KEY);
+            String type = operation.getString(DIFF_OPERATION_KEY);
+
+            Object o_value = o_operation.opt(DIFF_VALUE_KEY);
+            Object value = operation.opt(DIFF_VALUE_KEY);
+
+            // both are inserts
+            if (o_type.equals(OPERATION_INSERT) && type.equals(OPERATION_INSERT)) {
+                // both are inserting the same value
+                if (o_value.equals(value)) {
+                    // don't duplicate what diff is doing
+                    transformed_diff.remove(key);
+                } else {
+                    transformed_diff.put(key, diff(value, o_value));
+                }
+            } else if (o_type.equals(OPERATION_REMOVE) && type.equals(OPERATION_REMOVE)) {
+                // we're both removing the same key
+                transformed_diff.remove(key);
+            } else if (type.equals(OPERATION_REMOVE) && !o_type.equals(OPERATION_REMOVE)) {
+
+                // they removed a key that we're replacing, insert the key
+                JSONObject restore_op = new JSONObject();
+                restore_op.put(DIFF_OPERATION_KEY, OPERATION_INSERT);
+
+                if (o_type.equals(OPERATION_REPLACE)) {
+                    restore_op.put(DIFF_VALUE_KEY, o_value);
+                } else {
+                    // apply the patch for the value to insert
+                    restore_op.put(DIFF_VALUE_KEY, apply(source.get(key), o_operation));
+                }
+
+                transformed_diff.put(key, restore_op);
+
+            } else if (o_type.equals(OPERATION_OBJECT) && type.equals(OPERATION_OBJECT)) {
+                operation.put(DIFF_VALUE_KEY, transform((JSONObject)o_value, (JSONObject)value, source.getJSONObject(key)));
+            } else if (o_type.equals(OPERATION_DIFF) && type.equals(OPERATION_DIFF)) {
+                JSONObject diff_operation = transform((String)o_value, (String)value, source.getString(key));
+                if (diff_operation.length() == 0) {
+                    transformed_diff.remove(key);
+                } else {
+                    transformed_diff.put(key, diff_operation);
+                }
+            }
+
+        }
+
+        return transformed_diff;
+
+    }
+
     public static JSONObject diff(JSONArray a, JSONArray b)
     throws JSONException {
 

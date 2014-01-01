@@ -96,10 +96,43 @@ public class RemoteChange {
         this.errorCode = errorCode;
     }
 
-    protected Ghost apply(Syncable object) throws RemoteChangeInvalidException {
-        Ghost gost = apply(object.getGhost());
-        object.setGhost(gost);
-        return gost;
+    protected <T extends Syncable> Ghost apply(T object) throws RemoteChangeInvalidException {
+
+        Ghost currentGhost = object.getGhost();
+        JSONObject transformed = null;
+
+        if (!isAcknowledged() && isModifyOperation()) {
+            // this wasn't our change, we need to see if there's a potential 3-way merge
+            JSONObject source = currentGhost.getDiffableValue();
+
+            try {
+                JSONObject diff = JSONDiff.diff(source, object.getDiffableValue());
+                if (diff.has(VALUE_KEY)) {
+                    JSONObject o_diff = diff.getJSONObject(VALUE_KEY);
+
+                    // if there is no change, or it's the same change as the remote change then we don't need to do anything to the local instance
+                    if (o_diff.length() > 0 && !JSONDiff.equals(o_diff, value)) {
+                        JSONObject transformedDiff = JSONDiff.transform(o_diff, value, source);
+                        transformed = JSONDiff.apply(source, transformedDiff);
+                    }
+                }
+            } catch (JSONException e) {
+                transformed = null;
+            }
+
+        }
+
+        Ghost ghost = apply(currentGhost);
+
+        object.setGhost(ghost);
+
+        // we had local modificaitons to merge
+        if (transformed != null) {
+            android.util.Log.d("Simperium.Test", "Updating transformed: " + transformed);
+            object.getBucket().getSchema().update(object, transformed);
+        }
+
+        return ghost;
     }
 
     protected Ghost apply(Ghost ghost) throws RemoteChangeInvalidException {
