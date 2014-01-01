@@ -1468,7 +1468,7 @@ public class Channel implements Bucket.Channel {
                     list.add(val);
                 }
             } catch (JSONException e) {
-                Logger.log(TAG, String.format("Faile to convert JSON: %s", e.getMessage()), e);
+                Logger.log(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
             }
 
         }
