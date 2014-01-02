@@ -127,37 +127,4 @@ public class User {
         this.accessToken = token;
     }
 
-    // public String toJSONString(){
-    //     return toJSONObject().toString();
-    // }
-    // 
-    // public JSONObject toJSONObject(){
-    //     return new JSONObject(toMap());
-    // }
-    // 
-    // public Map<String,String> toMap(){
-    //     HashMap<String,String> fields = new HashMap<String,String>();
-    //     fields.put(USERNAME_KEY, email);
-    //     fields.put(PASSWORD_KEY, password);
-    //     return fields;
-    // }
-
-    // public HttpEntity toHttpEntity() throws UnsupportedEncodingException {
-    //     JSONObject json = new JSONObject(toMap());
-    //     return new StringEntity(json.toString());
-    // 
-    // }
-    // 
-    // public HttpEntity toHttpEntity(String authProvider) throws UnsupportedEncodingException {
-    //     if (authProvider == null){
-    //         return toHttpEntity();
-    //     }
-    //     List<NameValuePair> parameters = new ArrayList<NameValuePair>(3);
-    //     parameters.add(new BasicNameValuePair(USERNAME_KEY, email));
-    //     parameters.add(new BasicNameValuePair(PASSWORD_KEY, password));
-    //     parameters.add(new BasicNameValuePair(PROVIDER_KEY, authProvider));
-    //     return new UrlEncodedFormEntity(parameters, HTTP.UTF_8);
-    // }
-
-
 }
