@@ -1,4 +1,4 @@
-package com.simperium;
+package com.simperium.client;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketNameInvalid;
@@ -6,16 +6,25 @@ import com.simperium.client.BucketObjectNameInvalid;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.User;
+
 import com.simperium.models.Note;
+
 import com.simperium.storage.MemoryStore;
+
 import com.simperium.test.MockCache;
 import com.simperium.test.MockChannel;
 import com.simperium.test.MockGhostStore;
 import com.simperium.test.MockExecutor;
 
+import com.simperium.util.RemoteChangesUtil;
+
+import org.json.JSONObject;
+
 import static com.simperium.TestHelpers.makeUser;
 
-public class BucketTest extends BaseSimperiumTest {
+import junit.framework.TestCase;
+
+public class BucketTest extends TestCase {
 
     public static final String TAG="SimperiumTest";
     private Bucket<Note> mBucket;
@@ -94,6 +103,53 @@ public class BucketTest extends BaseSimperiumTest {
         }
 
         assertNotNull(exception);
+    }
+
+    public void testApplyRemoteChange()
+    throws Exception {
+
+        Note note = mBucket.newObject();
+
+        note.setContent("Line 1\n");
+        note.save();
+
+        // create a 3rd party modification
+        JSONObject external = new JSONObject(note.getDiffableValue().toString());
+        external.put("content", "Line 1\nLine 2\n");
+
+        note.setTitle("Lol");
+
+        // build remote change based on 3rd party modification
+        RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, external);
+
+        mBucket.applyRemoteChange(change);
+
+        assertEquals("Line 1\nLine 2\n", note.getContent());
+
+    }
+
+    public void testMergeLocalChanges()
+    throws Exception {
+
+        Note note = mBucket.newObject();
+
+        note.setContent("Line 1\n");
+        note.save();
+
+        // make a local modification before remote change comes in
+        note.setContent("Line 1\nLine 3\n");
+
+        // create a 3rd party modification
+        JSONObject external = new JSONObject(note.getDiffableValue().toString());
+        external.put("content", "Line 1\nLine 2\n");
+
+        // build remote change based on 3rd party modification
+        RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, external);
+
+        mBucket.applyRemoteChange(change);
+
+        assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
+
     }
 
 }

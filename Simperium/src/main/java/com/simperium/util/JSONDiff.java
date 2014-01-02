@@ -50,7 +50,7 @@ public class JSONDiff {
             return transformed;
         }
 
-        LinkedList<Diff> diffs = dmp.diff_main(source, combined);
+        LinkedList<Diff> diffs = dmp.diff_main(text, combined);
 
         if (diffs.size() > 2) {
             dmp.diff_cleanupEfficiency(diffs);

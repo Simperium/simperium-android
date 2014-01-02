@@ -6,6 +6,8 @@ import com.simperium.models.Note;
 import com.simperium.test.MockBucket;
 import com.simperium.util.JSONDiff;
 
+import com.simperium.util.RemoteChangesUtil;
+
 import junit.framework.TestCase;
 
 import org.json.JSONArray;
@@ -92,11 +94,32 @@ public class BucketListenerTest extends TestCase {
         assertTrue(mListener.changed);
     }
 
+    public void testOnBeforeUpdateListener()
+    throws Exception {
+
+        Note note = mBucket.newObject();
+        note.setTitle("Hola mundo");
+        note.save();
+
+        JSONObject remote = new JSONObject(note.getDiffableValue().toString());
+        remote.put("title", "Hello world");
+
+        RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, remote);
+
+        mBucket.addOnBeforeUpdateObjectListener(mListener);
+
+        mBucket.applyRemoteChange(change);
+
+        assertTrue(mListener.beforeUpdate);
+
+    }
+
     class BucketListener implements Bucket.Listener<Note> {
 
         public boolean deleted = false;
         public boolean saved = false;
         public boolean changed = false;
+        public boolean beforeUpdate = false;
 
         @Override
         public void onDeleteObject(Bucket<Note> bucket, Note object){
@@ -111,6 +134,11 @@ public class BucketListenerTest extends TestCase {
         @Override
         public void onChange(Bucket<Note> bucket, Bucket.ChangeType type, String key){
             changed = true;
+        }
+
+        @Override
+        public void onBeforeUpdateObject(Bucket<Note> bucket, Note object) {
+            beforeUpdate = true;
         }
 
     }
