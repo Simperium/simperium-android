@@ -334,7 +334,7 @@ public class JSONDiffTest extends TestCase {
 
         JSONObject transformed = JSONDiff.transform(diff_2.getString("v"), diff_1.getString("v"), origin);
 
-        assertEquals(target, JSONDiff.apply(origin, transformed));
+        assertEquals(target, JSONDiff.apply(JSONDiff.apply(origin, diff_1), transformed));
 
     }
 
@@ -387,6 +387,7 @@ public class JSONDiffTest extends TestCase {
         assertEquals(object("a", "b", "c", "d", "e", "f"), JSONDiff.apply(origin, transformed));
 
     }
+
 
     /*
      * Convenient object building methods for test use

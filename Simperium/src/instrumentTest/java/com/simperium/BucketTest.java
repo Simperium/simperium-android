@@ -117,6 +117,8 @@ public class BucketTest extends TestCase {
         JSONObject external = new JSONObject(note.getDiffableValue().toString());
         external.put("content", "Line 1\nLine 2\n");
 
+        note.setTitle("Lol");
+
         // build remote change based on 3rd party modification
         RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, external);
 

@@ -773,7 +773,7 @@ public class Bucket<T extends Syncable> {
 
                             JSONObject transformedDiff = JSONDiff.transform(localDiff, incomingDiff, currentProperties);
 
-                            updatedProperties = JSONDiff.apply(currentProperties, transformedDiff);
+                            updatedProperties = JSONDiff.apply(updatedProperties, transformedDiff);
 
                         } catch (JSONException e) {
                             // could not transform properties
