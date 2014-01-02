@@ -54,6 +54,10 @@ public class Bucket<T extends Syncable> {
         public void reset();
     }
 
+    public interface OnBeforeUpdateObjectListener<T extends Syncable> {
+        void onBeforeUpdateObject(Bucket<T> bucket, T object);
+    }
+
     public interface OnSaveObjectListener<T extends Syncable> {
         void onSaveObject(Bucket<T> bucket, T object);
     }
@@ -68,7 +72,7 @@ public class Bucket<T extends Syncable> {
 
     public interface Listener<T extends Syncable> extends
         OnSaveObjectListener<T>, OnDeleteObjectListener<T>,
-        OnNetworkChangeListener<T> {
+        OnNetworkChangeListener<T>, OnBeforeUpdateObjectListener<T> {
             // implements all listener methods
     }
 
@@ -88,6 +92,8 @@ public class Bucket<T extends Syncable> {
         Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
     private Set<OnDeleteObjectListener<T>> onDeleteListeners = 
         Collections.synchronizedSet(new HashSet<OnDeleteObjectListener<T>>());
+    private Set<OnBeforeUpdateObjectListener<T>> onBeforeUpdateListeners =
+        Collections.synchronizedSet(new HashSet<OnBeforeUpdateObjectListener<T>>());
     private Set<OnNetworkChangeListener<T>> onChangeListeners =
         Collections.synchronizedSet(new HashSet<OnNetworkChangeListener<T>>());
 
@@ -518,12 +524,14 @@ public class Bucket<T extends Syncable> {
 
     public void addListener(Listener<T> listener){
         addOnSaveObjectListener(listener);
+        addOnBeforeUpdateObjectListener(listener);
         addOnDeleteObjectListener(listener);
         addOnNetworkChangeListener(listener);
     }
 
     public void removeListener(Listener<T> listener){
         removeOnSaveObjectListener(listener);
+        removeOnBeforeUpdateObjectListener(listener);
         removeOnDeleteObjectListener(listener);
         removeOnNetworkChangeListener(listener);
     }
@@ -552,6 +560,14 @@ public class Bucket<T extends Syncable> {
         onChangeListeners.remove(listener);
     }
 
+    public void addOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener){
+        onBeforeUpdateListeners.add(listener);
+    }
+
+    public void removeOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener){
+        onBeforeUpdateListeners.remove(listener);
+    }
+
     public void notifyOnSaveListeners(T object){
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
 
@@ -576,6 +592,20 @@ public class Bucket<T extends Syncable> {
                 listener.onDeleteObject(this, object);
             } catch(Exception e) {
                 Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
+            }
+        }
+    }
+
+    public void notifyOnBeforeUpdateObjectListeners(T object){
+        Set<OnBeforeUpdateObjectListener<T>> notify = new HashSet<OnBeforeUpdateObjectListener<T>>(onBeforeUpdateListeners);
+
+        Iterator<OnBeforeUpdateObjectListener<T>> iterator = notify.iterator();
+        while(iterator.hasNext()) {
+            OnBeforeUpdateObjectListener<T> listener = iterator.next();
+            try {
+                listener.onBeforeUpdateObject(this, object);
+            } catch(Exception e) {
+                Logger.log(TAG, String.format("Listener failed onBeforeUpdateObject %s", listener), e);
             }
         }
     }
@@ -708,6 +738,8 @@ public class Bucket<T extends Syncable> {
                 } else {
                     object = getObject(change.getKey());
                     isNew = false;
+
+                    notifyOnBeforeUpdateObjectListeners(object);
                 }
 
                 Ghost ghost = object.getGhost();
