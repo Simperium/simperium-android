@@ -679,6 +679,31 @@ public class ChannelTest extends BaseSimperiumTest {
         // content should now have a merged content field
         assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
 
+    }
+
+    public void testDequeueEmptyChanges()
+    throws Exception {
+
+        mListener.autoAcknowledge = true;
+        startWithEmptyIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("hola mundo");
+        note.setContent("my hovercraft is full of eels");
+
+        note.save();
+
+        mExecutor.run();
+
+        // note should be at version 1 and ready to send modifications
+
+        // queue the note, the change will be empty since it hasn't bee modified
+        mChannel.queueLocalChange(note);
+
+        mExecutor.run();
+
+        // there should be no queued changes since the change was empty
+        assertEquals(0, mChannelSerializer.queue.queued.size());
 
     }
 
