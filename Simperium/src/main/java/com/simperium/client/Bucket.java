@@ -804,7 +804,7 @@ public class Bucket<T extends Syncable> {
 
     public static void validateObjectName(String name)
     throws BucketObjectNameInvalid {
-        if (!name.matches(BUCKET_OBJECT_NAME_REGEX)) {
+        if (name == null || !name.matches(BUCKET_OBJECT_NAME_REGEX)) {
             throw new BucketObjectNameInvalid(name);
         }
     }
@@ -813,7 +813,7 @@ public class Bucket<T extends Syncable> {
 
     public static void validateBucketName(String name)
     throws BucketNameInvalid {
-        if (!name.matches(BUCKET_NAME_REGEX)) {
+        if (name == null || !name.matches(BUCKET_NAME_REGEX)) {
             throw new BucketNameInvalid(name);
         }
     }

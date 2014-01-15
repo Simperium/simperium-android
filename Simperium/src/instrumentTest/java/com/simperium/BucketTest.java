@@ -117,6 +117,18 @@ public class BucketTest extends TestCase {
         assertNotNull(exception);
     }
 
+    public void testValidateNullBucketName()
+    throws Exception {
+        BucketNameInvalid exception = null;
+        try {
+            Bucket.validateBucketName(null);
+        } catch (BucketNameInvalid e) {
+            exception = e;
+        }
+
+        assertNotNull(exception);
+    }
+
     public void testApplyRemoteChange()
     throws Exception {
 
