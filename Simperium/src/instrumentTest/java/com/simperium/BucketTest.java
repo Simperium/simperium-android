@@ -84,6 +84,18 @@ public class BucketTest extends TestCase {
         assertNotNull(exception);
     }
 
+    public void testNullObjectNameThrowsException()
+    throws Exception {
+        BucketObjectNameInvalid exception = null;
+        try {
+            mBucket.newObject(null);
+        } catch (BucketObjectNameInvalid e) {
+            exception = e;
+        }
+
+        assertNotNull(exception);
+    }
+
     public void testTrimObjectNameWhiteSpace()
     throws Exception {
         BucketObjectNameInvalid exception = null;
