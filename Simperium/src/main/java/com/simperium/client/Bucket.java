@@ -397,7 +397,7 @@ public class Bucket<T extends Syncable> {
         try {
             return newObject(uuid());
         } catch (BucketObjectNameInvalid e) {
-            throw new RuntimeException();
+            throw new RuntimeException(e);
         }
     }
 
@@ -415,6 +415,9 @@ public class Bucket<T extends Syncable> {
      */
     public T insertObject(String key, JSONObject properties)
     throws BucketObjectNameInvalid {
+        if (key == null)
+            throw new BucketObjectNameInvalid(key);
+
         String name = key.trim();
         validateObjectName(name);
         T object = buildObject(name, properties);
@@ -801,7 +804,7 @@ public class Bucket<T extends Syncable> {
 
     public static void validateObjectName(String name)
     throws BucketObjectNameInvalid {
-        if (!name.matches(BUCKET_OBJECT_NAME_REGEX)) {
+        if (name == null || !name.matches(BUCKET_OBJECT_NAME_REGEX)) {
             throw new BucketObjectNameInvalid(name);
         }
     }
@@ -810,7 +813,7 @@ public class Bucket<T extends Syncable> {
 
     public static void validateBucketName(String name)
     throws BucketNameInvalid {
-        if (!name.matches(BUCKET_NAME_REGEX)) {
+        if (name == null || !name.matches(BUCKET_NAME_REGEX)) {
             throw new BucketNameInvalid(name);
         }
     }
