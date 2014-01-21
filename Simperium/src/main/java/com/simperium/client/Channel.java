@@ -1267,81 +1267,83 @@ public class Channel implements Bucket.Channel {
          */
         private void processRemoteChange() {
 
-            if (remoteQueue.isEmpty()) {
-                return;
-            }
-
-            JSONObject remoteJSON = remoteQueue.remove(0);
-
-            try {
-                RemoteChange remoteChange = RemoteChange.buildFromMap(remoteJSON);
-                log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
-
-                Change change = pendingChanges.get(remoteChange.getKey());
-                Ghost updatedGhost = null;
-                // one of our changes is being acknowledged
-                if (remoteChange.isAcknowledgedBy(change)) {
-                    log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
-                    serializer.onAcknowledgeChange(change);
-                    // change is no longer pending so remove it
-                    pendingChanges.remove(change.getKey());
-
-                    if (remoteChange.isError()) {
-                        Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
-                        onError(remoteChange, change);
-                    } else {
-                        try {
-                            updatedGhost = onAcknowledged(remoteChange, change);
-                        } catch (RemoteChangeInvalidException e){
-                            updatedGhost = null;
-                            Logger.log(TAG, "Remote change could not be acknowledged", e);
-                            log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
-                        }
-                    }
-                } else {
-                    if (remoteChange.isError()){
-                        Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
-                        log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
-                    } else {
-                        try {
-                            updatedGhost = bucket.applyRemoteChange(remoteChange);
-                            Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
-                        } catch (RemoteChangeInvalidException e) {
-                            updatedGhost = null;
-                            Logger.log(TAG, "Remote change could not be applied", e);
-                            log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
-                            // request the entire object
-                            ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
-                            sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
-                        }
-
-                    }
-
-                }
-
-                if (remoteChange.isError()){
+            synchronized(lock) {
+                if (remoteQueue.isEmpty()) {
                     return;
                 }
 
-                Change compressed = null;
-                Iterator<Change> iterator = localQueue.iterator();
-                while(iterator.hasNext()) {
-                    Change queuedChange = iterator.next();
-                    if (queuedChange.getKey().equals(remoteChange.getKey())) {
-                        serializer.onDequeueChange(queuedChange);
-                        iterator.remove();
-                        if (!remoteChange.isRemoveOperation() && updatedGhost != null) {
-                            compressed = queuedChange.reapplyOrigin(updatedGhost.getVersion(), updatedGhost.getDiffableValue());
+                JSONObject remoteJSON = remoteQueue.remove(0);
+
+                try {
+                    RemoteChange remoteChange = RemoteChange.buildFromMap(remoteJSON);
+                    log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
+
+                    Change change = pendingChanges.get(remoteChange.getKey());
+                    Ghost updatedGhost = null;
+                    // one of our changes is being acknowledged
+                    if (remoteChange.isAcknowledgedBy(change)) {
+                        log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
+                        serializer.onAcknowledgeChange(change);
+                        // change is no longer pending so remove it
+                        pendingChanges.remove(change.getKey());
+
+                        if (remoteChange.isError()) {
+                            Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
+                            onError(remoteChange, change);
+                        } else {
+                            try {
+                                updatedGhost = onAcknowledged(remoteChange, change);
+                            } catch (RemoteChangeInvalidException e){
+                                updatedGhost = null;
+                                Logger.log(TAG, "Remote change could not be acknowledged", e);
+                                log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+                            }
+                        }
+                    } else {
+                        if (remoteChange.isError()){
+                            Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
+                            log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
+                        } else {
+                            try {
+                                updatedGhost = bucket.applyRemoteChange(remoteChange);
+                                Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
+                            } catch (RemoteChangeInvalidException e) {
+                                updatedGhost = null;
+                                Logger.log(TAG, "Remote change could not be applied", e);
+                                log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+                                // request the entire object
+                                ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
+                                sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
+                            }
+
+                        }
+
+                    }
+
+                    if (remoteChange.isError()){
+                        return;
+                    }
+
+                    Change compressed = null;
+                    Iterator<Change> iterator = localQueue.iterator();
+                    while(iterator.hasNext()) {
+                        Change queuedChange = iterator.next();
+                        if (queuedChange.getKey().equals(remoteChange.getKey())) {
+                            serializer.onDequeueChange(queuedChange);
+                            iterator.remove();
+                            if (!remoteChange.isRemoveOperation() && updatedGhost != null) {
+                                compressed = queuedChange.reapplyOrigin(updatedGhost.getVersion(), updatedGhost.getDiffableValue());
+                            }
                         }
                     }
-                }
 
-                if (compressed != null) {
-                    addChange(compressed);
-                }
+                    if (compressed != null) {
+                        addChange(compressed);
+                    }
 
-            } catch (JSONException e) {
-                Logger.log(TAG, "Failed to build remote change", e);
+                } catch (JSONException e) {
+                    Logger.log(TAG, "Failed to build remote change", e);
+                }
             }
 
         }
@@ -1351,40 +1353,43 @@ public class Channel implements Bucket.Channel {
          */
         public boolean processLocalChange() {
 
-            Logger.log(TAG, String.format("Checking local queue for changes: %d", localQueue.size()));
+            synchronized(lock) {
+                Logger.log(TAG, String.format("Checking local queue for changes: %d", localQueue.size()));
 
-            if (localQueue.isEmpty()) {
-                return false;
-            }
-
-            Change localChange = null;
-
-            for (Change change : localQueue){
-                // find a local change that has no corresponding pending change
-                if (!pendingChanges.containsKey(change.getKey())) {
-                    localChange = change;
-                    localQueue.remove(localChange);
-                    break;
+                if (localQueue.isEmpty()) {
+                    return false;
                 }
+
+                Change localChange = null;
+
+                for (Change change : localQueue){
+                    // find a local change that has no corresponding pending change
+                    if (!pendingChanges.containsKey(change.getKey())) {
+                        localChange = change;
+                        localQueue.remove(localChange);
+                        break;
+                    }
+                }
+
+                // didn't find any changes to send
+                if (localChange == null) {
+                    Logger.log(TAG, String.format("All local changes waiting for acks"));
+                    return false;
+                }
+
+                try {
+                    pendingChanges.put(localChange.getKey(), localChange);
+                    sendChange(localChange);
+                    localChange.setOnRetryListener(this);
+                    retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(),
+                        RETRY_DELAY_MS, RETRY_DELAY_MS);                
+                } catch (ChangeNotSentException e) {
+                    pendingChanges.remove(localChange.getKey());
+                }
+
+                return true;
             }
 
-            // didn't find any changes to send
-            if (localChange == null) {
-                Logger.log(TAG, String.format("All local changes waiting for acks"));
-                return false;
-            }
-
-            try {
-                pendingChanges.put(localChange.getKey(), localChange);
-                sendChange(localChange);
-                localChange.setOnRetryListener(this);
-                retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(),
-                    RETRY_DELAY_MS, RETRY_DELAY_MS);                
-            } catch (ChangeNotSentException e) {
-                pendingChanges.remove(localChange.getKey());
-            }
-
-            return true;
         }
 
         private void resendPendingChanges(){
