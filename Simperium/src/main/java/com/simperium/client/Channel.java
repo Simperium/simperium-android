@@ -1378,6 +1378,7 @@ public class Channel implements Bucket.Channel {
                 pendingChanges.put(localChange.getKey(), localChange);
                 sendChange(localChange);
                 localChange.setOnRetryListener(this);
+                localChange.resetTimer();
                 retryTimer.scheduleAtFixedRate(localChange.getRetryTimer(),
                     RETRY_DELAY_MS, RETRY_DELAY_MS);                
             } catch (ChangeNotSentException e) {
