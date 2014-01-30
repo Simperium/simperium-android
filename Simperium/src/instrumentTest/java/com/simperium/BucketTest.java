@@ -176,4 +176,31 @@ public class BucketTest extends TestCase {
 
     }
 
+    /**
+     * Perform a 3-way merge when an object is redownloaded and has local
+     * modifications.
+     * 
+     * See issue https://github.com/Simperium/simperium-android/issues/82
+     */
+    public void testRedownloadWithLocalModifications()
+    throws Exception {
+
+        Note note = mBucket.newObject();
+
+        note.setContent("Line 1\nLine 2\nLine 3");
+        note.save();
+
+        // modify note locally
+        note.setContent("Line 0\nLine 1\nLine 2\nLine 3");
+
+        // Simulate channel redownloading a note
+        JSONObject data = new JSONObject("{\"content\":\"Line 1\nLine 2\nLine 3\nLine 4\"}");
+        Ghost ghost = new Ghost(note.getSimperiumKey(), 1000, data);
+
+        mBucket.updateGhost(ghost, null);
+
+        assertEquals("Line 0\nLine 1\nLine 2\nLine 3\nLine 4", note.getContent());
+
+    }
+
 }
