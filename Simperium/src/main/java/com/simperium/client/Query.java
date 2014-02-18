@@ -229,12 +229,12 @@ public class Query<T extends Syncable> {
         return mLimit;
     }
 
-    public Query limit(int limit) {
+    public Query<T> limit(int limit) {
         mLimit = limit;
         return this;
     }
 
-    public Query clearLimit() {
+    public Query<T> clearLimit() {
         return limit(-1);
     }
 
@@ -246,21 +246,21 @@ public class Query<T extends Syncable> {
         return mOffset;
     }
 
-    public Query offset(int offset) {
+    public Query<T> offset(int offset) {
         mOffset = offset;
         return this;
     }
 
-    public Query clearOffset() {
+    public Query<T> clearOffset() {
         return offset(-1);
     }
 
-    public Query where(Condition condition){
+    public Query<T> where(Condition condition){
         conditions.add(condition);
         return this;
     }
 
-    public Query where(String key, ComparisonType type, Object subject){
+    public Query<T> where(String key, ComparisonType type, Object subject){
         where(new BasicCondition(key, type, subject));
         return this;
     }
@@ -291,54 +291,54 @@ public class Query<T extends Syncable> {
         return bucket.count(this);
     }
 
-    public Query orderByKey(){
+    public Query<T> orderByKey(){
         orderByKey(SortType.ASCENDING);
         return this;
     }
-    public Query orderByKey(SortType type){
+    public Query<T> orderByKey(SortType type){
         order(new KeySorter(type));
         return this;
     }
 
-    public Query order(Sorter sort){
+    public Query<T> order(Sorter sort){
         sorters.add(sort);
         return this;
     }
 
-    public Query order(String key){
+    public Query<T> order(String key){
         order(key, SortType.ASCENDING);
         return this;
     }
 
-    public Query order(String key, SortType type){
+    public Query<T> order(String key, SortType type){
         order(new Sorter(key, type));
         return this;
     }
 
-    public Query reorder(){
+    public Query<T> reorder(){
         sorters.clear();
         return this;
     }
 
-    public Query include(String key){
+    public Query<T> include(String key){
         // we want to include some indexed values
         mFields.add(new BasicField(key));
         return this;
     }
 
-    public Query include(String ... keys){
+    public Query<T> include(String ... keys){
         for (String key : keys) {
             mFields.add(new BasicField(key));
         }
         return this;
     }
 
-    public Query include(Field field){
+    public Query<T> include(Field field){
         mFields.add(field);
         return this;
     }
 
-    public Query include(Field ... fields){
+    public Query<T> include(Field ... fields){
         for(Field field : fields){
             mFields.add(field);
         }
