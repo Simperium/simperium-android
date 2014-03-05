@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 
 import static android.test.MoreAsserts.assertMatchesRegex;
 import static com.simperium.TestHelpers.Flag;
+import static com.simperium.TestHelpers.waitUntil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -116,7 +117,8 @@ public class ChannelTest extends BaseSimperiumTest {
         // the will queue up a change
         note.save();
 
-        mExecutor.run();
+        clearMessages();
+        waitForMessage();
 
         // make the channel disconnect as if it's offline
         mChannel.onDisconnect();
@@ -265,12 +267,13 @@ public class ChannelTest extends BaseSimperiumTest {
         note.setTitle("Hola mundo");
         note.save();
 
-        mExecutor.run();
+        clearMessages();
+        waitForMessage();
 
         note.setTitle("Second change");
         note.save();
 
-        mExecutor.run();
+        waitFor(100);
 
         // first change has been sent and we're waiting to ack
         assertEquals(1, mChannelSerializer.queue.pending.size());
@@ -288,13 +291,14 @@ public class ChannelTest extends BaseSimperiumTest {
     throws Exception {
 
         startWithEmptyIndex();
+        clearMessages();
         mListener.autoAcknowledge = true;
 
         Note note = mBucket.newObject();
         note.setTitle("Hola mundo");
         note.save();
 
-        mExecutor.run();
+        waitForMessage();
 
         assertEquals(1, mChannelSerializer.ackCount);
 
@@ -384,7 +388,9 @@ public class ChannelTest extends BaseSimperiumTest {
 
         note.save();
 
-        mExecutor.run();
+        clearMessages();
+        waitForMessage();
+
         // message should be a change message "c:{}"
         assertMatchesRegex("^c:\\{.*\\}$", mListener.lastMessage.toString());
 
@@ -433,7 +439,7 @@ public class ChannelTest extends BaseSimperiumTest {
         mock1.save();
 
         // make sure the change was sent
-        mExecutor.run();
+        waitFor(200);
 
         /*
         0:index:{
@@ -445,6 +451,7 @@ public class ChannelTest extends BaseSimperiumTest {
         */
         mChannel.receiveMessage("index");
 
+        clearMessages();
         mExecutor.run();
 
         Channel.MessageEvent message = mListener.lastMessage;
@@ -526,7 +533,7 @@ public class ChannelTest extends BaseSimperiumTest {
         JSONObject diff = new JSONObject("{\"title\":{\"o\":\"r\",\"v\":\"My hovercraft is full of eels\"}}");
         ChannelUtil.sendModifyOperation(mChannel, "unknown-key", 5, diff);
 
-        mExecutor.run();
+        waitFor(200);
 
         // the channel should have requested unkown-key.6
         assertEquals("e:unknown-key.6", mListener.lastMessage.toString());
@@ -547,9 +554,9 @@ public class ChannelTest extends BaseSimperiumTest {
         JSONObject diff = new JSONObject("{\"title\":{\"o\":\"d\",\"v\":\"=14\\t-1\\t+wa\\t=10\"}}");
         ChannelUtil.sendModifyOperation(mChannel, "mock", 4, diff);
 
-        mExecutor.run();
+        waitFor(200);
 
-        // the channel should have requested unkown-key.5
+        // the channel should have requested mock.5
         assertEquals("e:mock.5", mListener.lastMessage.toString());
 
     }
@@ -567,7 +574,7 @@ public class ChannelTest extends BaseSimperiumTest {
         data.put("title", "my hovercraft is full of eels");
         ChannelUtil.sendObject(mChannel, "object", 5, data);
 
-        mExecutor.run();
+        waitForMessage();
 
         Note note = mBucket.get("object");
 
@@ -615,7 +622,8 @@ public class ChannelTest extends BaseSimperiumTest {
         note.setTitle("My hovercraft is full of eels");
         note.save();
 
-        mExecutor.run();
+        clearMessages();
+        waitForMessage();
 
         JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
         JSONObject data = change.getJSONObject("d");
@@ -640,7 +648,8 @@ public class ChannelTest extends BaseSimperiumTest {
         note.setTitle("My hovercraft is full of eels");
         note.save();
 
-        mExecutor.run();
+        clearMessages();
+        waitForMessage();
 
         JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
         JSONObject data = change.getJSONObject("d");
@@ -674,7 +683,7 @@ public class ChannelTest extends BaseSimperiumTest {
         ChannelUtil.sendRemoteChange(mChannel, note, remote);
 
         // process the remote changes
-        mExecutor.run();
+        waitFor(200);
 
         // content should now have a merged content field
         assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
@@ -693,14 +702,10 @@ public class ChannelTest extends BaseSimperiumTest {
 
         note.save();
 
-        mExecutor.run();
-
-        // note should be at version 1 and ready to send modifications
-
         // queue the note, the change will be empty since it hasn't bee modified
         mChannel.queueLocalChange(note);
 
-        mExecutor.run();
+        waitFor(200);
 
         // there should be no queued changes since the change was empty
         assertEquals(0, mChannelSerializer.queue.queued.size());
@@ -717,18 +722,19 @@ public class ChannelTest extends BaseSimperiumTest {
         mChannel.receiveMessage("auth:user@example.com");
     }
 
-    protected void startWithEmptyIndex() {
+    protected void startWithEmptyIndex()
+    throws Exception {
         start();
         sendEmptyIndex();
     }
 
     protected void startWithIndex(Map<String,String> objects)
-    throws JSONException {
+    throws Exception {
         startWithIndex("mock-cv", objects);
     }
 
     protected void startWithIndex(String cv, Map<String,String> objects)
-    throws JSONException {
+    throws Exception {
         start();
         sendIndex(cv, objects);
     }
@@ -736,12 +742,14 @@ public class ChannelTest extends BaseSimperiumTest {
     /**
      * Simulates a brand new bucket with and empty index
      */
-    protected void sendEmptyIndex(){
+    protected void sendEmptyIndex()
+    throws Exception {
         sendMessage("i:{\"index\":[]}");
+        waitForIndex();
     }
 
     protected void sendIndex(String cv, Map<String,String> objects)
-    throws JSONException {
+    throws Exception {
         JSONObject index = new JSONObject();
         String period = ".";
         index.put("current", cv);
@@ -764,10 +772,46 @@ public class ChannelTest extends BaseSimperiumTest {
         mListener.indexVersions = versions;
         mListener.indexData = objects;
         sendMessage(String.format("i:%s", index));
+        waitForIndex();
     }
 
     protected void sendMessage(String message){
         mChannel.receiveMessage(message);
+    }
+
+    protected Channel.MessageEvent waitForMessage() throws InterruptedException {
+        return waitForMessage(2000);
+    }
+
+    /**
+     * Wait until a message received. More than likely clearMessages() should
+     * be called before waitForMessage()
+     */
+    protected Channel.MessageEvent waitForMessage(int waitFor) throws InterruptedException {
+
+        NewMessageFlagger flagger = new NewMessageFlagger();
+
+        waitUntil(flagger, "No message received", waitFor);
+
+        return flagger.message;
+
+    }
+
+    /**
+     * Empties the list of received messages and sets last message to null
+     */
+    protected void clearMessages(){
+        mListener.clearMessages();
+    }
+
+    protected void waitForIndex()
+    throws InterruptedException {
+        waitUntil(new Flag(){
+            @Override
+            public boolean isComplete(){
+                return mChannel.haveCompleteIndex();
+            }
+        }, "Index never received", 5000);
     }
 
     private static class RemoteChangeFlagger implements MockBucket.RemoteChangeListener {
