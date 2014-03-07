@@ -262,11 +262,9 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
     public void testQueryWithNullSubject()
     throws Exception {
 
-        mActivity.deleteDatabase(mDatabaseName);
-        Note.Schema schema = new Note.Schema();
-
         Query<Note> query = new Query<Note>(mBucket);
 
+        // with issue #90 this would throw android.database.sqlite.SQLiteException
         Bucket.ObjectCursor<Note> cursor = query.where("title", Query.ComparisonType.LIKE, null).execute();
 
         cursor.close();
