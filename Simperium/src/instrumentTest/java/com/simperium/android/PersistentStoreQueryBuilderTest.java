@@ -40,7 +40,7 @@ public class PersistentStoreQueryBuilderTest extends PersistentStoreBaseTest {
             "title", // index name
             "bucket", // bucket name
         };
-        String condition = " FROM `objects`  LEFT JOIN indexes AS i0 ON objects.bucket = i0.bucket AND objects.key = i0.key AND i0.name=? WHERE objects.bucket = ? AND (  i0.value IS NULL ) ";
+        String condition = " FROM `objects`  LEFT JOIN indexes AS i0 ON objects.bucket = i0.bucket AND objects.key = i0.key AND i0.name=? WHERE objects.bucket = ? AND ( i0.value IS NULL )  ";
 
         MoreAsserts.assertEquals(args, builder.args);
         assertEquals(condition.toString(), builder.statement.toString());

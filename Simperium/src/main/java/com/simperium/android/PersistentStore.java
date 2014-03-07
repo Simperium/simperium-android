@@ -487,20 +487,46 @@ public class PersistentStore implements StorageProvider {
                 names.add(condition.getKey());
                 filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                 Object subject = condition.getSubject();
-                if (subject != null) {
-                    String null_condition = condition.includesNull() ? String.format(Locale.US, " i%d.value IS NULL OR", i) : String.format(Locale.US, " i%d.value IS NOT NULL AND", i);
-                    where.append(String.format(Locale.US, " AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
-                    if (subject instanceof Float) {
-                        where.append(String.format(Locale.US, " %f)", (Float)subject));
-                    } else if (subject instanceof Integer){
-                        where.append(String.format(Locale.US, " %d)", (Integer)subject));
-                    } else if (subject instanceof Boolean){
-                        where.append(String.format(Locale.US, " %d)", ((Boolean)subject ? 1 : 0)));
-                    } else {
-                        where.append(" ?)");
-                        replacements.add(subject.toString());
+
+                // short circuit for null subjects
+                if (subject == null) {
+
+                    switch(condition.getComparisonType()) {
+
+                        case EQUAL_TO :
+                        case LIKE :
+                            where.append(String.format(Locale.US, " AND ( i%d.value IS NULL ) ", i));
+                            break;
+
+                        case NOT_EQUAL_TO :
+                        case NOT_LIKE :
+                            where.append(String.format(Locale.US, " AND ( i%d.value NOT NULL ) ", i));
+                            break;
+
+                        default :
+                            // noop
+                            break;
+
                     }
+
+                    i++;
+
+                    continue;
                 }
+
+                String null_condition = condition.includesNull() ? String.format(Locale.US, " i%d.value IS NULL OR", i) : String.format(Locale.US, " i%d.value IS NOT NULL AND", i);
+                where.append(String.format(Locale.US, " AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
+                if (subject instanceof Float) {
+                    where.append(String.format(Locale.US, " %f)", (Float)subject));
+                } else if (subject instanceof Integer){
+                    where.append(String.format(Locale.US, " %d)", (Integer)subject));
+                } else if (subject instanceof Boolean){
+                    where.append(String.format(Locale.US, " %d)", ((Boolean)subject ? 1 : 0)));
+                } else if (subject != null) {
+                    where.append(" ?)");
+                    replacements.add(subject.toString());
+                }
+
                 i++;
             }
 
