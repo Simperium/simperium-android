@@ -259,6 +259,17 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals(10, cursor.getCount());
     }
 
+    public void testQueryWithNullSubject()
+    throws Exception {
+
+        Query<Note> query = new Query<Note>(mBucket);
+
+        // with issue #90 this would throw android.database.sqlite.SQLiteException
+        Bucket.ObjectCursor<Note> cursor = query.where("title", Query.ComparisonType.LIKE, null).execute();
+
+        cursor.close();
+    }
+
     public void testCounts()
     throws Exception {
         // clear out the database
