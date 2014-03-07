@@ -47,7 +47,7 @@ public class PersistentStore implements StorageProvider {
         return new DataStore<T>(bucketName, schema);
     }
 
-    private class DataStore<T extends Syncable> implements BucketStore<T> {
+    protected class DataStore<T extends Syncable> implements BucketStore<T> {
 
         protected BucketSchema<T> schema;
         protected String bucketName;
@@ -191,10 +191,10 @@ public class PersistentStore implements StorageProvider {
                     values.put(key, (Long) value);
                 } else if(value instanceof Boolean){
                     values.put(key, (Boolean) value);
-                } else {
+                } else if(value != null) {
                     values.put(key, value.toString());
                 }
-                database.insertOrThrow(INDEXES_TABLE, null, values);
+                database.insertOrThrow(INDEXES_TABLE, key, values);
             }
 
             // If we have a fulltext index, let's add a record
@@ -409,16 +409,16 @@ public class PersistentStore implements StorageProvider {
         return database.rawQuery(String.format(Locale.US, "PRAGMA table_info(`%s`)", tableName), null);
     }
 
-    private class QueryBuilder {
+    protected static class QueryBuilder {
 
         private Query query;
-        private StringBuilder selection;
-        private String statement;
-        private String[] args;
         private DataStore mDataStore;
+        protected StringBuilder selection;
+        protected String statement;
+        protected String[] args;
 
         QueryBuilder(DataStore store, Query query){
-            this.mDataStore = store;
+            mDataStore = store;
             this.query = query;
             compileQuery();
         }
@@ -487,6 +487,33 @@ public class PersistentStore implements StorageProvider {
                 names.add(condition.getKey());
                 filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                 Object subject = condition.getSubject();
+
+                // short circuit for null subjects
+                if (subject == null) {
+
+                    switch(condition.getComparisonType()) {
+
+                        case EQUAL_TO :
+                        case LIKE :
+                            where.append(String.format(Locale.US, " AND ( i%d.value IS NULL ) ", i));
+                            break;
+
+                        case NOT_EQUAL_TO :
+                        case NOT_LIKE :
+                            where.append(String.format(Locale.US, " AND ( i%d.value NOT NULL ) ", i));
+                            break;
+
+                        default :
+                            // noop
+                            break;
+
+                    }
+
+                    i++;
+
+                    continue;
+                }
+
                 String null_condition = condition.includesNull() ? String.format(Locale.US, " i%d.value IS NULL OR", i) : String.format(Locale.US, " i%d.value IS NOT NULL AND", i);
                 where.append(String.format(Locale.US, " AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
                 if (subject instanceof Float) {
@@ -499,6 +526,7 @@ public class PersistentStore implements StorageProvider {
                     where.append(" ?)");
                     replacements.add(subject.toString());
                 }
+
                 i++;
             }
 

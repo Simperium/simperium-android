@@ -36,6 +36,7 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
     @Override
     protected void setUp() throws Exception {
         super.setUp();
+        setActivityInitialTouchMode(false);
         mClient = new MockClient();
         mSimperium = Simperium.newClient("fake-app", "fake-secret", mClient);
     }
