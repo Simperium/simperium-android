@@ -53,6 +53,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         assertEquals(bucketName, cursor.getString(1));
         assertEquals(key, cursor.getString(2));
         assertEquals("{\"tags\":[],\"deleted\":false,\"title\":\"Hola Mundo!\"}", cursor.getString(3));
+        cursor.close();
     }
   
     public void testDeletingObject()
@@ -67,6 +68,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
   
         Cursor cursor = mStore.queryObject(bucketName, key);
         assertEquals(0, cursor.getCount());
+        cursor.close();
     }
   
     public void testGettingObject()
@@ -100,6 +102,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         
         Bucket.ObjectCursor<Note> cursor = mNoteStore.all();
         assertEquals(2, cursor.getCount());
+        cursor.close();
     }
   
     public void testResetData()
@@ -112,12 +115,13 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
   
         Bucket.ObjectCursor<Note> cursor = mNoteStore.all();
         assertEquals(1, cursor.getCount());
+        cursor.close();
   
         mNoteStore.reset();
   
         cursor = mNoteStore.all();
         assertEquals(0, cursor.getCount());
-  
+        cursor.close();
     }
   
     public void testIndexObject()
@@ -157,6 +161,8 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToNext();
         assertEquals("col4", cursor.getString(2));
         assertEquals("dos", cursor.getString(3));
+
+        cursor.close();
     }
 
     public void testObjectSearching()
@@ -183,32 +189,38 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         query.where("special", Query.ComparisonType.EQUAL_TO, true);
         cursor = store.search(query);
         assertEquals(20, cursor.getCount());
+        cursor.close();
 
         query = new Query<Note>();
         query.where("title", Query.ComparisonType.LIKE, "Note 7%");
         cursor = store.search(query);
         assertEquals(111, cursor.getCount());
-        
+        cursor.close();
+
         query = new Query<Note>();
         query.where("title", Query.ComparisonType.NOT_LIKE, "Note 7%");
         cursor = store.search(query);
         assertEquals(889, cursor.getCount());
-        
+        cursor.close();
+
         query = new Query<Note>();
         query.where("special", Query.ComparisonType.NOT_EQUAL_TO, true);
         cursor = store.search(query);
         assertEquals(980, cursor.getCount());
-        
+        cursor.close();
+
         query = new Query<Note>();
         query.where("special", Query.ComparisonType.NOT_EQUAL_TO, false);
         query.where("title", Query.ComparisonType.LIKE, "Note 1%");
         cursor = store.search(query);
         assertEquals(110, cursor.getCount());
+        cursor.close();
 
         query = new Query<Note>();
         query.where("spanish", Query.ComparisonType.EQUAL_TO, "cuatro");
         cursor = store.search(query);
         assertEquals(10, cursor.getCount());
+        cursor.close();
     }
 
     public void testQueryWithNullSubject()
@@ -298,7 +310,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToFirst();
         Note note = cursor.getObject();
         assertEquals(1, note.get("position"));
-        
+        cursor.close();
 
         query = new Query<Note>();
         query.order("title", Query.SortType.DESCENDING);
@@ -311,6 +323,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToNext();
         note = cursor.getObject();
         assertEquals(2, note.get("position"));
+        cursor.close();
 
         query = new Query<Note>();
         query.order("position");
@@ -320,6 +333,8 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToFirst();
         note = cursor.getObject();
         assertEquals(2, note.get("position"));
+        cursor.close();
+
     }
 
     /**
@@ -336,6 +351,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToFirst();
         assertEquals(5, cursor.getColumnCount());
         assertEquals("Lol", cursor.getString(4));
+        cursor.close();
     }
 
     public void testFullTextSearching()
@@ -376,12 +392,13 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToFirst();
 
         assertEquals("Hello <match>world</match>. Hola mundo. The <match>world</match> is your oyster. Lorem ipsum dolor sit amet, consectetur\u2026", cursor.getString(cursor.getColumnIndexOrThrow("match")));
-
+        cursor.close();
     }
 
     public static void assertTableExists(SQLiteDatabase database, String tableName){
         Cursor cursor = database.query(MASTER_TABLE, new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
         assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());
+        cursor.close();
     }
 
     private class DatabaseHelper extends SQLiteOpenHelper {
