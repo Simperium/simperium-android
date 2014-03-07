@@ -259,6 +259,19 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         assertEquals(10, cursor.getCount());
     }
 
+    public void testQueryWithNullSubject()
+    throws Exception {
+
+        mActivity.deleteDatabase(mDatabaseName);
+        Note.Schema schema = new Note.Schema();
+
+        Query<Note> query = new Query<Note>(mBucket);
+
+        Bucket.ObjectCursor<Note> cursor = query.where("title", Query.ComparisonType.LIKE, null).execute();
+
+        cursor.close();
+    }
+
     public void testCounts()
     throws Exception {
         // clear out the database
