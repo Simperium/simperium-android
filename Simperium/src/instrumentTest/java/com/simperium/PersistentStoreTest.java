@@ -1,4 +1,4 @@
-package com.simperium;
+package com.simperium.android;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -28,55 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import static com.simperium.TestHelpers.makeUser;
-
-public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginActivity> {
-    public static final String TAG = "SimperiumTest.PersistentStore";
-    public static final String MASTER_TABLE = "sqlite_master";
-    public static final String BUCKET_NAME="bucket";
-    
-    private LoginActivity mActivity;
-    
-    private PersistentStore mStore;
-    private BucketStore<Note> mNoteStore;
-    private SQLiteDatabase mDatabase;
-    private String mDatabaseName = "simperium-test-data";
-    private String[] mTableNames = new String[]{"indexes", "objects", "value_caches"};
-    private Bucket<Note> mBucket;
-    private User mUser;
-    private BucketSchema mSchema;
-    private ObjectCache<Note> mCache;
-    private GhostStorageProvider mGhostStore;
-
-    public PersistentStoreTest() {
-        super(LoginActivity.class);
-    }
-
-    @Override
-    protected void setUp() throws Exception {
-
-        super.setUp();
-
-        setActivityInitialTouchMode(false);
-        mUser = makeUser();
-        mActivity = getActivity();
-        mDatabase = mActivity.openOrCreateDatabase(mDatabaseName, 0, null);
-        mGhostStore = new MockGhostStore();
-        mCache = new MockCache<Note>();
-        mStore = new PersistentStore(mDatabase);
-        mSchema = new Note.Schema();
-        mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
-        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
-        Bucket.Channel channel = new MockChannel(mBucket);
-        mBucket.setChannel(channel);
-        mNoteStore.prepare(mBucket);
-    }
-
-    @Override
-    protected void tearDown() throws Exception {
-        mActivity.deleteDatabase(mDatabaseName);
-        super.tearDown();
-    }
+public class PersistentStoreTest extends PersistentStoreBaseTest {
 
     public void testDatabaseTables()
     throws Exception {
@@ -268,6 +220,20 @@ public class PersistentStoreTest extends ActivityInstrumentationTestCase2<LoginA
         Bucket.ObjectCursor<Note> cursor = query.where("title", Query.ComparisonType.LIKE, null).execute();
 
         cursor.close();
+    }
+
+    public void testSearchForNull() {
+
+        // clear out the database
+        mActivity.deleteDatabase(mDatabaseName);
+
+        Note note = mBucket.newObject();
+        note.setTitle("Special will be null");
+
+        int count = mBucket.query().where("special", Query.ComparisonType.EQUAL_TO, null).count();
+
+        assertEquals(1, count);
+
     }
 
     public void testCounts()

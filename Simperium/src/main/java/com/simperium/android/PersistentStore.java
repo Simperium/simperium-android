@@ -47,7 +47,7 @@ public class PersistentStore implements StorageProvider {
         return new DataStore<T>(bucketName, schema);
     }
 
-    private class DataStore<T extends Syncable> implements BucketStore<T> {
+    protected class DataStore<T extends Syncable> implements BucketStore<T> {
 
         protected BucketSchema<T> schema;
         protected String bucketName;
@@ -409,16 +409,16 @@ public class PersistentStore implements StorageProvider {
         return database.rawQuery(String.format(Locale.US, "PRAGMA table_info(`%s`)", tableName), null);
     }
 
-    private class QueryBuilder {
+    protected static class QueryBuilder {
 
         private Query query;
-        private StringBuilder selection;
-        private String statement;
-        private String[] args;
         private DataStore mDataStore;
+        protected StringBuilder selection;
+        protected String statement;
+        protected String[] args;
 
         QueryBuilder(DataStore store, Query query){
-            this.mDataStore = store;
+            mDataStore = store;
             this.query = query;
             compileQuery();
         }
