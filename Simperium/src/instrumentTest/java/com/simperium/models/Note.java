@@ -18,6 +18,7 @@ public class Note extends BucketObject {
         public Schema(){
             autoIndex();
             addIndex(contentIndexer);
+            addIndex(nullIndexer);
             setupFullTextIndex("tags", "content");
             setDefault("tags", new JSONArray());
             setDefault("deleted", false);
@@ -28,6 +29,15 @@ public class Note extends BucketObject {
             public List<Index> index(Note note){
                 List<Index> indexes = new ArrayList<Index>(1);
                 indexes.add(new Index("preview", note.getPreview()));
+                return indexes;
+            }
+        };
+
+        private Indexer<Note> nullIndexer = new Indexer<Note>() {
+            @Override
+            public List<Index> index(Note note) {
+                List<Index> indexes = new ArrayList<Index>(1);
+                indexes.add(new Index("null_column", null));
                 return indexes;
             }
         };

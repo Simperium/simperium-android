@@ -191,10 +191,10 @@ public class PersistentStore implements StorageProvider {
                     values.put(key, (Long) value);
                 } else if(value instanceof Boolean){
                     values.put(key, (Boolean) value);
-                } else {
+                } else if(value != null) {
                     values.put(key, value.toString());
                 }
-                database.insertOrThrow(INDEXES_TABLE, null, values);
+                database.insertOrThrow(INDEXES_TABLE, key, values);
             }
 
             // If we have a fulltext index, let's add a record

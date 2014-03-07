@@ -141,7 +141,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         note.save();
 
         Cursor cursor = mDatabase.query(PersistentStore.INDEXES_TABLE, null, null, null, null, null, "name", null);
-        assertEquals(8, cursor.getCount());
+        assertEquals(9, cursor.getCount());
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(0));
         assertEquals(note.getSimperiumKey(), cursor.getString(1));
