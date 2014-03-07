@@ -234,15 +234,16 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.close();
     }
 
+    /**
+     * Search for notes with a null value in "null_column" index
+     */
     public void testSearchForNull() {
-
-        // clear out the database
-        mActivity.deleteDatabase(mDatabaseName);
 
         Note note = mBucket.newObject();
         note.setTitle("Special will be null");
+        note.save();
 
-        int count = mBucket.query().where("special", Query.ComparisonType.EQUAL_TO, null).count();
+        int count = mBucket.query().where("null_column", Query.ComparisonType.EQUAL_TO, null).count();
 
         assertEquals(1, count);
 
