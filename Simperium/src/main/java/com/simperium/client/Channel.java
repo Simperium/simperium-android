@@ -12,10 +12,8 @@
  */
 package com.simperium.client;
 
-import com.simperium.Version;
 import com.simperium.SimperiumException;
-
-import com.simperium.util.JSONDiff;
+import com.simperium.Version;
 import com.simperium.util.Logger;
 
 import org.json.JSONArray;
@@ -70,6 +68,7 @@ public class Channel implements Bucket.Channel {
     static public final String SIMPERIUM_API_VERSION = "1.1";
     static public final String LIBRARY_NAME = "android";
     static public final Integer LIBRARY_VERSION = 0;
+    static public final Integer RETRY_LIMIT = 1;
 
     // commands sent over the socket
     public static final String COMMAND_INIT      = "init"; // init:{INIT_PROPERTIES}
@@ -344,6 +343,13 @@ public class Channel implements Bucket.Channel {
     }
 
     protected void requeueChangeWithFullObject(Change change) {
+        // Don't requeue this change if we've retried past the allowed limit.
+        if (change.getRetryCount() >= RETRY_LIMIT) {
+            completeAndDequeueChange(change);
+            return;
+        }
+
+        change.incrementRetryCount();
         change.setSendFullObject(true);
         changeProcessor.addChange(change);
     }
@@ -1435,9 +1441,7 @@ public class Channel implements Bucket.Channel {
                 serializer.onSendChange(change);
                 change.setSent();
             } catch (ChangeEmptyException e) {
-                change.setComplete();
-                change.resetTimer();
-                serializer.onDequeueChange(change);
+                completeAndDequeueChange(change);
             } catch (ChangeException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);
@@ -1445,6 +1449,12 @@ public class Channel implements Bucket.Channel {
 
         }
 
+    }
+
+    private void completeAndDequeueChange(Change change) {
+        change.setComplete();
+        change.resetTimer();
+        serializer.onDequeueChange(change);
     }
 
     public static Map<String,Object> convertJSON(JSONObject json){
