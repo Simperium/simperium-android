@@ -77,7 +77,7 @@ public class Bucket<T extends Syncable> {
     }
 
     public enum ChangeType {
-        REMOVE, MODIFY, INDEX
+        REMOVE, MODIFY, INDEX, RESET
     }
 
     public static final String TAG="Simperium.Bucket";
@@ -651,10 +651,12 @@ public class Bucket<T extends Syncable> {
 
     public void reset(){
         storage.reset();
+        // Clear the ghost store
         ghostStore.resetBucket(this);
         channel.reset();
         stop();
-        // Clear the ghost store
+
+        notifyOnNetworkChangeListeners(ChangeType.RESET);
     }
     /**
      * Does bucket have at least the requested version?
