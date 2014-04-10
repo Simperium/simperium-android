@@ -19,8 +19,6 @@ repositories {
 dependencies {
     compile 'com.android:volley:4.4.2.1'
     compile 'com.codebutler:android-websockets:6c7c60d'
-
-    androidTestCompile 'com.jayway.android.robotium:robotium-solo:4.3.1'
 }
 
 android {
