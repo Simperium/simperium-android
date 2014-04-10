@@ -655,8 +655,31 @@ public class ChannelTest extends BaseSimperiumTest {
         JSONObject data = change.getJSONObject("d");
 
         assertEquals(note.getDiffableValue().toString(), data.toString());
+    }
 
+    /**
+     * See https://github.com/Simperium/simperium-android/issues/63
+     */
+    public void testHandleRepeated405Error()
+            throws Exception {
 
+        // we will be sending a 440 error response
+        mListener.autoAcknowledge = true;
+        mListener.replyWithError = 405;
+
+        startWithEmptyIndex();
+
+        Note note = mBucket.newObject();
+        note.setTitle("My hovercraft is full of eels");
+        note.save();
+
+        clearMessages();
+        waitForMessage();
+
+        JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
+        JSONObject data = change.getJSONObject("d");
+
+        assertNotEqual(note.getDiffableValue().toString(), data.toString());
     }
 
     /**
