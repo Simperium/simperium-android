@@ -342,7 +342,7 @@ public class Channel implements Bucket.Channel {
         return change;
     }
 
-    protected void requeueChangeWithFullObject(Change change) {
+    public void requeueChangeWithFullObject(Change change) {
         // Don't requeue this change if we've retried past the allowed limit.
         if (change.getRetryCount() >= RETRY_LIMIT) {
             completeAndDequeueChange(change);

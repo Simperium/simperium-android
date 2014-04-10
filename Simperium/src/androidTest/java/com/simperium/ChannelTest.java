@@ -1,23 +1,21 @@
 package com.simperium;
 
-import com.simperium.Version;
-
 import com.simperium.client.Bucket;
+import com.simperium.client.Change;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.User;
-
 import com.simperium.models.Note;
-
-import com.simperium.util.RemoteChangesUtil;
-import com.simperium.util.ChannelUtil;
-
 import com.simperium.test.MockBucket;
 import com.simperium.test.MockChannelListener;
 import com.simperium.test.MockChannelSerializer;
 import com.simperium.test.MockExecutor;
-import com.simperium.test.MockGhostStore;
+import com.simperium.util.ChannelUtil;
+import com.simperium.util.RemoteChangesUtil;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -27,10 +25,6 @@ import java.util.Map.Entry;
 import static android.test.MoreAsserts.assertMatchesRegex;
 import static com.simperium.TestHelpers.Flag;
 import static com.simperium.TestHelpers.waitUntil;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONException;
 
 public class ChannelTest extends BaseSimperiumTest {
 
@@ -638,7 +632,7 @@ public class ChannelTest extends BaseSimperiumTest {
     public void testResendChangeWithFullObjectAfterReceiving405()
     throws Exception {
 
-        // we will be sending a 440 error response
+        // we will be sending a 405 error response
         mListener.autoAcknowledge = true;
         mListener.replyWithError = 405;
 
@@ -657,29 +651,20 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(note.getDiffableValue().toString(), data.toString());
     }
 
-    /**
-     * See https://github.com/Simperium/simperium-android/issues/63
-     */
-    public void testHandleRepeated405Error()
+    public void testRequeueChangeWithFullObjectRetryLimit()
             throws Exception {
 
-        // we will be sending a 440 error response
-        mListener.autoAcknowledge = true;
-        mListener.replyWithError = 405;
-
-        startWithEmptyIndex();
-
         Note note = mBucket.newObject();
-        note.setTitle("My hovercraft is full of eels");
-        note.save();
+        note.setTitle("My plane is full of snakes");
 
-        clearMessages();
-        waitForMessage();
+        Change change = new Change(Change.OPERATION_MODIFY, note);
 
-        JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
-        JSONObject data = change.getJSONObject("d");
+        // Spam a lot of attempts to requeue a change
+        for (int i=0; i < 10; i++) {
+            mChannel.requeueChangeWithFullObject(change);
+        }
 
-        assertNotEqual(note.getDiffableValue().toString(), data.toString());
+        assertEquals(Channel.RETRY_LIMIT, change.getRetryCount());
     }
 
     /**
