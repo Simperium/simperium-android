@@ -52,6 +52,7 @@ public class Change {
     private JSONDiff jsondiff = new JSONDiff();
     private boolean sendFullObject = false;
     private TimerTask retryTimer;
+    private Integer retryCount = 0;
 
     /**
      * Constructs a change object from a map of values
@@ -249,6 +250,14 @@ public class Change {
 
     public void setOnCompleteListener(OnCompleteListener listener){
         
+    }
+
+    public Integer getRetryCount() {
+        return retryCount;
+    }
+
+    public void incrementRetryCount() {
+        retryCount++;
     }
 
     protected void setOnRetryListener(OnRetryListener listener){
