@@ -85,6 +85,7 @@ public class Channel implements Bucket.Channel {
     static final String EXPIRED_AUTH_INDICATOR = "{";
     static final String EXPIRED_AUTH_REASON_KEY = "msg";
     static final String EXPIRED_AUTH_CODE_KEY = "code";
+    static final int EXPIRED_AUTH_MALFORMED_TOKEN_CODE = 400;
     static final int EXPIRED_AUTH_INVALID_TOKEN_CODE = 401;
 
     static public final int LOG_DEBUG = ChannelProvider.LOG_DEBUG;
@@ -158,7 +159,7 @@ public class Channel implements Bucket.Channel {
                     try {
                         JSONObject authResponse = new JSONObject(param);
                         int code = authResponse.getInt(EXPIRED_AUTH_CODE_KEY);
-                        if (code == EXPIRED_AUTH_INVALID_TOKEN_CODE) {
+                        if (code == EXPIRED_AUTH_INVALID_TOKEN_CODE || code == EXPIRED_AUTH_MALFORMED_TOKEN_CODE) {
                             user.setStatus(User.Status.NOT_AUTHORIZED);
                             stop();
                             return;

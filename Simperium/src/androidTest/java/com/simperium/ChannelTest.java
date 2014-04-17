@@ -221,6 +221,18 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * Invalid tokens should set user status to NOT_AUTHORIZED
+     */
+    public void testFailedAuthWithInvalidToken() {
+        start();
+
+        assertNotNull(mListener.lastMessage);
+        mChannel.receiveMessage("auth:{\"msg\":\"Token malformed\",\"code\":400}");
+        assertEquals(User.Status.NOT_AUTHORIZED, mAuthStatus);
+    }
+
+
+    /**
      * A disconnected channel should queue up local modifications.
      */
     public void testOfflineQueueStatus()
