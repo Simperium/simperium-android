@@ -109,22 +109,14 @@ public class GhostStore implements GhostStorageProvider {
     @Override
     public void saveGhost(Bucket bucket, Ghost ghost) {
         // CREATE/UPDATE
-        String where = "bucketName=? AND simperiumKey=?";
-        String[] args = { bucket.getName(), ghost.getSimperiumKey() };
-        String[] columns = { BUCKET_NAME_FIELD, VERSION_FIELD, OBJECT_KEY_FIELD };
-        Cursor cursor = database.query(GHOSTS_TABLE_NAME, columns, where, args, null, null, null);
         ContentValues values = new ContentValues();
         values.put(BUCKET_NAME_FIELD, bucket.getName());
         values.put(VERSION_FIELD, ghost.getVersion());
         values.put(OBJECT_KEY_FIELD, ghost.getSimperiumKey());
         String payload = serializeGhostData(ghost);
         values.put(PAYLOAD_FIELD, payload);
-        if (cursor.getCount() > 0) {
-            int count = database.update(GHOSTS_TABLE_NAME, values, where, args);
-        } else {
-            long id = database.insertOrThrow(GHOSTS_TABLE_NAME, null, values);
-        }
-        cursor.close();
+
+        database.insertWithOnConflict(GHOSTS_TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     @Override
