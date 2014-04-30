@@ -18,16 +18,15 @@ repositories {
     maven { url "http://simperium.github.io/simperium-android" }
 }
 
-dependencies {
-    compile 'com.android:volley:4.4.2.1'
-    compile 'com.codebutler:android-websockets:6c7c60d'
-}
-
 android {
+
+    dependencies {
+        compile 'com.android:volley:4.4.2.1'
+        compile 'com.codebutler:android-websockets:6c7c60d'
+    }
 
     compileSdkVersion 19
     buildToolsVersion "19"
-    publishNonDefault true
 
     defaultConfig {
         minSdkVersion 8
@@ -87,46 +86,16 @@ public final class Version {
     }
 }
 
+afterEvaluate {
+  uploadArchives {
+    repositories {
+      mavenDeployer {
+        repository(url: project.repository)
+        pom.version = project.version
+        pom.artifactId = 'simperium-android'
+      }
+    }
+  }
+}
+
 tasks.preBuild.dependsOn versionConfig
-
-task writePom << {
-    def dir = "${buildDir}/pom"
-    ["simperium-android", "simperium-android-support"].each() { artifact ->
-        def file = new File(dir, "${artifact}.xml")
-        file.getParentFile().mkdirs()
-        pom {
-            project {
-                artifactId artifact
-                packaging "aar"
-            }
-        }.writeTo(file)
-    }
-}
-
-task publishArtifacts {
-    def libDir = "${buildDir}/libs"
-    def pomDir = "${buildDir}/pom"
-    def baseName = "${project.name}-${project.version}"
-    def artifacts = [:]
-    artifacts[(new File(pomDir, "simperium-android.xml"))] =
-        new File(libDir, "${baseName}-release.aar")
-    artifacts[(new File(pomDir, "simperium-android-support.xml"))] =
-        new File(libDir, "${baseName}-debug.aar")
-
-    doLast {
-        if (!project.hasProperty("repository"))
-            throw new InvalidUserDataException("Project has no repository configured")
-
-        artifacts.each() { pomFile, file ->
-            exec {
-                commandLine "mvn", "deploy:deploy-file", "-Dfile=${file}",
-                    "-DpomFile=${pomFile}", "-Durl=${project.repository}"
-                standardOutput = new ByteArrayOutputStream()
-                
-            }
-        }
-    }
-}
-
-tasks.publishArtifacts.dependsOn tasks.assemble
-tasks.publishArtifacts.dependsOn tasks.writePom
