@@ -9,6 +9,8 @@ buildscript {
 apply plugin: 'android-library'
 apply plugin: 'maven'
 
+version gitVersion()
+
 group "com.simperium"
 
 repositories {
@@ -25,6 +27,7 @@ android {
 
     compileSdkVersion 19
     buildToolsVersion "19"
+    publishNonDefault true
 
     defaultConfig {
         minSdkVersion 8
@@ -47,40 +50,6 @@ android {
 
 
 }
-
-def gitHash = { ->
-    try {
-        def code = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', '--verify', '--short', 'HEAD'
-            standardOutput = code
-        }
-        return code.toString().trim()
-    }
-    catch (ignored) {
-        return "<unknown>";
-    }
-}
-
-def gitDescribe = { ->
-    try {
-        def code = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'describe', '--always', '--dirty=-dirty'
-            standardOutput = code
-        }
-        return code.toString().trim()
-    }
-    catch (ignored) {
-        return "<unknown>"
-    }
-}
-
-def gitVersion = { ->
-    (gitDescribe() =~ /^v/).replaceFirst('')
-}
-
-version gitVersion()
 
 task versionConfig(group: "build", description: "Generate version class") {
     def dir = "${buildDir}/source/version"
@@ -140,7 +109,7 @@ task publishArtifacts {
     def baseName = "${project.name}-${project.version}"
     def artifacts = [:]
     artifacts[(new File(pomDir, "simperium-android.xml"))] =
-        new File(libDir, "${baseName}.aar")
+        new File(libDir, "${baseName}-release.aar")
     artifacts[(new File(pomDir, "simperium-android-support.xml"))] =
         new File(libDir, "${baseName}-debug.aar")
 
