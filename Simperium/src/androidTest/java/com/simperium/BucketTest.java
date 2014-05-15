@@ -152,6 +152,20 @@ public class BucketTest extends TestCase {
 
     }
 
+    public void testApplyRemoteChangeWithInvalidDiff()
+            throws Exception {
+
+        Note note = mBucket.newObject();
+
+        note.setContent("Line 1\n");
+        note.save();
+
+        // build remote change based on 3rd party modification with a bad diff
+        RemoteChange change = RemoteChangesUtil.buildRemoteChangeWithInvalidDiff(note);
+
+        mBucket.applyRemoteChange(change);
+    }
+
     public void testMergeLocalChanges()
     throws Exception {
 
