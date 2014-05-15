@@ -783,6 +783,8 @@ public class Bucket<T extends Syncable> {
                         } catch (JSONException e) {
                             // could not transform properties
                             // continue with updated properties
+                        } catch (IllegalArgumentException e) {
+                            // could not apply diff, continue
                         }
                     }
 
