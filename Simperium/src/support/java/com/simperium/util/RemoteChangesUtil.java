@@ -5,9 +5,12 @@ import com.simperium.client.Channel;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.Syncable;
 
+import com.simperium.util.JSONDiff;
+import com.simperium.util.Uuid;
+
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONException;
 
 public class RemoteChangesUtil {
 
@@ -107,19 +110,6 @@ public class RemoteChangesUtil {
         String id = origin.getSimperiumKey();
         int version = origin.getVersion();
         JSONObject diff = JSONDiff.diff(origin.getUnmodifiedValue(), target);
-        JSONObject modify = modifyOperation(id, version, diff.getJSONObject("v"));
-
-        return RemoteChange.buildFromMap(modify);
-    }
-
-    // Used specically for testApplyRemoteChangeWithInvalidDiff() in BucketTest
-    public static RemoteChange buildRemoteChangeWithInvalidDiff(Syncable origin)
-            throws JSONException {
-
-        String id = origin.getSimperiumKey();
-        int version = origin.getVersion();
-        // Set diff index out of range (100)
-        JSONObject diff = new JSONObject("{\"v\":{\"content\":{\"v\":\"=100\\t-1\\t+Line 2%0A\",\"o\":\"d\"}},\"o\":\"O\"}");
         JSONObject modify = modifyOperation(id, version, diff.getJSONObject("v"));
 
         return RemoteChange.buildFromMap(modify);
