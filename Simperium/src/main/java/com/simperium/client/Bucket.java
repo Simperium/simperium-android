@@ -453,8 +453,7 @@ public class Bucket<T extends Syncable> {
         ghostStore.saveGhost(Bucket.this, ghost);
 
         // Update this object if exists in cache, otherwise build it
-        T object;
-        object = cache.get(ghost.getSimperiumKey());
+        T object = cache.get(ghost.getSimperiumKey());
         if (object != null) {
             schema.update(object, ghost.getDiffableValue());
         } else {
