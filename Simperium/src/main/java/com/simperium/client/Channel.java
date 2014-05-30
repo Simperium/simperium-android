@@ -1364,6 +1364,8 @@ public class Channel implements Bucket.Channel {
         }
 
         private void dequeueLocalChangesForKey(String simperiumKey) {
+            if (simperiumKey == null) return;
+
             Iterator<Change> iterator = localQueue.iterator();
             while (iterator.hasNext()) {
                 Change queuedChange = iterator.next();
