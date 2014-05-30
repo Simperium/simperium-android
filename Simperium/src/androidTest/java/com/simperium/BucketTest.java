@@ -176,4 +176,28 @@ public class BucketTest extends TestCase {
 
     }
 
+    public void testMergeLocalChangesWithUpdatedGhost()
+            throws Exception {
+
+        Note note = mBucket.newObject();
+
+        note.setContent("Line 1\n");
+        note.save();
+
+        // make a local modification before remote change comes in
+        note.setContent("Line 1\nLine 3\n");
+
+        // create a 3rd party modification
+        JSONObject external = new JSONObject(note.getDiffableValue().toString());
+        external.put("content", "Line 1\nLine 2\n");
+
+        // build remote change based on 3rd party modification
+        RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, external);
+        Ghost ghost = change.apply(note.getGhost());
+
+        mBucket.updateGhost(ghost, null);
+
+        assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
+    }
+
 }
