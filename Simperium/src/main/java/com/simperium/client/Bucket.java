@@ -391,7 +391,7 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
-     * Returns a new objecty tracked by this bucket
+     * Returns a new object tracked by this bucket
      */
     public T newObject(){
         try {
@@ -449,9 +449,18 @@ public class Bucket<T extends Syncable> {
     /**
      * Update the ghost data
      */
-    protected void updateObjectWithGhost(final Ghost ghost){
+    protected void updateObjectWithGhost(final Ghost ghost) {
         ghostStore.saveGhost(Bucket.this, ghost);
-        T object = buildObject(ghost);
+
+        // Update this object if exists in cache, otherwise build it
+        T object;
+        object = cache.get(ghost.getSimperiumKey());
+        if (object != null) {
+            schema.update(object, ghost.getDiffableValue());
+        } else {
+            object = schema.build(ghost.getSimperiumKey(), ghost.getDiffableValue());
+        }
+
         updateObject(object);
     }
 
@@ -464,10 +473,51 @@ public class Bucket<T extends Syncable> {
                 try {
                     T object = get(ghost.getSimperiumKey());
                     if (object.isModified()) {
-                        // TODO: we already have the object, how do we handle if we have modifications?
+                        // Attempt to merge local changes with the new ghost
+                        Ghost localGhost = object.getGhost();
+                        JSONObject localGhostProperties = localGhost.getDiffableValue();
+
+                        // Get diff of local ghost vs. local object
+                        JSONObject localModifications;
+                        try {
+                            localModifications = JSONDiff.diff(localGhostProperties, object.getDiffableValue());
+                        } catch (JSONException e) {
+                            localModifications = new JSONObject();
+                        }
+
+                        // Get diff of remote ghost vs. local ghost
+                        JSONObject remoteModifications;
+                        try {
+                            remoteModifications = JSONDiff.diff(localGhostProperties, ghost.getDiffableValue());
+                        } catch (JSONException e) {
+                            remoteModifications = new JSONObject();
+                        }
+
+                        try {
+                            JSONObject localPatch = localModifications.getJSONObject(JSONDiff.DIFF_VALUE_KEY);
+                            JSONObject remotePatch = remoteModifications.getJSONObject(JSONDiff.DIFF_VALUE_KEY);
+
+                            JSONObject transformedDiff = JSONDiff.transform(localPatch, remotePatch, localGhostProperties);
+                            JSONObject updatedProperties = JSONDiff.deepCopy(ghost.getDiffableValue());
+                            updatedProperties = JSONDiff.apply(updatedProperties, transformedDiff);
+
+                            schema.update(object, updatedProperties);
+                            object.setGhost(ghost);
+                            updateObject(object);
+                        } catch (JSONException e) {
+                            // Could not apply patch, update from the ghost
+                            updateObjectWithGhost(ghost);
+                        } catch (IllegalArgumentException e) {
+                            // JSONDiff argument failure, update from the ghost
+                            updateObjectWithGhost(ghost);
+                        }
                     } else {
+                        // Apply the new ghost to the unmodified local object
                         updateObjectWithGhost(ghost);
                     }
+
+                    // Notify listeners that the object has changed
+                    notifyOnNetworkChangeListeners(ChangeType.MODIFY, object.getSimperiumKey());
                 } catch (BucketObjectMissingException e) {
                     // The object doesn't exist, insert the new object
                     updateObjectWithGhost(ghost);

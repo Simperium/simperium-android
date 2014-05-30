@@ -1331,6 +1331,10 @@ public class Channel implements Bucket.Channel {
                             } catch (RemoteChangeInvalidException e){
                                 Logger.log(TAG, "Remote change could not be acknowledged", e);
                                 log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+
+                                // request the full object for the new version
+                                ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
+                                sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
                             }
                         }
                     } else {
