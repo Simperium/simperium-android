@@ -1298,11 +1298,9 @@ public class Channel implements Bucket.Channel {
                         continue;
                     }
                     log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
-                    Boolean acknowledged = false;
                     // synchronizing on pendingChanges since we're looking up and potentially
                     // removing an entry
-                    Change change = null;
-                    change = pendingChanges.get(remoteChange.getKey());
+                    Change change = pendingChanges.get(remoteChange.getKey());
                     if (remoteChange.isAcknowledgedBy(change)) {
                         log(LOG_DEBUG, String.format("Found pending change for remote change <%s>: %s", remoteChange.getChangeVersion(), change.getChangeId()));
                         serializer.onAcknowledgeChange(change);
@@ -1312,22 +1310,9 @@ public class Channel implements Bucket.Channel {
                             Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
                             onError(remoteChange, change);
                         } else {
+                            Ghost ghost = null;
                             try {
-                                Ghost ghost = onAcknowledged(remoteChange, change);
-                                Change compressed = null;
-                                Iterator<Change> queuedChanges = localQueue.iterator();
-                                while(queuedChanges.hasNext()){
-                                    Change queuedChange = queuedChanges.next();
-                                    if (queuedChange.getKey().equals(change.getKey())) {
-                                        queuedChanges.remove();
-                                        if (!remoteChange.isRemoveOperation()) {
-                                            compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
-                                        }
-                                    }
-                                }
-                                if (compressed != null) {
-                                    localQueue.add(compressed);
-                                }
+                                ghost = onAcknowledged(remoteChange, change);
                             } catch (RemoteChangeInvalidException e){
                                 Logger.log(TAG, "Remote change could not be acknowledged", e);
                                 log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
@@ -1335,6 +1320,21 @@ public class Channel implements Bucket.Channel {
                                 // request the full object for the new version
                                 ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
                                 sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
+                            } finally {
+                                Change compressed = null;
+                                Iterator<Change> queuedChanges = localQueue.iterator();
+                                while (queuedChanges.hasNext()) {
+                                    Change queuedChange = queuedChanges.next();
+                                    if (queuedChange.getKey().equals(change.getKey())) {
+                                        queuedChanges.remove();
+                                        if (ghost != null && !remoteChange.isRemoveOperation()) {
+                                            compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
+                                        }
+                                    }
+                                }
+                                if (compressed != null) {
+                                    localQueue.add(compressed);
+                                }
                             }
                         }
                     } else {
@@ -1348,6 +1348,8 @@ public class Channel implements Bucket.Channel {
                             } catch (RemoteChangeInvalidException e) {
                                 Logger.log(TAG, "Remote change could not be applied", e);
                                 log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
+
+                                dequeueLocalChangesForKey(remoteChange.getKey());
                                 // request the full object for the new version
                                 ObjectVersion version = new ObjectVersion(remoteChange.getKey(), remoteChange.getObjectVersion());
                                 sendMessage(String.format("%s:%s", COMMAND_ENTITY, version));
@@ -1355,14 +1357,18 @@ public class Channel implements Bucket.Channel {
                         }
                     }
                     if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
-                        Iterator<Change> iterator = localQueue.iterator();
-                        while(iterator.hasNext()){
-                            Change queuedChange = iterator.next();
-                            if (queuedChange.getKey().equals(remoteChange.getKey())) {
-                                iterator.remove();
-                            }
-                        }
+                        dequeueLocalChangesForKey(remoteChange.getKey());
                     }
+                }
+            }
+        }
+
+        private void dequeueLocalChangesForKey(String simperiumKey) {
+            Iterator<Change> iterator = localQueue.iterator();
+            while (iterator.hasNext()) {
+                Change queuedChange = iterator.next();
+                if (queuedChange.getKey().equals(simperiumKey)) {
+                    iterator.remove();
                 }
             }
         }
