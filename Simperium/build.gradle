@@ -39,12 +39,12 @@ android {
             manifest.srcFile 'AndroidManifest.xml'
         }
 
-        debug {
+/*        debug {
             java {
                 srcDir 'src/support/java'
             }
         }
-
+*/
     }
 
 
