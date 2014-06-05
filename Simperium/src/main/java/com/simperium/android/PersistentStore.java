@@ -66,6 +66,10 @@ public class PersistentStore implements StorageProvider {
         @Override
         public void prepare(Bucket<T> bucket){
             setupFullText();
+
+            // Clear reindex table to stop any other indexing operations
+            database.delete(REINDEX_QUEUE_TABLE, "bucket=?", new String[]{bucketName});
+
             reindex(bucket);
         }
 
@@ -446,7 +450,7 @@ public class PersistentStore implements StorageProvider {
             String bucketName = mDataStore.bucketName;
             String ftName = mDataStore.getFullTextTableName();
 
-            selection = new StringBuilder("SELECT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
+            selection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
             StringBuilder filters = new StringBuilder();
             StringBuilder where = new StringBuilder("WHERE objects.bucket = ?");
 
