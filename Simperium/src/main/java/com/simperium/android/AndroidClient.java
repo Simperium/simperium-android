@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.koushikdutta.async.http.AsyncHttpClient;
+
 import com.simperium.Simperium;
 import com.simperium.Version;
 import com.simperium.client.ClientFactory;
@@ -33,6 +35,7 @@ public class AndroidClient implements ClientFactory {
     protected SQLiteDatabase mDatabase;
 
     protected ExecutorService mExecutor;
+    protected AsyncHttpClient mHttpClient = AsyncHttpClient.getDefaultInstance();
 
     public AndroidClient(Context context){
         int threads = Runtime.getRuntime().availableProcessors();
@@ -76,7 +79,7 @@ public class AndroidClient implements ClientFactory {
         }
 
         String sessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
-        return new WebSocketManager(mExecutor, appId, sessionId, new QueueSerializer(mDatabase));
+        return new WebSocketManager(mExecutor, appId, sessionId, new QueueSerializer(mDatabase), mHttpClient);
     }
 
     @Override
