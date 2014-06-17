@@ -86,7 +86,7 @@ public final class Version {
     }
 }
 
-afterEvaluate {
+/*afterEvaluate {
   uploadArchives {
     repositories {
       mavenDeployer {
@@ -97,5 +97,5 @@ afterEvaluate {
     }
   }
 }
-
+*/
 tasks.preBuild.dependsOn versionConfig

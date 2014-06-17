@@ -392,8 +392,12 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     private AsyncHttpRequest buildRequest() {
-
+        
         AsyncHttpRequest request = new AsyncHttpGet(mSocketURI);
+
+        // List<BasicNameValuePair> headers = Arrays.asList(
+        //     new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
+        // );
 
         request.setHeader(USER_AGENT_HEADER, mSessionId);
 

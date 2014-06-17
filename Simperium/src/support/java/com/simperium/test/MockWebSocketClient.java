@@ -10,13 +10,6 @@ import java.util.List;
 
 public class MockWebSocketClient extends WebSocketClient {
 
-    // public interface Listener {
-    //     public void onConnect();
-    //     public void onMessage(String message);
-    //     public void onMessage(byte[] data);
-    //     public void onDisconnect(int code, String reason);
-    //     public void onError(Exception error);
-    // }
     public List<String> messages = new ArrayList<String>(5);
     public String lastMessage = null;
     public boolean connected = false;
