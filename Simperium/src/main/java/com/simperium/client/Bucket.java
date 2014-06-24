@@ -28,7 +28,6 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 
 import com.simperium.SimperiumException;
-import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
@@ -100,7 +99,6 @@ public class Bucket<T extends Syncable> {
     private BucketStore<T> storage;
     private BucketSchema<T> schema;
     private GhostStorageProvider ghostStore;
-    private ObjectCache<T> cache;
     final private Executor executor;
 
     /**
@@ -109,7 +107,7 @@ public class Bucket<T extends Syncable> {
      * @param user provides a way to namespace data if a different user logs in
      */
     public Bucket(Executor executor, String name, BucketSchema<T>schema, User user,
-        BucketStore<T> storage, GhostStorageProvider ghostStore, ObjectCache<T> cache)
+        BucketStore<T> storage, GhostStorageProvider ghostStore)
     throws BucketNameInvalid {
         this.executor = executor;
         this.name = name;
@@ -117,7 +115,6 @@ public class Bucket<T extends Syncable> {
         this.storage = storage;
         this.ghostStore = ghostStore;
         this.schema = schema;
-        this.cache = cache;
         validateBucketName(name);
     }
 
@@ -177,11 +174,8 @@ public class Bucket<T extends Syncable> {
         @Override
         public T getObject(){
             String key = getSimperiumKey();
-            T object = cache.get(key);
-            if (object != null) {
-                return object;
-            }
-            object = cursor.getObject();
+
+            T object = cursor.getObject();
             try {
                 Ghost ghost = ghostStore.getGhost(Bucket.this, key);
                 object.setGhost(ghost);
@@ -189,7 +183,6 @@ public class Bucket<T extends Syncable> {
                 object.setGhost(new Ghost(key, 0, new JSONObject()));
             }
             object.setBucket(Bucket.this);
-            cache.put(key, object);
             return object;
         }
 
@@ -233,7 +226,6 @@ public class Bucket<T extends Syncable> {
      * @param isLocal if the operation originates from this client
      */
     private void remove(final T object, final boolean isLocal){
-        cache.remove(object.getSimperiumKey());
         executor.execute(new Runnable() {
             @Override
             public void run() {
@@ -359,11 +351,6 @@ public class Bucket<T extends Syncable> {
      * Get a single object object that matches key
      */
     public T get(String key) throws BucketObjectMissingException {
-        // If the cache has it, return the cached object
-        T object = cache.get(key);
-        if (object != null) {
-            return object;
-        }
         // Datastore constructs the object for us
         Ghost ghost = null;
         try {
@@ -371,14 +358,13 @@ public class Bucket<T extends Syncable> {
         } catch (GhostMissingException e) {
             throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
         }
-        object = storage.get(key);
+        T object = storage.get(key);
         if (object == null) {
             throw(new BucketObjectMissingException(String.format("Storage provider for bucket:%s did not have object %s", getName(), key)));
         }
         Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
-        cache.put(key, object);
         return object;
     }
 
@@ -425,7 +411,6 @@ public class Bucket<T extends Syncable> {
         Ghost ghost = new Ghost(name, 0, new JSONObject());
         object.setGhost(ghost);
         ghostStore.saveGhost(this, ghost);
-        cache.put(name, object);
         return object;
     }
 
@@ -451,15 +436,7 @@ public class Bucket<T extends Syncable> {
      */
     protected void updateObjectWithGhost(final Ghost ghost) {
         ghostStore.saveGhost(Bucket.this, ghost);
-
-        // Update this object if exists in cache, otherwise build it
-        T object = cache.get(ghost.getSimperiumKey());
-        if (object != null) {
-            schema.update(object, ghost.getDiffableValue());
-        } else {
-            object = schema.build(ghost.getSimperiumKey(), ghost.getDiffableValue());
-        }
-
+        T object = schema.build(ghost.getSimperiumKey(), ghost.getDiffableValue());
         updateObject(object);
     }
 

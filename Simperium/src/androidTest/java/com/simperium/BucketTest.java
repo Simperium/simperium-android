@@ -1,17 +1,9 @@
 package com.simperium.client;
 
-import com.simperium.client.Bucket;
-import com.simperium.client.BucketNameInvalid;
-import com.simperium.client.BucketObjectNameInvalid;
-import com.simperium.client.BucketSchema;
-import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.User;
-
 import com.simperium.models.Note;
 
 import com.simperium.storage.MemoryStore;
 
-import com.simperium.test.MockCache;
 import com.simperium.test.MockChannel;
 import com.simperium.test.MockGhostStore;
 import com.simperium.test.MockExecutor;
@@ -43,8 +35,7 @@ public class BucketTest extends TestCase {
         mSchema = new Note.Schema();
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MockGhostStore();
-        MockCache<Note> cache = new MockCache<Note>();
-        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore, cache);
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore);
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);
         mBucket.start();

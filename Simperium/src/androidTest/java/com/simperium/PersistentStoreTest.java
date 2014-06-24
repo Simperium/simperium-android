@@ -3,21 +3,12 @@ package com.simperium.android;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.test.ActivityInstrumentationTestCase2;
 
-import com.simperium.android.LoginActivity;
-import com.simperium.android.PersistentStore;
 import com.simperium.client.Bucket;
-import com.simperium.client.BucketSchema;
-import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.ObjectCacheProvider.ObjectCache;
 import com.simperium.client.Query;
-import com.simperium.client.User;
 import com.simperium.models.Note;
 import com.simperium.storage.StorageProvider.BucketStore;
-import com.simperium.test.MockCache;
 import com.simperium.test.MockChannel;
-import com.simperium.test.MockGhostStore;
 import com.simperium.test.MockExecutor;
 
 import org.json.JSONArray;
@@ -179,7 +170,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, store, mGhostStore, mCache);
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, store, mGhostStore);
 
         store.prepare(mBucket);
 
@@ -281,7 +272,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
         BucketStore<Note> store = mStore.createStore(bucketName, schema);
-        Bucket<Note> bucket = new Bucket<Note>(MockExecutor.immediate(), bucketName, mSchema, mUser, store, mGhostStore, mCache);
+        Bucket<Note> bucket = new Bucket<Note>(MockExecutor.immediate(), bucketName, mSchema, mUser, store, mGhostStore);
         store.prepare(bucket);
         bucket.setChannel(new MockChannel(bucket));
         
