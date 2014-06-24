@@ -6,14 +6,11 @@ import android.test.ActivityInstrumentationTestCase2;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.ObjectCacheProvider.ObjectCache;
-import com.simperium.client.Query;
 import com.simperium.client.User;
 
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.models.Note;
 
-import com.simperium.test.MockCache;
 import com.simperium.test.MockChannel;
 import com.simperium.test.MockGhostStore;
 import com.simperium.test.MockExecutor;
@@ -35,7 +32,6 @@ public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTes
     protected Bucket<Note> mBucket;
     protected User mUser;
     protected BucketSchema mSchema;
-    protected ObjectCache<Note> mCache;
     protected GhostStorageProvider mGhostStore;
 
     public PersistentStoreBaseTest() {
@@ -53,11 +49,10 @@ public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTes
         mActivity = getActivity();
         mDatabase = mActivity.openOrCreateDatabase(mDatabaseName, 0, null);
         mGhostStore = new MockGhostStore();
-        mCache = new MockCache<Note>();
         mStore = new PersistentStore(mDatabase);
         mSchema = new Note.Schema();
         mNoteStore = mStore.createStore(BUCKET_NAME, mSchema);
-        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore, mCache);
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, mNoteStore, mGhostStore);
         Bucket.Channel channel = new MockChannel(mBucket);
         mBucket.setChannel(channel);
         mNoteStore.prepare(mBucket);

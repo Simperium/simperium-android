@@ -90,11 +90,6 @@ public class AndroidClient implements ClientFactory {
     }
 
     @Override
-    public LruCacheProvider buildObjectCacheProvider(){
-        return new LruCacheProvider();
-    }
-
-    @Override
     public Executor buildExecutor(){
         return mExecutor;
     }

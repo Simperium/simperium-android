@@ -13,7 +13,6 @@ import com.simperium.client.BucketSchema;
 import com.simperium.client.ChannelProvider;
 import com.simperium.client.ClientFactory;
 import com.simperium.client.GhostStorageProvider;
-import com.simperium.client.ObjectCacheProvider;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
 import com.simperium.storage.StorageProvider;
@@ -55,7 +54,6 @@ public class Simperium implements User.StatusChangeListener {
     protected ChannelProvider mChannelProvider;
     protected StorageProvider mStorageProvider;
     protected GhostStorageProvider mGhostStorageProvider;
-    protected ObjectCacheProvider mObjectCacheProvider;
     protected Executor mExecutor;
 
     public Simperium(String appId, String appSecret, ClientFactory factory){
@@ -69,8 +67,6 @@ public class Simperium implements User.StatusChangeListener {
         mStorageProvider = factory.buildStorageProvider();
 
         mGhostStorageProvider = factory.buildGhostStorageProvider();
-
-        mObjectCacheProvider = factory.buildObjectCacheProvider();
 
         mExecutor = factory.buildExecutor();
 
@@ -127,8 +123,7 @@ public class Simperium implements User.StatusChangeListener {
     throws BucketNameInvalid {
 
         // initialize the bucket
-        ObjectCacheProvider.ObjectCache<T> cache = mObjectCacheProvider.buildCache();
-        Bucket<T> bucket = new Bucket<T>(mExecutor, bucketName, schema, user, storage, mGhostStorageProvider, cache);
+        Bucket<T> bucket = new Bucket<T>(mExecutor, bucketName, schema, user, storage, mGhostStorageProvider);
 
         // initialize the communication method for the bucket
         Bucket.Channel channel = mChannelProvider.buildChannel(bucket);
