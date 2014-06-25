@@ -86,13 +86,15 @@ public final class Version {
     }
 }
 
-afterEvaluate {
-  uploadArchives {
-    repositories {
-      mavenDeployer {
-        repository(url: project.repository)
-        pom.version = project.version
-        pom.artifactId = 'simperium-android'
+if (project.hasProperty("repository")) {
+  afterEvaluate {
+    uploadArchives {
+      repositories {
+        mavenDeployer {
+          repository(url: project.repository)
+          pom.version = project.version
+          pom.artifactId = 'simperium-android'
+        }
       }
     }
   }
