@@ -2,6 +2,7 @@
 
 Trying to make using [Simperium][Simperium.com] in your Android app dead simple.
 
+[![Build Status](https://travis-ci.org/Simperium/simperium-android.svg?branch=develop)](https://travis-ci.org/Simperium/simperium-android)
 
 ## Using in an Android Project
 
@@ -24,27 +25,11 @@ Simperium Android uses [Android Studio][] and [gradle][] for development.
 Please provide unit tests for your contributions. Run tests with gradle:
 
 ```
-./gradlew connectedInstrumentTest
+./gradlew connectedAndroidTest
 ```
 
 Unit tests use a mock networking and storage stack so that different components can be tested in isolation. The unit tests should not connect to any external services.
 
-#### Running Integration Tests
-
-To run the integration tests use the `gradlew` command:
-
-```
-./gradlew :SimperiumIntegrationTests:connectedInstrumentTest
-```
-
-These tests require a connection to [Simperium.com][] as well as a configured App ID and App Token which can be found on the Simperium.com dashboard for your account as well as a configured user and access token. These values should be defined in `SimperiumIntegrationTests/src/main/assets/simperium.properties`:
-
-```
-simperium.appid=APP_ID
-simperium.appsecret=APP_SECRET
-simperium.user.email=USER_EMAIL
-simperium.user.token=USER_TOKEN
-```
 
 [Android Studio]: http://developer.android.com/sdk/installing/studio.html
 [Gradle]: http://www.gradleware.com
