@@ -98,28 +98,6 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
         assertShowsSignInForm();
     }
 
-    public void testToggleSignInForm(){
-        LoginActivity activity = setupActivity();
-
-        assertShowsSignUpForm();
-
-        TouchUtils.clickView(this, mHaveAccountButton);
-
-        assertShowsSignInForm();
-
-    }
-
-    public void testToggleSignUpForm(){
-        LoginActivity activity = setupActivity(true);
-
-        assertShowsSignInForm();
-
-        TouchUtils.clickView(this, mCreateAccountButton);
-
-        assertShowsSignUpForm();
-
-    }
-
     public void testPrefillEmail(){
         String email = "user@example.com";
         Intent intent = new Intent();
