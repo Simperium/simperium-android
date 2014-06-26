@@ -11,6 +11,8 @@
  */
 package com.simperium.android;
 
+import com.simperium.BuildConfig;
+
 import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
@@ -29,7 +31,8 @@ import java.util.concurrent.Executor;
 import org.json.JSONObject;
 import org.json.JSONException;
 
-import android.net.Uri;
+import android.util.Log;
+
 
 public class WebSocketManager implements ChannelProvider, Channel.OnMessageListener {
 
@@ -43,24 +46,23 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     public interface ConnectionListener {
-        public void onConnect();
+        public void onConnect(Connection connection);
+        public void onDisconnect(Exception exception);
+        public void onError(Exception exception);
         public void onMessage(String message);
-        public void onDisconnect();
     }
 
     public interface ConnectionProvider {
-        public Connection connect(ConnectionListener connectionListener, String url, String userAgent);
+        public void connect(ConnectionListener connectionListener);
     }
 
-    public static final String TAG = "Simperium.Websocket";
-    private static final String WEBSOCKET_URL = "https://api.simperium.com/sock/1/%s/websocket";
-    private static final String USER_AGENT_HEADER = "User-Agent";
+    public static final String TAG = "Simperium.WebSocket";
     static public final String COMMAND_HEARTBEAT = "h";
     static public final String COMMAND_LOG = "log";
     static public final String LOG_FORMAT = "%s:%s";
 
     final protected ConnectionProvider mConnectionProvider;
-    protected Connection mConnection;
+    protected Connection mConnection = new NullConnection();
     protected String mSocketURI;
     private String mAppId, mSessionId;
     private String mClientId;
@@ -86,7 +88,6 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         mAppId = appId;
         mSessionId = sessionId;
         mSerializer = channelSerializer;
-        mSocketURI = String.format(WEBSOCKET_URL, appId);
         mConnectionProvider = connectionProvider;
     }
 
@@ -142,12 +143,36 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     public void connect() {
         // if we have channels, then connect, otherwise wait for a channel
         cancelReconnect();
+        Log.d(TAG, "Asked to connect");
         if (!isConnected() && !isConnecting() && !mChannels.isEmpty()) {
+            Log.d(TAG, "Connecting");
             Logger.log(TAG, String.format(Locale.US, "Connecting to %s", mSocketURI));
             setConnectionStatus(ConnectionStatus.CONNECTING);
             mReconnect = true;
 
-            // TODO: Ask connection provider for a connection
+            mConnectionProvider.connect(new ConnectionListener() {
+
+                public void onError(Exception exception) {
+                    mConnection = new NullConnection();
+                    WebSocketManager.this.onError(exception);
+                }
+
+                public void onConnect(Connection connection) {
+                    mConnection = connection;
+                    WebSocketManager.this.onConnect();
+                }
+
+                public void onMessage(String message) {
+                    WebSocketManager.this.onMessage(message);
+                }
+
+                public void onDisconnect(Exception exception) {
+                    mConnection = new NullConnection();
+                    WebSocketManager.this.onDisconnect(exception);
+                }
+
+
+            });
 
         }
     }
@@ -173,11 +198,6 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     public boolean isConnected() {
-
-        if (mConnection == null) {
-            return false;
-        }
-
         return mConnectionStatus == ConnectionStatus.CONNECTED;
     }
 
@@ -323,7 +343,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
 
     }
 
-    public void onConnect() {
+    protected void onConnect() {
         Logger.log(TAG, String.format("Connected"));
         setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
@@ -333,7 +353,12 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         mReconnectInterval = DEFAULT_RECONNECT_INTERVAL;
     }
 
-    public void onMessage(String message) {
+    protected void onMessage(String message) {
+
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Received Message: " + message);
+        }
+
         scheduleHeartbeat();
         int size = message.length();
         String[] parts = message.split(":", 2);;
@@ -353,7 +378,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         }
     }
 
-    public void onDisconnect(Exception ex) {
+    protected void onDisconnect(Exception ex) {
         Logger.log(TAG, String.format(Locale.US, "Disconnect %s", ex));
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         notifyChannelsDisconnected();
@@ -361,7 +386,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         if(mReconnect) scheduleReconnect();
     }
 
-    public void onError(Exception error) {
+    protected void onError(Exception error) {
         Logger.log(TAG, String.format(Locale.US, "Error: %s", error), error);
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && mReconnect) {
@@ -369,5 +394,18 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         }
     }
 
+    private class NullConnection implements Connection {
+
+        @Override
+        public void close() {
+            // noop
+        }
+
+        @Override
+        public void send(String message) {
+            // noop
+        }
+
+    }
 
 }
