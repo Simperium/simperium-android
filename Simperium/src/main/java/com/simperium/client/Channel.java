@@ -1455,6 +1455,7 @@ public class Channel implements Bucket.Channel {
                 change.setSent();
             } catch (ChangeEmptyException e) {
                 completeAndDequeueChange(change);
+                throw new ChangeNotSentException(change, e);
             } catch (ChangeException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);

@@ -15,7 +15,6 @@ public interface ClientFactory {
     public ChannelProvider buildChannelProvider(String appId);
     public StorageProvider buildStorageProvider();
     public GhostStorageProvider buildGhostStorageProvider();
-    public ObjectCacheProvider buildObjectCacheProvider();
     public Executor buildExecutor();
 
 }

@@ -32,11 +32,6 @@ public class MockClient implements ClientFactory {
     }
 
     @Override
-    public MockCacheProvider buildObjectCacheProvider(){
-        return new MockCacheProvider();
-    }
-
-    @Override
     public MockExecutor.Immediate buildExecutor(){
         return MockExecutor.immediate();
     }

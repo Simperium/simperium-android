@@ -3,7 +3,7 @@ buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies { classpath 'com.android.tools.build:gradle:0.9.+' }
+    dependencies { classpath 'com.android.tools.build:gradle:0.11.+' }
 }
 
 apply plugin: 'android-library'
@@ -26,7 +26,7 @@ android {
     }
 
     compileSdkVersion 19
-    buildToolsVersion "19"
+    buildToolsVersion "19.1.0"
 
     defaultConfig {
         minSdkVersion 8
@@ -86,16 +86,18 @@ public final class Version {
     }
 }
 
-/*afterEvaluate {
-  uploadArchives {
-    repositories {
-      mavenDeployer {
-        repository(url: project.repository)
-        pom.version = project.version
-        pom.artifactId = 'simperium-android'
+if (project.hasProperty("repository")) {
+  afterEvaluate {
+    uploadArchives {
+      repositories {
+        mavenDeployer {
+          repository(url: project.repository)
+          pom.version = project.version
+          pom.artifactId = 'simperium-android'
+        }
       }
     }
   }
 }
-*/
+
 tasks.preBuild.dependsOn versionConfig
