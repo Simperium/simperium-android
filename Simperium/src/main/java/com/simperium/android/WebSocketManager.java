@@ -5,6 +5,9 @@
  *
  * WebSocketManager is configured by Simperium and shouldn't need to be access directly
  * by applications.
+ * 
+ * TODO: Decouple WebSocket transport mechanism and define a contract between the manager and the client
+ * 
  */
 package com.simperium.android;
 
@@ -12,15 +15,6 @@ import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
 import com.simperium.util.Logger;
-
-import com.koushikdutta.async.callback.CompletedCallback;
-import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.AsyncHttpRequest;
-import com.koushikdutta.async.http.AsyncHttpGet;
-import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
-import com.koushikdutta.async.http.WebSocket;
-
-import org.apache.http.message.BasicNameValuePair;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -43,6 +37,21 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         DISCONNECTING, DISCONNECTED, CONNECTING, CONNECTED
     }
 
+    public interface Connection {
+        public void close();
+        public void send(String message);
+    }
+
+    public interface ConnectionListener {
+        public void onConnect();
+        public void onMessage(String message);
+        public void onDisconnect();
+    }
+
+    public interface ConnectionProvider {
+        public Connection connect(ConnectionListener connectionListener, String url, String userAgent);
+    }
+
     public static final String TAG = "Simperium.Websocket";
     private static final String WEBSOCKET_URL = "https://api.simperium.com/sock/1/%s/websocket";
     private static final String USER_AGENT_HEADER = "User-Agent";
@@ -50,14 +59,14 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     static public final String COMMAND_LOG = "log";
     static public final String LOG_FORMAT = "%s:%s";
 
-    final private AsyncHttpClient mSocketClient;
-    protected WebSocket mWebSocket;
+    final protected ConnectionProvider mConnectionProvider;
+    protected Connection mConnection;
+    protected String mSocketURI;
     private String mAppId, mSessionId;
     private String mClientId;
     private boolean mReconnect = true;
     private HashMap<Channel,Integer> mChannelIndex = new HashMap<Channel,Integer>();
     private HashMap<Integer,Channel> mChannels = new HashMap<Integer,Channel>();
-    private Uri mSocketURI;
 
     static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
@@ -72,13 +81,13 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     final protected Executor mExecutor;
 
     public WebSocketManager(Executor executor, String appId, String sessionId, Channel.Serializer channelSerializer,
-        AsyncHttpClient httpClient) {
+        ConnectionProvider connectionProvider) {
         mExecutor = executor;
         mAppId = appId;
         mSessionId = sessionId;
         mSerializer = channelSerializer;
-        mSocketURI = Uri.parse(String.format(WEBSOCKET_URL, appId));
-        mSocketClient = httpClient;
+        mSocketURI = String.format(WEBSOCKET_URL, appId);
+        mConnectionProvider = connectionProvider;
     }
 
     /**
@@ -137,40 +146,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
             Logger.log(TAG, String.format(Locale.US, "Connecting to %s", mSocketURI));
             setConnectionStatus(ConnectionStatus.CONNECTING);
             mReconnect = true;
-            mSocketClient.websocket(buildRequest(), null, new WebSocketConnectCallback() {
 
-                @Override
-                public void onCompleted(Exception ex, WebSocket webSocket) {
-                    if (ex != null) {
-                        mReconnect = false;
-                        throw new RuntimeException(ex);
-                    }
+            // TODO: Ask connection provider for a connection
 
-                    synchronized(WebSocketManager.this) {
-                        mWebSocket = webSocket;
-                        mWebSocket.setStringCallback(new WebSocket.StringCallback() {
-
-                           @Override
-                           public void onStringAvailable(String s) {
-                               onMessage(s);
-                           }
-
-                        });
-                        mWebSocket.setEndCallback(new CompletedCallback() {
-
-                            @Override
-                            public void onCompleted(Exception ex) {
-                                onDisconnect(ex);
-                            }
-
-                        });
-                    }
-
-                    onConnect();
-
-                }
-
-            });
         }
     }
 
@@ -178,7 +156,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         if (!isConnected()) return;
 
         synchronized(this) {
-            mWebSocket.send(message);
+            mConnection.send(message);
         }
     }
 
@@ -190,13 +168,13 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
             setConnectionStatus(ConnectionStatus.DISCONNECTING);
             Logger.log(TAG, "Disconnecting");
             // being told to disconnect so don't automatically reconnect
-            mWebSocket.close();
+            mConnection.close();
         }
     }
 
     public boolean isConnected() {
 
-        if (mWebSocket == null) {
+        if (mConnection == null) {
             return false;
         }
 
@@ -391,17 +369,5 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         }
     }
 
-    private AsyncHttpRequest buildRequest() {
-        
-        AsyncHttpRequest request = new AsyncHttpGet(mSocketURI);
-
-        // List<BasicNameValuePair> headers = Arrays.asList(
-        //     new BasicNameValuePair(USER_AGENT_HEADER, sessionId)
-        // );
-
-        request.setHeader(USER_AGENT_HEADER, mSessionId);
-
-        return request;
-    }
 
 }
