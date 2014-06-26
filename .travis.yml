@@ -16,9 +16,6 @@ before_script:
   - emulator -avd test -no-skin -no-audio -no-window &
   - adb wait-for-device
   - adb devices
-  - adb logcat -s AndroidRuntime TestRunner &
+  - adb logcat &
 
 script: ./gradlew connectedCheck
-
-after_script:
-  - kill $1
