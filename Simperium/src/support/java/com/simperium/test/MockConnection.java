@@ -8,12 +8,25 @@ import com.simperium.android.WebSocketManager.ConnectionProvider;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.util.Log;
+
 public class MockConnection implements Connection {
+
+    public static final String TAG = "Simperium.MockConnection";
 
     public ConnectionListener listener = new NullListener();
     public Boolean closed = false;
     public String lastMessage;
     public List<String> messages = new ArrayList<String>();
+
+    public void receiveMessage(String message) {
+        listener.onMessage(message);
+    }
+
+    public void clearMessages() {
+        lastMessage = null;
+        messages.clear();
+    }
 
     @Override
     public void close() {
@@ -29,9 +42,9 @@ public class MockConnection implements Connection {
     public ConnectionProvider buildProvider() {
         return new ConnectionProvider() {
             @Override
-            public Connection connect(ConnectionListener connectionListener, String url, String userAgent) {
+            public void connect(ConnectionListener connectionListener) {
                 MockConnection.this.listener = connectionListener;
-                return MockConnection.this;
+                connectionListener.onConnect(MockConnection.this);
             }            
         };
     }
@@ -40,18 +53,27 @@ public class MockConnection implements Connection {
     private class NullListener implements ConnectionListener {
 
         @Override
-        public void onConnect() {
+        public void onConnect(Connection connection) {
             // noop
+            Log.d(TAG, "NullConnection.onConnect " + connection);
         }
 
         @Override
         public void onMessage(String message) {
             // noop
+            Log.d(TAG, "NullConnection.onMessage " + message);
         }
 
         @Override
-        public void onDisconnect() {
+        public void onError(Exception exception) {
             // noop
+            Log.d(TAG, "NullConnection.onError");
+        }
+
+        @Override
+        public void onDisconnect(Exception error) {
+            // noop
+            Log.d(TAG, "NullConnection.onError");
         }
 
     }
