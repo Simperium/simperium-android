@@ -74,9 +74,8 @@ public class AndroidClient implements ClientFactory {
     }
 
     @Override
-    public VolleyAuthClient buildAuthProvider(String appId, String appSecret){
-        VolleyAuthClient client = new VolleyAuthClient(appId, appSecret, mContext);
-        return client;
+    public AsyncAuthClient buildAuthProvider(String appId, String appSecret){
+        return new AsyncAuthClient(appId, appSecret, mHttpClient);
     }
 
     @Override
