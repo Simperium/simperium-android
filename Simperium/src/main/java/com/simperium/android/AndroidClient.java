@@ -4,12 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.AsyncHttpRequest;
-import com.koushikdutta.async.http.AsyncHttpGet;
-import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
-import com.koushikdutta.async.http.WebSocket;
 
 import com.simperium.Simperium;
 import com.simperium.Version;
@@ -34,8 +29,8 @@ public class AndroidClient implements ClientFactory {
     public static final String DEFAULT_DATABASE_NAME = "simperium-store";
     public static final String SESSION_ID_PREFERENCE = "simperium-session-id";
 
-    private static final String WEBSOCKET_URL = "https://api.simperium.com/sock/1/%s/websocket";
-    private static final String USER_AGENT_HEADER = "User-Agent";
+    public static final String WEBSOCKET_URL = "https://api.simperium.com/sock/1/%s/websocket";
+    public static final String USER_AGENT_HEADER = "User-Agent";
 
     protected Context mContext;
     protected SQLiteDatabase mDatabase;
@@ -87,7 +82,8 @@ public class AndroidClient implements ClientFactory {
     @Override
     public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
-        return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), new AsyncWebSocketProvider(appId));
+        WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(appId, mSessionId, mHttpClient);
+        return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), provider);
     }
 
     @Override
@@ -103,72 +99,6 @@ public class AndroidClient implements ClientFactory {
     @Override
     public Executor buildExecutor(){
         return mExecutor;
-    }
-
-    class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
-
-        protected final String mAppId;
-
-        AsyncWebSocketProvider(String appId) {
-            mAppId = appId;
-        }
-
-        @Override
-        public void connect(final WebSocketManager.ConnectionListener listener) {
-
-            Uri uri = Uri.parse(String.format(WEBSOCKET_URL, mAppId));
-
-            AsyncHttpRequest request = new AsyncHttpGet(uri);
-            request.setHeader(USER_AGENT_HEADER, mSessionId);
-
-            // Protocl is null
-            mHttpClient.websocket(request, null, new WebSocketConnectCallback() {
-
-                @Override
-                public void onCompleted(Exception ex, final WebSocket webSocket) {
-                    if (ex != null) {
-                        listener.onError(ex);
-                    }
-
-                    final WebSocketManager.Connection connection = new WebSocketManager.Connection() {
-
-                        @Override
-                        public void close() {
-                            webSocket.close();
-                        }
-
-                        @Override
-                        public void send(String message) {
-                            webSocket.send(message);
-                        }
-
-                    };
-
-                    webSocket.setStringCallback(new WebSocket.StringCallback() {
-
-                       @Override
-                       public void onStringAvailable(String s) {
-                           listener.onMessage(s);
-                       }
-
-                    });
-
-                    webSocket.setEndCallback(new CompletedCallback() {
-
-                        @Override
-                        public void onCompleted(Exception ex) {
-                            listener.onDisconnect(ex);
-                        }
-
-                    });
-
-                    listener.onConnect(connection);
-
-                }
-
-            });
-        }
-
     }
 
 }
