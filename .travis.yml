@@ -6,7 +6,7 @@ env:
 
 android:
   components:
-    - build-tools-19.1.0
+    - build-tools-20.0.0
 
 before_script:
   # compile the code so gradle and dependencies are all downloaded
@@ -16,6 +16,6 @@ before_script:
   - emulator -avd test -no-skin -no-audio -no-window &
   - adb wait-for-device
   - adb devices
-  - adb logcat &
+  - adb logcat -s TestRunner &
 
 script: ./gradlew connectedCheck
