@@ -75,7 +75,7 @@ public class AndroidClient implements ClientFactory {
 
     @Override
     public AsyncAuthClient buildAuthProvider(String appId, String appSecret){
-        return new AsyncAuthClient(appId, appSecret, mHttpClient);
+        return new AsyncAuthClient(mContext, appId, appSecret, mHttpClient);
     }
 
     @Override
