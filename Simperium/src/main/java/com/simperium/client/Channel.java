@@ -937,18 +937,19 @@ public class Channel implements Bucket.Channel {
         public static final String INDEX_OBJECT_ID_KEY = "id";
         public static final String INDEX_OBJECT_VERSION_KEY = "v";
 
-        final private String cv;
-        final private Bucket bucket;
-        private List<String> queue = Collections.synchronizedList(new ArrayList<String>());
-        private IndexQuery nextQuery;
-        private boolean complete = false;
-        final private IndexProcessorListener listener;
-        int indexedCount = 0;
+        final private String mCv;
+        final private Bucket mBucket;
+        private List<String> mQueue = Collections.synchronizedList(new ArrayList<String>());
+        private IndexQuery mNextQuery;
+        protected boolean mComplete = false, mNotified = false;
+        final private IndexProcessorListener mListener;
+        protected int mIndexedCount = 0, mReceivedCount = 0;
+        protected Object mCountLock = new Object();
 
-        public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener){
-            this.bucket = bucket;
-            this.cv = cv;
-            this.listener = listener;
+        public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener) {
+            mBucket = bucket;
+            mCv = cv;
+            mListener = listener;
         }
 
         /**
@@ -958,45 +959,56 @@ public class Channel implements Bucket.Channel {
         public void addObjectData(ObjectVersionData objectVersion)
         throws ObjectVersionUnexpectedException {
 
-            if (!queue.remove(objectVersion.toString()))
+            if (!mQueue.remove(objectVersion.toString()))
                 throw new ObjectVersionUnexpectedException(objectVersion);
 
             // build the ghost and update
             Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), objectVersion.getData());
-            bucket.addObjectWithGhost(ghost);
-            indexedCount ++;
+            mBucket.addObjectWithGhost(ghost, new Runnable() {
+                @Override
+                public void run() {
+                    synchronized(mCountLock) {
+                        mIndexedCount ++;
+                        if (mIndexedCount % 10 == 0) {
+                            notifyProgress();
+                        }
+                    }
 
-            // for every 10 items, notify progress
-            if(indexedCount % 10 == 0) {
-                notifyProgress();
-            }
+                    if (mComplete && mReceivedCount == mIndexedCount) {
+                        notifyDone();
+                    }
+
+                }
+
+            });
+
             next();
         }
 
-        public void start(JSONObject indexPage){
+        public void start(JSONObject indexPage) {
             addIndexPage(indexPage);
         }
 
-        public void next(){
+        public void next() {
 
             // if queue isn't empty, pull it off the top and send request
-            if (!queue.isEmpty()) {
-                String versionString = queue.get(0);
+            if (!mQueue.isEmpty()) {
+                String versionString = mQueue.get(0);
                 ObjectVersion version;
                 try {
                     version = ObjectVersion.parseString(versionString);
                 } catch (ObjectVersionParseException e) {
                     Logger.log(TAG, "Failed to parse version string, skipping", e);
-                    queue.remove(versionString);
+                    mQueue.remove(versionString);
                     next();
                     return;
                 }
 
-                if (!bucket.hasKeyVersion(version.getKey(), version.getVersion())) {
+                if (!mBucket.hasKeyVersion(version.getKey(), version.getVersion())) {
                     sendMessage(String.format("%s:%s", COMMAND_ENTITY, version.toString()));
                 } else {
                     Logger.log(TAG, String.format("Already have %s requesting next object", version));
-                    queue.remove(versionString);
+                    mQueue.remove(versionString);
                     next();
                     return;
                 }
@@ -1004,14 +1016,20 @@ public class Channel implements Bucket.Channel {
             }
 
             // if index is empty and we have a next request, make the request
-            if (nextQuery != null){
-                sendMessage(nextQuery.toString());
+            if (mNextQuery != null) {
+                sendMessage(mNextQuery.toString());
                 return;
             }
 
             // no queue, no next query, all done!
-            complete = true;
-            notifyDone();
+            mComplete = true;
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Done receiving object data " + Channel.this);
+            }
+
+            if (mReceivedCount == mIndexedCount) {
+                notifyDone();
+            }
 
         }
 
@@ -1019,30 +1037,30 @@ public class Channel implements Bucket.Channel {
          * Add the page of data, but only if indexPage cv matches. Detects when it's the
          * last page due to absence of cursor mark
          */
-        public Boolean addIndexPage(JSONObject indexPage){
+        public Boolean addIndexPage(JSONObject indexPage) {
 
             String currentIndex;
             try {
                 currentIndex = indexPage.getString(INDEX_CURRENT_VERSION_KEY);
-            } catch(JSONException e){
-                Logger.log(TAG, String.format("Index did not have current version %s", cv));
+            } catch(JSONException e) {
+                Logger.log(TAG, String.format("Index did not have current version %s", mCv));
                 currentIndex = "";
             }
 
-            if (!currentIndex.equals(cv)) {
+            if (!currentIndex.equals(mCv)) {
                 return false;
             }
 
             JSONArray indexVersions;
             try {
                 indexVersions = indexPage.getJSONArray(INDEX_VERSIONS_KEY);
-            } catch(JSONException e){
+            } catch(JSONException e) {
                 Logger.log(TAG, String.format("Index did not have entities: %s", indexPage));
                 return true;
             }
 
             if (indexVersions.length() > 0) {
-                // query for each item that we don't have locally in the bucket
+                // query for each item that we don't have locally in the mBucket
                 for (int i=0; i<indexVersions.length(); i++) {
                     try {
 
@@ -1050,12 +1068,11 @@ public class Channel implements Bucket.Channel {
                         String key  = version.getString(INDEX_OBJECT_ID_KEY);
                         Integer versionNumber = version.getInt(INDEX_OBJECT_VERSION_KEY);
                         ObjectVersion objectVersion = new ObjectVersion(key, versionNumber);
-                        queue.add(objectVersion.toString());
-                        // if (!bucket.hasKeyVersion(key, versionNumber)) {
-                        //     // we need to get the remote object
-                        //     index.add(objectVersion.toString());
-                        //     // sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, versionNumber));
-                        // }
+                        mQueue.add(objectVersion.toString());
+
+                        synchronized(mCountLock) {
+                            mReceivedCount ++;
+                        }
 
                     } catch (JSONException e) {
                         Logger.log(TAG, String.format("Error processing index: %d", i), e);
@@ -1075,10 +1092,9 @@ public class Channel implements Bucket.Channel {
             }
 
             if (nextMark != null && nextMark.length() > 0) {
-                nextQuery = new IndexQuery(nextMark);
-                // sendMessage(nextQuery.toString());
+                mNextQuery = new IndexQuery(nextMark);
             } else {
-                nextQuery = null;
+                mNextQuery = null;
             }
             next();
             return true;
@@ -1087,18 +1103,28 @@ public class Channel implements Bucket.Channel {
         /**
          * If the index is done processing
          */
-        public boolean isComplete(){
-            return complete;
+        public boolean isComplete() {
+            return mComplete;
         }
 
-        private void notifyDone(){
-            bucket.indexComplete(cv);
-            listener.onComplete(cv);
+        synchronized private void notifyDone() {
+            if (mNotified) {
+                return;
+            }
+            mNotified = true;
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Notifying index done: " + Channel.this);
+            }
+            mBucket.indexComplete(mCv);
+            mListener.onComplete(mCv);
         }
 
 
-        private void notifyProgress(){
-            bucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
+        private void notifyProgress() {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Notifying index progress: " + Channel.this);
+            }
+            mBucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
         }
     }
 
