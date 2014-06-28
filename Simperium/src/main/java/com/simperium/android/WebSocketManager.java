@@ -6,8 +6,6 @@
  * WebSocketManager is configured by Simperium and shouldn't need to be access directly
  * by applications.
  * 
- * TODO: Decouple WebSocket transport mechanism and define a contract between the manager and the client
- * 
  */
 package com.simperium.android;
 
@@ -130,9 +128,11 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         // no logging if disabled
         if (mLogLevel == ChannelProvider.LOG_DISABLED) return;
 
-        if (level > mLogLevel) return;
+        boolean send = level <= mLogLevel;
 
-        send(String.format(LOG_FORMAT, COMMAND_LOG, log));
+        if (BuildConfig.DEBUG) Log.d(TAG, "Log " + level + " => " + log);
+
+        if (send) send(String.format(LOG_FORMAT, COMMAND_LOG, log));
     }
 
     @Override

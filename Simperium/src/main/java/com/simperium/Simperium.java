@@ -70,7 +70,7 @@ public class Simperium implements User.StatusChangeListener {
 
         mExecutor = factory.buildExecutor();
 
-        Logger.log(String.format("Initializing Simperium %s", CLIENT_ID));
+        Logger.log(String.format("Initializing Simperium %s%s", CLIENT_ID, (BuildConfig.DEBUG ? " DEBUG" : "")));
         loadUser();
     }
 

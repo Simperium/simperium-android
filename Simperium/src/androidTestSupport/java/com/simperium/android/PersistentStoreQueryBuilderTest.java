@@ -24,8 +24,8 @@ public class PersistentStoreQueryBuilderTest extends PersistentStoreBaseTest {
         };
         String condition = " FROM `objects`  LEFT JOIN indexes AS i0 ON objects.bucket = i0.bucket AND objects.key = i0.key AND i0.name=? WHERE objects.bucket = ? AND (  i0.value IS NOT NULL AND i0.value =  ?) ";
 
-        MoreAsserts.assertEquals(args, builder.args);
-        assertEquals(condition.toString(), builder.statement.toString());
+        MoreAsserts.assertEquals(args, builder.mArgs);
+        assertEquals(condition.toString(), builder.mStatement.toString());
 
 
     }
@@ -42,8 +42,8 @@ public class PersistentStoreQueryBuilderTest extends PersistentStoreBaseTest {
         };
         String condition = " FROM `objects`  LEFT JOIN indexes AS i0 ON objects.bucket = i0.bucket AND objects.key = i0.key AND i0.name=? WHERE objects.bucket = ? AND ( i0.value IS NULL )  ";
 
-        MoreAsserts.assertEquals(args, builder.args);
-        assertEquals(condition.toString(), builder.statement.toString());
+        MoreAsserts.assertEquals(args, builder.mArgs);
+        assertEquals(condition.toString(), builder.mStatement.toString());
 
     }
 

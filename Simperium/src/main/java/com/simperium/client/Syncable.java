@@ -8,86 +8,91 @@ import com.simperium.util.JSONDiff;
  * An object that can be diffed and changes sent
  */
 public abstract class Syncable implements Diffable {
-    private Ghost ghost;
-    protected Bucket bucket;
+    private Ghost mGhost;
+    protected Bucket mBucket;
 
-    public Integer getVersion(){
-        return ghost.getVersion();
+    public Integer getVersion() {
+        return mGhost.getVersion();
     }
 
-    protected Ghost getGhost(){
-        return ghost;
+    protected Ghost getGhost() {
+        return mGhost;
     }
 
-    protected void setGhost(Ghost ghost){
-        synchronized(this){
-            this.ghost = ghost;
+    protected void setGhost(Ghost ghost) {
+        synchronized(this) {
+            mGhost = ghost;
         }
     }
 
     /**
      * Has this ever been synced
      */
-    public Boolean isNew(){
+    public Boolean isNew() {
         return getVersion() == null || getVersion() == 0;
     }
 
     /**
      * Does the local object have modifications?
      */
-    public Boolean isModified(){
-        return !JSONDiff.equals(getDiffableValue(), ghost.getDiffableValue());
+    public Boolean isModified() {
+        return !JSONDiff.equals(getDiffableValue(), mGhost.getDiffableValue());
     }
 
-    public String getBucketName(){
-        if (bucket != null) {
-            return bucket.getName();
+    public String getBucketName() {
+        if (mBucket != null) {
+            return mBucket.getName();
         }
         return null;
     }
 
-    public Bucket getBucket(){
-        return bucket;
+    public Bucket getBucket() {
+        return mBucket;
     }
 
-    public void setBucket(Bucket bucket){
-        this.bucket = bucket;
+    public void setBucket(Bucket bucket) {
+        mBucket = bucket;
     }
 
     /**
      * Returns the object as it should appear on the server
      */
-    public JSONObject getUnmodifiedValue(){
+    public JSONObject getUnmodifiedValue() {
         return getGhost().getDiffableValue();
     }
 
     /**
      * Send modifications over the socket to simperium
      */
-    public void save(){
+    public void save() {
         getBucket().sync(this);
     }
 
     /**
      * Sends a delete operation over the socket
      */
-    public void delete(){
+    public void delete() {
         getBucket().remove(this);
     }
 
     /**
      * Key.VersionId
      */
-    public String getVersionId(){
+    public String getVersionId() {
         if (getGhost() == null) {
             return String.format("%s.?", getSimperiumKey());
         }
         return getGhost().getVersionId();
     }
 
-    public void notifySaved(){
-        if (bucket != null) {
-            bucket.notifyOnSaveListeners(this);
+    public void notifySaved() {
+        if (mBucket != null) {
+            mBucket.notifyOnSaveListeners(this);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "<Syncable " + getBucketName()  + "." + getSimperiumKey() + ">";
     }
 }

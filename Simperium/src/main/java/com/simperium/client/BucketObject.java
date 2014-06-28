@@ -16,86 +16,85 @@ public class BucketObject extends Syncable {
      * Basic implementation of BucketSchema for BucketObject
      */
     public static class Schema extends BucketSchema<BucketObject>{
-        private String remoteName;
+        private String mRemoteName;
 
-        public Schema(){
+        public Schema() {
             this(null);
         }
 
-        public Schema(String name){
-            this.remoteName = name;
+        public Schema(String name) {
+            mRemoteName = name;
         }
 
-        public String getRemoteName(){
-            return remoteName;
+        public String getRemoteName() {
+            return mRemoteName;
         }
 
-        public String getRemoteName(Bucket bucket){
-            if (remoteName == null) {
+        public String getRemoteName(Bucket bucket) {
+            if (mRemoteName == null) {
                 return bucket.getName();
             }
-            return remoteName;
+            return mRemoteName;
         }
 
-        public BucketObject build(String key, JSONObject properties){
+        public BucketObject build(String key, JSONObject properties) {
             return new BucketObject(key, properties);
         }
 
-        public void update(BucketObject object, JSONObject properties){
-            object.properties = properties;
+        public void update(BucketObject object, JSONObject properties) {
+            object.mProperties = properties;
         }
 
     }
 
-    private String simperiumKey;
+    private String mSimperiumKey;
+    protected JSONObject mProperties;
 
-    protected JSONObject properties;
-
-    public BucketObject(String key, JSONObject properties){
-        this.simperiumKey = key;
-        this.properties = JSONDiff.deepCopy(properties);
+    public BucketObject(String key, JSONObject properties) {
+        mSimperiumKey = key;
+        mProperties = JSONDiff.deepCopy(properties);
     }
 
-    public BucketObject(String key){
+    public BucketObject(String key) {
         this(key, new JSONObject());
     }
 
-    public Object getProperty(String key){
-        return properties.opt(key);
+    public Object getProperty(String key) {
+        return mProperties.opt(key);
     }
 
-    public void setProperty(String key, Object value){
+    public void setProperty(String key, Object value) {
         try {
-            properties.put(key, value);
+            mProperties.put(key, value);
         } catch (JSONException e) {
             android.util.Log.e(TAG, "Could not set key" + key, e);
         }
     }
 
-    public String getSimperiumKey(){
-        return simperiumKey;
+    public String getSimperiumKey() {
+        return mSimperiumKey;
     }
 
-    public String toString(){
+    public String toString() {
         if (getBucket() == null) {
             return String.format("<no bucket> - %s", getVersionId());
         }
         return String.format("%s - %s", getBucket().getName(), getVersionId());
     }
 
-    public JSONObject getDiffableValue(){
-        if (properties == null) {
-            properties = new JSONObject();
+    public JSONObject getDiffableValue() {
+        if (mProperties == null) {
+            mProperties = new JSONObject();
         }
-        return properties;
+        return mProperties;
     }
 
-    public boolean equals(Object o){
+    public boolean equals(Object o) {
         if (o == null) {
             return false;
-        } else if( o == this){
+        } else if( o == this) {
             return true;
-        } else if(o.getClass() != getClass()){
+        } else if(o.getClass() != getClass()) {
             return false;
         }
         BucketObject other = (BucketObject) o;

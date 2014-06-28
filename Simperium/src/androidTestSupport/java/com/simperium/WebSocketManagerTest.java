@@ -74,10 +74,14 @@ public class WebSocketManagerTest extends TestCase {
         // Turn on debug level
         mConnection.receiveMessage("log:1");
 
+
+        assertEquals(ChannelProvider.LOG_DEBUG, mSocketManager.getLogLevel());
+
         mSocketManager.log(ChannelProvider.LOG_DEBUG, "debug");
         mSocketManager.log(ChannelProvider.LOG_VERBOSE, "verbose");
 
         mConnection.receiveMessage("log:0");
+        assertEquals(ChannelProvider.LOG_DISABLED, mSocketManager.getLogLevel());
         mSocketManager.log(ChannelProvider.LOG_DEBUG, "disabled");
 
         assertEquals("log:{\"log\":\"debug\"}", mConnection.lastMessage);

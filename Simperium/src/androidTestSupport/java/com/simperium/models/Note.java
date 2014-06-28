@@ -116,7 +116,7 @@ public class Note extends BucketObject {
     }
 
     protected void setProperties(JSONObject properties){
-        this.properties = properties;
+        mProperties = properties;
     }
 
     public CharSequence getPreview(){
