@@ -5,7 +5,9 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
+import com.simperium.BuildConfig;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
@@ -168,6 +170,7 @@ public class PersistentStore implements StorageProvider {
         
         protected void index(T object, List<Index> indexValues){
             // delete all current idexes
+            database.beginTransaction();
             deleteIndexes(object);
             Iterator<Index> indexes = indexValues.iterator();
             while(indexes.hasNext()){
@@ -198,7 +201,12 @@ public class PersistentStore implements StorageProvider {
                 } else if(value != null) {
                     values.put(key, value.toString());
                 }
-                database.insertOrThrow(INDEXES_TABLE, key, values);
+                try {
+                    database.insertOrThrow(INDEXES_TABLE, key, values);
+                } catch (SQLException e) {
+                    database.endTransaction();
+                    throw e;
+                }
             }
 
             // If we have a fulltext index, let's add a record
@@ -214,10 +222,17 @@ public class PersistentStore implements StorageProvider {
                 database.delete(ftTableName, "key=?", new String[]{ object.getSimperiumKey() });
                 if (fullTextIndexes.size() > 0) {
                     fullTextIndexes.put("key", object.getSimperiumKey());
-                    database.insertOrThrow(ftTableName, null, fullTextIndexes);
+                    try {
+                        database.insertOrThrow(ftTableName, null, fullTextIndexes);
+                    } catch (SQLException e) {
+                        database.endTransaction();
+                        throw e;
+                    }
                 }
 
             }
+            database.setTransactionSuccessful();
+            database.endTransaction();
         }
 
         private void deleteIndexes(T object){
