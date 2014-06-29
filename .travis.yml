@@ -3,8 +3,6 @@ jdk: oraclejdk7
 env:
   matrix:
     - ANDROID_TARGET=android-17  ANDROID_ABI=armeabi-v7a
-    - ANDROID_TARGET=android-19  ANDROID_ABI=armeabi-v7a
-
 android:
   components:
     - build-tools-19.1.0
