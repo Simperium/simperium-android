@@ -25,6 +25,7 @@ android {
     dependencies {
         compile 'com.koushikdutta.async:androidasync:1.2.6'
         compile 'com.android:volley:4.4.2.1'
+        compile 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
     }
 
     compileSdkVersion 19
@@ -36,6 +37,10 @@ android {
         applicationId "com.simperium"
         versionCode 1
         versionName project.version
+
+        // Calculating PIN for certificate: OU=Domain Control Validated, CN=*.simperium.com
+        // Pin Value: e25695097d04927c9d90206333a687a7b1f99708
+        buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
     }
 
     productFlavors {

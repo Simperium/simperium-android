@@ -6,6 +6,10 @@ import android.database.sqlite.SQLiteDatabase;
 
 import com.koushikdutta.async.http.AsyncHttpClient;
 
+import org.thoughtcrime.ssl.pinning.PinningTrustManager;
+import org.thoughtcrime.ssl.pinning.SystemKeyStore;
+
+import com.simperium.BuildConfig;
 import com.simperium.Simperium;
 import com.simperium.Version;
 import com.simperium.client.ClientFactory;
@@ -14,6 +18,7 @@ import com.simperium.util.Uuid;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import javax.net.ssl.TrustManager;
 
 import android.net.Uri;
 import android.util.Log;
@@ -67,6 +72,16 @@ public class AndroidClient implements ClientFactory {
         }
 
         mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
+
+        TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
+        mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
+
+    }
+
+    public static TrustManager buildPinnedTrustManager(Context context) {
+        // Pin SSL to Simperium.com SPKI
+        return new PinningTrustManager(SystemKeyStore.getInstance(context),
+                                       new String[] { BuildConfig.SIMPERIUM_COM_SPKI }, 0);
     }
 
     public static SharedPreferences sharedPreferences(Context context){
