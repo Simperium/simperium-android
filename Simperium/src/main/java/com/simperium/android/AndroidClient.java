@@ -10,7 +10,6 @@ import org.thoughtcrime.ssl.pinning.PinningTrustManager;
 import org.thoughtcrime.ssl.pinning.SystemKeyStore;
 
 import com.simperium.BuildConfig;
-import com.simperium.Simperium;
 import com.simperium.Version;
 import com.simperium.client.ClientFactory;
 import com.simperium.util.Uuid;
@@ -20,7 +19,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import javax.net.ssl.TrustManager;
 
-import android.net.Uri;
 import android.util.Log;
 
 /**
