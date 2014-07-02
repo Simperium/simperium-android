@@ -353,7 +353,7 @@ public class PersistentStore implements StorageProvider {
                             Log.d(TAG, "Reindexed `" + bucketName + "." + key + "`");
                         }
                         mDatabase.delete(REINDEX_QUEUE_TABLE, deleteConditions, new String[]{bucketName, key});
-                        Thread.currentThread().sleep(1);
+                        Thread.sleep(1);
                     }
                 } catch (InterruptedException e) {
                     Logger.log(TAG, String.format("Indexing interrupted %s", bucketName), e);
