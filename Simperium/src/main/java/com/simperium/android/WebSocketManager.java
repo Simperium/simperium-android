@@ -9,28 +9,22 @@
  */
 package com.simperium.android;
 
-import com.simperium.BuildConfig;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Executor;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.simperium.BuildConfig;
 import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
 import com.simperium.util.Logger;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.Executor;
-
-import org.json.JSONObject;
-import org.json.JSONException;
-
 import android.util.Log;
-
 
 public class WebSocketManager implements ChannelProvider, Channel.OnMessageListener {
 
@@ -63,7 +57,6 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     protected Connection mConnection = new NullConnection();
     protected String mSocketURI;
     private String mAppId, mSessionId;
-    private String mClientId;
     private boolean mReconnect = true;
     private HashMap<Channel,Integer> mChannelIndex = new HashMap<Channel,Integer>();
     private HashMap<Integer,Channel> mChannels = new HashMap<Integer,Channel>();
@@ -222,19 +215,13 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     private void notifyChannelsConnected() {
-        Set<Channel> channelSet = mChannelIndex.keySet();
-        Iterator<Channel> iterator = channelSet.iterator();
-        while(iterator.hasNext()) {
-            Channel channel = iterator.next();
+        for(Channel channel : mChannelIndex.keySet()) {
             channel.onConnect();
         }
     }
 
     private void notifyChannelsDisconnected() {
-        Set<Channel> channelSet = mChannelIndex.keySet();
-        Iterator<Channel> iterator = channelSet.iterator();
-        while(iterator.hasNext()) {
-            Channel channel = iterator.next();
+        for(Channel channel : mChannelIndex.keySet()) {
             channel.onDisconnect();
         }
     }
@@ -360,8 +347,8 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         }
 
         scheduleHeartbeat();
-        int size = message.length();
-        String[] parts = message.split(":", 2);;
+
+        String[] parts = message.split(":", 2);
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             mHeartbeatCount = Integer.parseInt(parts[1]);
             return;
