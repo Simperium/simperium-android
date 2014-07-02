@@ -55,9 +55,7 @@ public class GhostStore implements GhostStorageProvider {
     protected Cursor queryChangeVersion(Bucket bucket) {
         String[] columns = { BUCKET_NAME_FIELD, CHANGE_VERSION_FIELD };
         String[] args = { bucket.getName() };
-        Cursor cursor = database.query(VERSIONS_TABLE_NAME, columns, "bucketName=?", args, null, null, null);
-        int count = cursor.getCount();
-        return cursor;
+        return database.query(VERSIONS_TABLE_NAME, columns, "bucketName=?", args, null, null, null);
     }
 
     @Override
@@ -65,11 +63,7 @@ public class GhostStore implements GhostStorageProvider {
         Cursor cursor = queryChangeVersion(bucket);
         int count = cursor.getCount();
         cursor.close();
-        if (count > 0) {
-            return !getChangeVersion(bucket).equals("");
-        } else {
-            return false;
-        }
+        return count > 0 && !getChangeVersion(bucket).equals("");
     }
 
     @Override
@@ -140,7 +134,7 @@ public class GhostStore implements GhostStorageProvider {
     @Override
     public boolean hasGhost(Bucket bucket, String key) {
         try {
-            Ghost ghost = getGhost(bucket, key);
+            getGhost(bucket, key);
         } catch (GhostMissingException e) {
             return false;
         }
