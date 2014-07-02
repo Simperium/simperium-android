@@ -1,31 +1,26 @@
 package com.simperium.android;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
+import com.koushikdutta.async.http.AsyncHttpClient;
+import com.koushikdutta.async.http.AsyncHttpPost;
+import com.koushikdutta.async.http.AsyncHttpResponse;
+import com.koushikdutta.async.http.body.JSONObjectBody;
+import com.koushikdutta.async.http.libcore.RawHeaders;
+import com.koushikdutta.async.http.libcore.ResponseHeaders;
+import com.koushikdutta.async.parser.JSONObjectParser;
 import com.simperium.BuildConfig;
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthProvider;
 import com.simperium.client.AuthResponseHandler;
 import com.simperium.client.User;
 
-import com.koushikdutta.async.callback.CompletedCallback;
-import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.AsyncHttpRequest;
-import com.koushikdutta.async.http.AsyncHttpResponse;
-import com.koushikdutta.async.http.AsyncHttpGet;
-import com.koushikdutta.async.http.AsyncHttpPost;
-import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
-import com.koushikdutta.async.http.WebSocket;
-import com.koushikdutta.async.http.body.JSONObjectBody;
-import com.koushikdutta.async.http.libcore.RawHeaders;
-import com.koushikdutta.async.http.libcore.ResponseHeaders;
-import com.koushikdutta.async.parser.JSONObjectParser;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class AsyncAuthClient implements AuthProvider {
 
@@ -34,7 +29,6 @@ public class AsyncAuthClient implements AuthProvider {
     private static final String AUTH_URL = "https://auth.simperium.com/1";
     private static final String CREATE_PATH = "create/";
     private static final String AUTHORIZE_PATH = "authorize/";
-    private static final String JSON_CONTENT_TYPE = "application/json";
     private static final String API_KEY_HEADER_NAME = "X-Simperium-API-Key";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     public static final String USER_EMAIL_PREFERENCE = "user-email";
