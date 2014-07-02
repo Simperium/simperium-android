@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.simperium.BuildConfig;
 import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
@@ -269,7 +270,7 @@ public class LoginActivity extends Activity {
         final String password = passwordTextField.getText().toString().trim();
         final String password2 = passwordTextField2.getText().toString().trim();
 
-        if (false == checkUserData())
+        if (!checkUserData())
             return;
 
         if( ! password2.equals(password) ) {
@@ -289,7 +290,7 @@ public class LoginActivity extends Activity {
         final String email = emailTextField.getText().toString().trim();
         final String password = passwordTextField.getText().toString().trim();
 
-        if (false == checkUserData())
+        if (!checkUserData())
             return;
 
         
@@ -316,16 +317,20 @@ public class LoginActivity extends Activity {
 
     private void startSignUpOrSignin(final boolean isSignup) {
         NetworkInfo network = mSystemService.getActiveNetworkInfo();
-        if (isSignup == true)
+        if (isSignup)
             signUp();
         else
             signIn();
-        if(true) return;
+
+        if(!BuildConfig.DEBUG) {
+            return;
+        }
+
         if (network == null || !network.isConnected()) {
             AlertUtil.showAlert(LoginActivity.this, R.string.no_network_title,
                     R.string.no_network_message);
         } else {
-            if (isSignup == true)
+            if (isSignup)
                 signUp();
             else
                 signIn();
