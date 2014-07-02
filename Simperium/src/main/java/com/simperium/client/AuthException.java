@@ -7,6 +7,7 @@ public class AuthException extends SimperiumException {
     static public final String GENERIC_FAILURE_MESSAGE = "Invalid username or password";
     static public final String EXISTING_USER_FAILURE_MESSAGE = "Account already exists";
 
+    static public final int ERROR_STATUS_CODE = -1;
     static public final int INVALID_ACCOUNT_CODE = 0x0;
     static public final int EXISTING_ACCOUNT_CODE = 0x1;
 
@@ -27,7 +28,7 @@ public class AuthException extends SimperiumException {
     }
 
     public static AuthException defaultException() {
-        return exceptionForStatusCode(-1);
+        return exceptionForStatusCode(ERROR_STATUS_CODE);
     }
 
     public static AuthException exceptionForStatusCode(int statusCode) {

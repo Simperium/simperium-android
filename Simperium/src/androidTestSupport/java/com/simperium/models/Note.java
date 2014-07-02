@@ -111,14 +111,6 @@ public class Note extends BucketObject {
         }
     }
 
-    public JSONObject getProperties(){
-        return getDiffableValue();
-    }
-
-    protected void setProperties(JSONObject properties){
-        this.properties = properties;
-    }
-
     public CharSequence getPreview(){
         if (preview != null) {
             return preview;

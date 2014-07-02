@@ -9,10 +9,6 @@
  * Simperium creates a Bucket instance that is backed by a Channel. The Channel
  * takes care of the network operations by communicating with the WebSocketManager.
  *
- * TODO: A bucket should be able to be queried: "give me all your entities". This
- * potentially needs to be flexible to allow storage mechanisms way to extend how
- * things can be queried.
- *
  * Buckets should also provide a way for other objects to listen for when entities
  * get added, updated or removed due to operations coming in from the network.
  *
@@ -81,11 +77,11 @@ public class Bucket<T extends Syncable> {
 
     public static final String TAG="Simperium.Bucket";
     // The name used for the Simperium namespace
-    private String name;
+    private String mName;
     // User provides the access token for authentication
-    private User user;
+    private User mUser;
     // The channel that provides networking and change processing.
-    private Channel channel;
+    private Channel mChannel;
     // For storing the bucket listeners
     private Set<OnSaveObjectListener<T>> onSaveListeners =
         Collections.synchronizedSet(new HashSet<OnSaveObjectListener<T>>());
@@ -96,10 +92,10 @@ public class Bucket<T extends Syncable> {
     private Set<OnNetworkChangeListener<T>> onChangeListeners =
         Collections.synchronizedSet(new HashSet<OnNetworkChangeListener<T>>());
 
-    private BucketStore<T> storage;
-    private BucketSchema<T> schema;
-    private GhostStorageProvider ghostStore;
-    final private Executor executor;
+    private BucketStore<T> mStorage;
+    private BucketSchema<T> mSchema;
+    private GhostStorageProvider mGhostStore;
+    final private Executor mExecutor;
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
@@ -109,18 +105,18 @@ public class Bucket<T extends Syncable> {
     public Bucket(Executor executor, String name, BucketSchema<T>schema, User user,
         BucketStore<T> storage, GhostStorageProvider ghostStore)
     throws BucketNameInvalid {
-        this.executor = executor;
-        this.name = name;
-        this.user = user;
-        this.storage = storage;
-        this.ghostStore = ghostStore;
-        this.schema = schema;
+        mExecutor = executor;
+        mName = name;
+        mUser = user;
+        mStorage = storage;
+        mGhostStore = ghostStore;
+        mSchema = schema;
         validateBucketName(name);
     }
 
     public void log(int level, CharSequence message) {
-        if (channel == null) return;
-        channel.log(level, message);
+        if (mChannel == null) return;
+        mChannel.log(level, message);
     }
 
     public void log(CharSequence message) {
@@ -130,15 +126,15 @@ public class Bucket<T extends Syncable> {
     /**
      * Return the instance of this bucket's schema
      */
-    public BucketSchema<T> getSchema(){
-        return schema;
+    public BucketSchema<T> getSchema() {
+        return mSchema;
     }
 
     /**
      * Return the user for this bucket
      */
-    public User getUser(){
-        return user;
+    public User getUser() {
+        return mUser;
     }
 
     /**
@@ -161,23 +157,23 @@ public class Bucket<T extends Syncable> {
 
         private ObjectCursor<T> cursor;
 
-        BucketCursor(ObjectCursor<T> cursor){
+        BucketCursor(ObjectCursor<T> cursor) {
             super(cursor);
             this.cursor = cursor;
         }
 
         @Override
-        public String getSimperiumKey(){
+        public String getSimperiumKey() {
             return cursor.getSimperiumKey();
         }
 
         @Override
-        public T getObject(){
+        public T getObject() {
             String key = getSimperiumKey();
 
             T object = cursor.getObject();
             try {
-                Ghost ghost = ghostStore.getGhost(Bucket.this, key);
+                Ghost ghost = mGhostStore.getGhost(Bucket.this, key);
                 object.setGhost(ghost);
             } catch (GhostMissingException e) {
                 object.setGhost(new Ghost(key, 0, new JSONObject()));
@@ -191,16 +187,16 @@ public class Bucket<T extends Syncable> {
     /**
      * Tell the bucket to sync changes.
      */
-    public void sync(final T object){
-        executor.execute(new Runnable(){
+    public void sync(final T object) {
+        mExecutor.execute(new Runnable() {
             @Override
-            public void run(){
+            public void run() {
                 Boolean modified = object.isModified();
-                storage.save(object, schema.indexesFor(object));
+                mStorage.save(object, mSchema.indexesFor(object));
 
-                channel.queueLocalChange(object);
+                mChannel.queueLocalChange(object);
 
-                if (modified){
+                if (modified) {
                     // Notify listeners that an object has been saved, this was
                     // triggered locally
                     notifyOnSaveListeners(object);
@@ -214,7 +210,7 @@ public class Bucket<T extends Syncable> {
      * 
      * @param object the Syncable to remove from the bucket
      */
-    public void remove(T object){
+    public void remove(T object) {
         remove(object, true);
     }
 
@@ -225,14 +221,14 @@ public class Bucket<T extends Syncable> {
      * @param object The Syncable to remove from the bucket
      * @param isLocal if the operation originates from this client
      */
-    private void remove(final T object, final boolean isLocal){
-        executor.execute(new Runnable() {
+    private void remove(final T object, final boolean isLocal) {
+        mExecutor.execute(new Runnable() {
             @Override
             public void run() {
                 if (isLocal)
-                    channel.queueLocalDeletion(object);
+                    mChannel.queueLocalDeletion(object);
 
-                storage.delete(object);
+                mStorage.delete(object);
                 notifyOnDeleteListeners(object);
             }
         });
@@ -254,37 +250,37 @@ public class Bucket<T extends Syncable> {
      * Get the bucket's namespace
      * @return (String) bucket's namespace
      */
-    public String getName(){
-        return name;
+    public String getName() {
+        return mName;
     }
 
-    public String getRemoteName(){
-        return schema.getRemoteName();
+    public String getRemoteName() {
+        return mSchema.getRemoteName();
     }
 
-    public Boolean hasChangeVersion(){
-        return ghostStore.hasChangeVersion(this);
+    public Boolean hasChangeVersion() {
+        return mGhostStore.hasChangeVersion(this);
     }
 
-    public Boolean hasChangeVersion(String version){
-        return ghostStore.hasChangeVersion(this, version);
+    public Boolean hasChangeVersion(String version) {
+        return mGhostStore.hasChangeVersion(this, version);
     }
 
-    public String getChangeVersion(){
-        String version = ghostStore.getChangeVersion(this);
+    public String getChangeVersion() {
+        String version = mGhostStore.getChangeVersion(this);
         if (version == null) {
             version = "";
         }
         return version;
     }
 
-    public void indexComplete(String changeVersion){
+    public void indexComplete(String changeVersion) {
         setChangeVersion(changeVersion);
         notifyOnNetworkChangeListeners(ChangeType.INDEX);
     }
 
-    public void setChangeVersion(String version){
-        ghostStore.setChangeVersion(this, version);
+    public void setChangeVersion(String version) {
+        mGhostStore.setChangeVersion(this, version);
     }
 
     // starts tracking the object
@@ -293,48 +289,48 @@ public class Bucket<T extends Syncable> {
      * conform to the Diffable interface. So simperium can diff/apply patches.
      *
      */
-    public void add(T object){
+    public void add(T object) {
         if (!object.getBucket().equals(this)) {
             object.setBucket(this);
         }
     }
 
-    protected T buildObject(String key, JSONObject properties){
+    protected T buildObject(String key, JSONObject properties) {
         return buildObject(new Ghost(key, 0, properties));
     }
 
 
-    protected T buildObject(String key){
+    protected T buildObject(String key) {
         return buildObject(key, new JSONObject());
     }
     
-    protected T buildObject(Ghost ghost){
-        T object = schema.buildWithDefaults(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
+    protected T buildObject(Ghost ghost) {
+        T object = mSchema.buildWithDefaults(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
         object.setGhost(ghost);
         object.setBucket(this);
         return object;
     }
 
-    public int count(){
+    public int count() {
         return count(query());
     }
 
-    public int count(Query<T> query){
-        return storage.count(query);
+    public int count(Query<T> query) {
+        return mStorage.count(query);
     }
 
     /**
      * Find all objects
      */
-    public ObjectCursor<T> allObjects(){
-        return new BucketCursor(storage.all());
+    public ObjectCursor<T> allObjects() {
+        return new BucketCursor(mStorage.all());
     }
 
     /**
      * Search using a query
      */
-    public ObjectCursor<T> searchObjects(Query<T> query){
-        return new BucketCursor(storage.search(query));
+    public ObjectCursor<T> searchObjects(Query<T> query) {
+        return new BucketCursor(mStorage.search(query));
     }
 
     /**
@@ -343,7 +339,7 @@ public class Bucket<T extends Syncable> {
     /**
      * Build a query for this object
      */
-    public Query<T> query(){
+    public Query<T> query() {
         return new Query<T>(this);
     }
 
@@ -354,11 +350,11 @@ public class Bucket<T extends Syncable> {
         // Datastore constructs the object for us
         Ghost ghost = null;
         try {
-            ghost = ghostStore.getGhost(this, key);            
+            ghost = mGhostStore.getGhost(this, key);
         } catch (GhostMissingException e) {
             throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
         }
-        T object = storage.get(key);
+        T object = mStorage.get(key);
         if (object == null) {
             throw(new BucketObjectMissingException(String.format("Storage provider for bucket:%s did not have object %s", getName(), key)));
         }
@@ -379,7 +375,7 @@ public class Bucket<T extends Syncable> {
     /**
      * Returns a new object tracked by this bucket
      */
-    public T newObject(){
+    public T newObject() {
         try {
             return newObject(uuid());
         } catch (BucketObjectNameInvalid e) {
@@ -410,7 +406,7 @@ public class Bucket<T extends Syncable> {
         object.setBucket(this);
         Ghost ghost = new Ghost(name, 0, new JSONObject());
         object.setGhost(ghost);
-        ghostStore.saveGhost(this, ghost);
+        mGhostStore.saveGhost(this, ghost);
         return object;
     }
 
@@ -418,30 +414,43 @@ public class Bucket<T extends Syncable> {
      * Add object from new ghost data, no corresponding change version so this
      * came from an index request
      */
-    protected void addObjectWithGhost(final Ghost ghost){
-        executor.execute(new Runnable() {
+    protected void addObjectWithGhost(final Ghost ghost) {
+        addObjectWithGhost(ghost, null);
+    }
+
+    /**
+     * 
+     */
+    protected void addObjectWithGhost(final Ghost ghost, final Runnable runnable) {
+        mExecutor.execute(new Runnable() {
 
             @Override
-            public void run(){
-                ghostStore.saveGhost(Bucket.this, ghost);
+            public void run() {
+                mGhostStore.saveGhost(Bucket.this, ghost);
                 T object = buildObject(ghost);
                 addObject(object);
+
+                if (runnable != null) {
+                    runnable.run();
+                }
+
             }
 
         });
     }
 
+
     /**
      * Update the ghost data
      */
     protected void updateObjectWithGhost(final Ghost ghost) {
-        ghostStore.saveGhost(Bucket.this, ghost);
-        T object = schema.build(ghost.getSimperiumKey(), ghost.getDiffableValue());
+        mGhostStore.saveGhost(Bucket.this, ghost);
+        T object = mSchema.build(ghost.getSimperiumKey(), ghost.getDiffableValue());
         updateObject(object);
     }
 
-    protected void updateGhost(final Ghost ghost, final Runnable complete){
-        executor.execute(new Runnable(){
+    protected void updateGhost(final Ghost ghost, final Runnable complete) {
+        mExecutor.execute(new Runnable() {
 
             @Override
             public void run() {
@@ -477,7 +486,7 @@ public class Bucket<T extends Syncable> {
                             JSONObject updatedProperties = JSONDiff.deepCopy(ghost.getDiffableValue());
                             updatedProperties = JSONDiff.apply(updatedProperties, transformedDiff);
 
-                            schema.update(object, updatedProperties);
+                            mSchema.update(object, updatedProperties);
                             object.setGhost(ghost);
                             updateObject(object);
                         } catch (JSONException e) {
@@ -508,19 +517,19 @@ public class Bucket<T extends Syncable> {
     }
 
     protected Ghost getGhost(String key) throws GhostMissingException {
-        return ghostStore.getGhost(this, key);
+        return mGhostStore.getGhost(this, key);
     }
     /**
      * Add a new object with corresponding change version
      */
-    protected void addObject(String changeVersion, T object){
+    protected void addObject(String changeVersion, T object) {
         addObject(object);
         setChangeVersion(changeVersion);
     }
     /**
      * Adds a new object to the bucket
      */
-    protected void addObject(T object){
+    protected void addObject(T object) {
         if (object.getGhost() == null) {
             object.setGhost(new Ghost(object.getSimperiumKey()));
         }
@@ -531,73 +540,73 @@ public class Bucket<T extends Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        storage.save(object, schema.indexesFor(object));
+        mStorage.save(object, mSchema.indexesFor(object));
         // notify listeners that an object has been added
     }
 
     /**
      * Updates an existing object
      */
-    protected void updateObject(T object){
+    protected void updateObject(T object) {
         object.setBucket(this);
-        storage.save(object, schema.indexesFor(object));
+        mStorage.save(object, mSchema.indexesFor(object));
     }
 
     /**
      *
      */
-    protected void updateObject(String changeVersion, T object){
+    protected void updateObject(String changeVersion, T object) {
         updateObject(object);
         setChangeVersion(changeVersion);
     }
 
-    public void addListener(Listener<T> listener){
+    public void addListener(Listener<T> listener) {
         addOnSaveObjectListener(listener);
         addOnBeforeUpdateObjectListener(listener);
         addOnDeleteObjectListener(listener);
         addOnNetworkChangeListener(listener);
     }
 
-    public void removeListener(Listener<T> listener){
+    public void removeListener(Listener<T> listener) {
         removeOnSaveObjectListener(listener);
         removeOnBeforeUpdateObjectListener(listener);
         removeOnDeleteObjectListener(listener);
         removeOnNetworkChangeListener(listener);
     }
 
-    public void addOnSaveObjectListener(OnSaveObjectListener<T> listener){
+    public void addOnSaveObjectListener(OnSaveObjectListener<T> listener) {
         onSaveListeners.add(listener);
     }
 
-    public void removeOnSaveObjectListener(OnSaveObjectListener<T> listener){
+    public void removeOnSaveObjectListener(OnSaveObjectListener<T> listener) {
         onSaveListeners.remove(listener);
     }
 
-    public void addOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
+    public void addOnDeleteObjectListener(OnDeleteObjectListener<T> listener) {
         onDeleteListeners.add(listener);
     }
 
-    public void removeOnDeleteObjectListener(OnDeleteObjectListener<T> listener){
+    public void removeOnDeleteObjectListener(OnDeleteObjectListener<T> listener) {
         onDeleteListeners.remove(listener);
     }
 
-    public void addOnNetworkChangeListener(OnNetworkChangeListener<T> listener){
+    public void addOnNetworkChangeListener(OnNetworkChangeListener<T> listener) {
         onChangeListeners.add(listener);
     }
 
-    public void removeOnNetworkChangeListener(OnNetworkChangeListener<T> listener){
+    public void removeOnNetworkChangeListener(OnNetworkChangeListener<T> listener) {
         onChangeListeners.remove(listener);
     }
 
-    public void addOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener){
+    public void addOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener) {
         onBeforeUpdateListeners.add(listener);
     }
 
-    public void removeOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener){
+    public void removeOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener) {
         onBeforeUpdateListeners.remove(listener);
     }
 
-    public void notifyOnSaveListeners(T object){
+    public void notifyOnSaveListeners(T object) {
         Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
 
         Iterator<OnSaveObjectListener<T>> iterator = notify.iterator();
@@ -611,7 +620,7 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    public void notifyOnDeleteListeners(T object){
+    public void notifyOnDeleteListeners(T object) {
         Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
         
         Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
@@ -625,7 +634,7 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    public void notifyOnBeforeUpdateObjectListeners(T object){
+    public void notifyOnBeforeUpdateObjectListeners(T object) {
         Set<OnBeforeUpdateObjectListener<T>> notify = new HashSet<OnBeforeUpdateObjectListener<T>>(onBeforeUpdateListeners);
 
         Iterator<OnBeforeUpdateObjectListener<T>> iterator = notify.iterator();
@@ -639,11 +648,11 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    public void notifyOnNetworkChangeListeners(ChangeType type){
+    public void notifyOnNetworkChangeListeners(ChangeType type) {
         notifyOnNetworkChangeListeners(type, null);
     }
 
-    public void notifyOnNetworkChangeListeners(ChangeType type, String key){
+    public void notifyOnNetworkChangeListeners(ChangeType type, String key) {
         Set<OnNetworkChangeListener> notify =
             new HashSet<OnNetworkChangeListener>(onChangeListeners);
 
@@ -659,27 +668,27 @@ public class Bucket<T extends Syncable> {
     }
 
 
-    public void setChannel(Channel channel){
-        this.channel = channel;
+    public void setChannel(Channel channel) {
+        mChannel = channel;
     }
 
     /**
      * Initialize the bucket to start tracking changes.
      */
-    public void start(){
-        channel.start();
+    public void start() {
+        mChannel.start();
     }
 
-    public void stop(){
-        channel.stop();
+    public void stop() {
+        mChannel.stop();
     }
 
 
-    public void reset(){
-        storage.reset();
+    public void reset() {
+        mStorage.reset();
         // Clear the ghost store
-        ghostStore.resetBucket(this);
-        channel.reset();
+        mGhostStore.resetBucket(this);
+        mChannel.reset();
         stop();
 
         notifyOnNetworkChangeListeners(ChangeType.RESET);
@@ -687,15 +696,15 @@ public class Bucket<T extends Syncable> {
     /**
      * Does bucket have at least the requested version?
      */
-    public Boolean containsKey(String key){
-        return ghostStore.hasGhost(this, key);
+    public Boolean containsKey(String key) {
+        return mGhostStore.hasGhost(this, key);
     }
     /**
      * Ask storage if it has at least the requested version or newer
      */
-    public Boolean hasKeyVersion(String key, Integer version){
+    public Boolean hasKeyVersion(String key, Integer version) {
         try {
-            Ghost ghost = ghostStore.getGhost(this, key);
+            Ghost ghost = mGhostStore.getGhost(this, key);
             return ghost.getVersion().equals(version);
         } catch (GhostMissingException e) {
             // we don't have the ghost
@@ -706,18 +715,18 @@ public class Bucket<T extends Syncable> {
      * Which version of the key do we have
      */
     public Integer getKeyVersion(String key) throws GhostMissingException {
-        Ghost ghost = ghostStore.getGhost(this, key);
+        Ghost ghost = mGhostStore.getGhost(this, key);
         return ghost.getVersion();
     }
 
     /**
      * Submit a Runnable to this Bucket's executor
      */
-    public void executeAsync(Runnable task){
-        executor.execute(task);
+    public void executeAsync(Runnable task) {
+        mExecutor.execute(task);
     }
 
-    public String uuid(){
+    public String uuid() {
         String key;
         do {
             key = Uuid.uuid();
@@ -733,14 +742,14 @@ public class Bucket<T extends Syncable> {
                 T object = get(remoteChange.getKey());
                 // apply the diff to the underyling object
                 ghost = remoteChange.apply(object.getGhost());
-                ghostStore.saveGhost(this, ghost);
+                mGhostStore.saveGhost(this, ghost);
                 // update the object's ghost
                 object.setGhost(ghost);
             } catch (BucketObjectMissingException e) {
                 throw(new RemoteChangeInvalidException(remoteChange, e));
             }
         } else {
-            ghostStore.deleteGhost(this, remoteChange.getKey());
+            mGhostStore.deleteGhost(this, remoteChange.getKey());
         }
         setChangeVersion(remoteChange.getChangeVersion());
         remoteChange.setApplied();
@@ -754,7 +763,7 @@ public class Bucket<T extends Syncable> {
         if (change.isRemoveOperation()) {
             try {
                 removeObjectWithKey(change.getKey());
-                ghostStore.deleteGhost(this, change.getKey());
+                mGhostStore.deleteGhost(this, change.getKey());
             } catch (BucketObjectMissingException e) {
                 throw(new RemoteChangeInvalidException(change, e));
             }
@@ -788,12 +797,12 @@ public class Bucket<T extends Syncable> {
                 JSONObject updatedProperties = JSONDiff.deepCopy(updatedGhost.getDiffableValue());
 
                 // persist the ghost to storage
-                ghostStore.saveGhost(this, updatedGhost);
+                mGhostStore.saveGhost(this, updatedGhost);
                 object.setGhost(updatedGhost);
 
                 // allow the schema to update the object instance with the new
                 if (isNew) {
-                    schema.updateWithDefaults(object, updatedProperties);
+                    mSchema.updateWithDefaults(object, updatedProperties);
                     addObject(object);
                 } else {
 
@@ -814,7 +823,7 @@ public class Bucket<T extends Syncable> {
                         }
                     }
 
-                    schema.update(object, updatedProperties);
+                    mSchema.update(object, updatedProperties);
                     updateObject(object);
                 }
 

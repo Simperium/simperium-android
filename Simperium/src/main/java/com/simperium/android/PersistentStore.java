@@ -5,7 +5,9 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
+import com.simperium.BuildConfig;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
@@ -19,8 +21,8 @@ import com.simperium.util.Logger;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -31,44 +33,45 @@ public class PersistentStore implements StorageProvider {
     public static final String INDEXES_TABLE="indexes";
     public static final String REINDEX_QUEUE_TABLE="reindex_queue";
 
-    private SQLiteDatabase database;
+    private SQLiteDatabase mDatabase;
 
-    public PersistentStore(SQLiteDatabase database){
-        this.database = database;
+    public PersistentStore(SQLiteDatabase database) {
+        mDatabase = database;
         configure();
     }
 
-    public Cursor queryObject(String bucketName, String key){
-        return database.query(OBJECTS_TABLE, new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"}, "bucket=? AND key=?", new String[]{bucketName, key}, null, null, null, "1");
+    public Cursor queryObject(String bucketName, String key) {
+        return mDatabase.query(OBJECTS_TABLE, new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"}, "bucket=? AND key=?", new String[]{bucketName, key}, null, null, null, "1");
     }
 
     @Override
-    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> schema){
+    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> schema) {
         return new DataStore<T>(bucketName, schema);
     }
 
     protected class DataStore<T extends Syncable> implements BucketStore<T> {
 
-        protected BucketSchema<T> schema;
-        protected String bucketName;
+        final protected BucketSchema<T> mSchema;
+        final protected String mBucketName;
         private Reindexer mReindexer;
 
-        DataStore(String bucketName, BucketSchema<T> schema){
-            this.schema = schema;
-            this.bucketName = bucketName;
+        DataStore(String bucketName, BucketSchema<T> schema) {
+            mSchema = schema;
+            mBucketName = bucketName;
         }
 
-        public void reindex(final Bucket<T> bucket){
+        public void reindex(final Bucket<T> bucket) {
             mReindexer = new Reindexer(bucket);
+
             mReindexer.start();
         }
 
         @Override
-        public void prepare(Bucket<T> bucket){
+        public void prepare(Bucket<T> bucket) {
             setupFullText();
 
             // Clear reindex table to stop any other indexing operations
-            database.delete(REINDEX_QUEUE_TABLE, "bucket=?", new String[]{bucketName});
+            mDatabase.delete(REINDEX_QUEUE_TABLE, "bucket=?", new String[]{ mBucketName });
 
             reindex(bucket);
         }
@@ -77,30 +80,31 @@ public class PersistentStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(T object, List<Index> indexes){
+        public void save(T object, List<Index> indexes) {
             String key = object.getSimperiumKey();
             mReindexer.skip(key);
             ContentValues values = new ContentValues();
-            values.put("bucket", bucketName);
+            values.put("bucket", mBucketName);
             values.put("key", key);
             values.put("data", object.getDiffableValue().toString());
-            Cursor cursor = queryObject(bucketName, key);
+            Cursor cursor = queryObject(mBucketName, key);
             if (cursor.getCount() == 0) {
-                database.insert(OBJECTS_TABLE, null, values);
+                mDatabase.insert(OBJECTS_TABLE, null, values);
             } else {
-                database.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{bucketName, key});
+                mDatabase.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{mBucketName, key});
             }
             index(object, indexes);
+            if (BuildConfig.DEBUG) Log.d(TAG, "Saved indexes for " + object);
         }
 
         /**
          * Remove the given object from the storage
          */
         @Override
-        public void delete(T object){
+        public void delete(T object) {
             String key = object.getSimperiumKey();
             mReindexer.skip(key);
-            database.delete(OBJECTS_TABLE, "bucket=? AND key=?", new String[]{bucketName, key});
+            mDatabase.delete(OBJECTS_TABLE, "bucket=? AND key=?", new String[]{mBucketName, key});
             deleteIndexes(object);
         }
 
@@ -108,11 +112,11 @@ public class PersistentStore implements StorageProvider {
          * Delete all objects from storage
          */
         @Override
-        public void reset(){
+        public void reset() {
             if (mReindexer != null) mReindexer.stop();
-            database.delete(OBJECTS_TABLE, "bucket=?", new String[]{bucketName});
-            if (schema.hasFullTextIndex())
-                database.delete(getFullTextTableName(), null, null);
+            mDatabase.delete(OBJECTS_TABLE, "bucket=?", new String[]{mBucketName});
+            if (mSchema.hasFullTextIndex())
+                mDatabase.delete(getFullTextTableName(), null, null);
             deleteAllIndexes();
         }
 
@@ -121,7 +125,7 @@ public class PersistentStore implements StorageProvider {
          */
         @Override
         public T get(String key) throws BucketObjectMissingException {
-            Bucket.ObjectCursor<T> cursor = buildCursor(schema, queryObject(bucketName, key));
+            Bucket.ObjectCursor<T> cursor = buildCursor(mSchema, queryObject(mBucketName, key));
             if (cursor.getCount() == 0) {
                 cursor.close();
                 throw(new BucketObjectMissingException());
@@ -137,18 +141,18 @@ public class PersistentStore implements StorageProvider {
          * All objects, returns a cursor for the given bucket
          */
         @Override
-        public Bucket.ObjectCursor<T> all(){
-            return buildCursor(schema, database.query(false, OBJECTS_TABLE,
+        public Bucket.ObjectCursor<T> all() {
+            return buildCursor(mSchema, mDatabase.query(false, OBJECTS_TABLE,
                     new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"},
-                    "bucket=?", new String[]{bucketName}, null, null, null, null));
+                    "bucket=?", new String[]{mBucketName}, null, null, null, null));
         }
 
         /**
          * Count for the given query
          */
-        public int count(Query<T> query){
+        public int count(Query<T> query) {
             QueryBuilder builder = new QueryBuilder(this, query);
-            Cursor cursor = builder.count(database);
+            Cursor cursor = builder.count(mDatabase);
             cursor.moveToFirst();
             int count = cursor.getInt(0);
             cursor.close();
@@ -160,20 +164,21 @@ public class PersistentStore implements StorageProvider {
          * 
          */
         @Override
-        public Bucket.ObjectCursor<T> search(Query<T> query){
+        public Bucket.ObjectCursor<T> search(Query<T> query) {
             QueryBuilder builder = new QueryBuilder(this, query);
-            Cursor cursor = builder.query(database);
-            return buildCursor(schema, cursor);
+            Cursor cursor = builder.query(mDatabase);
+            return buildCursor(mSchema, cursor);
         }
         
-        protected void index(T object, List<Index> indexValues){
+        protected void index(T object, List<Index> indexValues)
+        throws SQLException {
             // delete all current idexes
+            mDatabase.beginTransaction();
             deleteIndexes(object);
-            Iterator<Index> indexes = indexValues.iterator();
-            while(indexes.hasNext()){
-                Index index = indexes.next();
+
+            for(Index index : indexValues) {
                 ContentValues values = new ContentValues(4);
-                values.put("bucket", bucketName);
+                values.put("bucket", mBucketName);
                 values.put("key", object.getSimperiumKey());
                 values.put("name", index.getName());
                 String key = "value";
@@ -181,29 +186,34 @@ public class PersistentStore implements StorageProvider {
                 Object value = index.getValue();
                 if (value instanceof Byte) {
                     values.put(key, (Byte) value);
-                } else if(value instanceof Integer){
+                } else if(value instanceof Integer) {
                     values.put(key, (Integer) value);
-                } else if(value instanceof Float){
+                } else if(value instanceof Float) {
                     values.put(key, (Float) value);
-                } else if(value instanceof Short){
+                } else if(value instanceof Short) {
                     values.put(key, (Short) value);
-                } else if(value instanceof String){
+                } else if(value instanceof String) {
                     values.put(key, (String) value);
-                } else if(value instanceof Double){
+                } else if(value instanceof Double) {
                     values.put(key, (Double) value);
-                } else if(value instanceof Long){
+                } else if(value instanceof Long) {
                     values.put(key, (Long) value);
-                } else if(value instanceof Boolean){
+                } else if(value instanceof Boolean) {
                     values.put(key, (Boolean) value);
                 } else if(value != null) {
                     values.put(key, value.toString());
                 }
-                database.insertOrThrow(INDEXES_TABLE, key, values);
+                try {
+                    mDatabase.insertOrThrow(INDEXES_TABLE, key, values);
+                } catch (SQLException e) {
+                    mDatabase.endTransaction();
+                    throw e;
+                }
             }
 
             // If we have a fulltext index, let's add a record
-            if (schema.hasFullTextIndex()) {
-                Map<String,String> fullTextValues = schema.getFullTextIndex().index(object);
+            if (mSchema.hasFullTextIndex()) {
+                Map<String,String> fullTextValues = mSchema.getFullTextIndex().index(object);
                 ContentValues fullTextIndexes = new ContentValues(fullTextValues.size());
 
                 for(Map.Entry<String,String> entry : fullTextValues.entrySet()) {
@@ -211,38 +221,43 @@ public class PersistentStore implements StorageProvider {
                 }
 
                 String ftTableName = getFullTextTableName();
-                database.delete(ftTableName, "key=?", new String[]{ object.getSimperiumKey() });
+                mDatabase.delete(ftTableName, "key=?", new String[]{ object.getSimperiumKey() });
                 if (fullTextIndexes.size() > 0) {
                     fullTextIndexes.put("key", object.getSimperiumKey());
-                    database.insertOrThrow(ftTableName, null, fullTextIndexes);
+                    try {
+                        mDatabase.insertOrThrow(ftTableName, null, fullTextIndexes);
+                    } catch (SQLException e) {
+                        mDatabase.endTransaction();
+                        throw e;
+                    }
                 }
 
             }
+            mDatabase.setTransactionSuccessful();
+            mDatabase.endTransaction();
         }
 
-        private void deleteIndexes(T object){
-            database.delete(INDEXES_TABLE, "bucket=? AND key=?", new String[]{bucketName, object.getSimperiumKey()});
-            if (schema.hasFullTextIndex()) {
+        private void deleteIndexes(T object) {
+            mDatabase.delete(INDEXES_TABLE, "bucket=? AND key=?", new String[]{mBucketName, object.getSimperiumKey()});
+            if (mSchema.hasFullTextIndex()) {
                 String tableName = getFullTextTableName();
-                database.delete(tableName, "key=?", new String[]{ object.getSimperiumKey() });
+                mDatabase.delete(tableName, "key=?", new String[]{ object.getSimperiumKey() });
             }
         }
 
-        private void deleteAllIndexes(){
-            database.delete(INDEXES_TABLE, "bucket=?", new String[]{bucketName});
+        private void deleteAllIndexes() {
+            mDatabase.delete(INDEXES_TABLE, "bucket=?", new String[]{mBucketName});
         }
 
         private void setupFullText() {
-            if (schema.hasFullTextIndex()) {
+            if (mSchema.hasFullTextIndex()) {
                 boolean rebuild = false;
 
-                FullTextIndex index = schema.getFullTextIndex();
+                FullTextIndex index = mSchema.getFullTextIndex();
                 String[] keys = index.getKeys();
                 List<String> columns = new ArrayList<String>(keys.length + 1);
                 columns.add("key");
-                for (String key :keys) {
-                    columns.add(key);
-                }
+                Collections.addAll(columns, keys);
 
                 String tableName = getFullTextTableName();
                 Cursor tableInfo = tableInfo(tableName);
@@ -256,7 +271,7 @@ public class PersistentStore implements StorageProvider {
                 tableInfo.close();
 
                 if (rebuild) {
-                    database.execSQL(String.format(Locale.US, "DROP TABLE IF EXISTS `%s`", tableName));
+                    mDatabase.execSQL(String.format(Locale.US, "DROP TABLE IF EXISTS `%s`", tableName));
                     StringBuilder fields = new StringBuilder();
                     for (String key : keys) {
                         fields.append("`");
@@ -265,13 +280,13 @@ public class PersistentStore implements StorageProvider {
                     }
                     fields.append("`key`");
                     String query = String.format(Locale.US, "CREATE VIRTUAL TABLE `%s` USING fts3(%s)", tableName, fields.toString());
-                    database.execSQL(query);
+                    mDatabase.execSQL(query);
                 }
             }
         }
 
-        protected String getFullTextTableName(){
-            return String.format(Locale.US, "%s_ft", bucketName);
+        protected String getFullTextTableName() {
+            return String.format(Locale.US, "%s_ft", mBucketName);
         }
 
         private class Reindexer implements Runnable {
@@ -279,28 +294,28 @@ public class PersistentStore implements StorageProvider {
             final private Thread mReindexThread;
             final private Bucket<T> mBucket;
 
-            Reindexer(Bucket<T> bucket){
+            Reindexer(Bucket<T> bucket) {
                 mBucket = bucket;
                 mReindexThread = new Thread(this, String.format("%s-reindexer", bucket.getName()));
                 mReindexThread.setPriority(Thread.MIN_PRIORITY);
             }
 
-            public void start(){
+            public void start() {
                 String query = String.format(Locale.US, "INSERT INTO reindex_queue SELECT bucket, key FROM objects WHERE bucket = '%s'", mBucket.getName());
-                database.execSQL(query);
+                mDatabase.execSQL(query);
                 mReindexThread.start();
             }
 
-            public void stop(){
+            public void stop() {
                 mReindexThread.interrupt();
             }
 
-            public void skip(String key){
-                database.delete(REINDEX_QUEUE_TABLE, "bucket=? AND key=?", new String[]{ mBucket.getName(), key});
+            public void skip(String key) {
+                mDatabase.delete(REINDEX_QUEUE_TABLE, "bucket=? AND key=?", new String[]{ mBucket.getName(), key});
             }
 
             @Override
-            public void run(){
+            public void run() {
                 String bucketName = mBucket.getName();
                 String[] fields = new String[]{ "key" };
                 String[] args = new String[]{ bucketName };
@@ -308,11 +323,18 @@ public class PersistentStore implements StorageProvider {
                 String deleteConditions = "bucket=? AND key=?";
                 String limit = "1";
                 try {
-                    while(true){
+
+                    Thread.sleep(1000);
+
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "Starting reindex process for: " + mBucket.getName());
+                    }
+
+                    while(true) {
                         if (Thread.interrupted()) throw new InterruptedException();
 
-                        Cursor next = database.query(REINDEX_QUEUE_TABLE, fields, conditions, args, null, null, null, limit);
-                        if (next.getCount() == 0){
+                        Cursor next = mDatabase.query(REINDEX_QUEUE_TABLE, fields, conditions, args, null, null, null, limit);
+                        if (next.getCount() == 0) {
                             next.close();
                             break;
                         }
@@ -320,20 +342,26 @@ public class PersistentStore implements StorageProvider {
                         String key = next.getString(0);
                         try {
                             T object = mBucket.get(key);
-                            index(object, schema.indexesFor(object));
+                            index(object, mSchema.indexesFor(object));
                         } catch (BucketObjectMissingException e) {
                             // object is gone
+                            if (BuildConfig.DEBUG) {
+                                Log.d(TAG, "Reindexer could not find object `" + key + "` in bucket " + mBucket.getName());
+                            }
                         }
-                        database.delete(REINDEX_QUEUE_TABLE, deleteConditions, new String[]{bucketName, key});
-                        Thread.currentThread().sleep(1);
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "Reindexed `" + bucketName + "." + key + "`");
+                        }
+                        mDatabase.delete(REINDEX_QUEUE_TABLE, deleteConditions, new String[]{bucketName, key});
+                        Thread.sleep(1);
                     }
                 } catch (InterruptedException e) {
                     Logger.log(TAG, String.format("Indexing interrupted %s", bucketName), e);
-                    database.delete(REINDEX_QUEUE_TABLE, conditions, args);
+                    mDatabase.delete(REINDEX_QUEUE_TABLE, conditions, args);
                 } catch (SQLException e) {
                     Logger.log(TAG, String.format("SQL Error %s", bucketName), e);
                 }
-                Logger.log(TAG, String.format("Done indexing %s", bucketName));
+                if (BuildConfig.DEBUG) Logger.log(TAG, String.format("Done indexing %s", bucketName));
                 mBucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
             }
 
@@ -343,114 +371,114 @@ public class PersistentStore implements StorageProvider {
 
     private class ObjectCursor<T extends Syncable> extends CursorWrapper implements Bucket.ObjectCursor<T> {
         
-        private BucketSchema<T> schema;
+        private BucketSchema<T> mSchema;
 
         int mObjectKeyColumn;
         int mObjectDataColumn;
 
-        ObjectCursor(BucketSchema<T> schema, Cursor cursor){
+        ObjectCursor(BucketSchema<T> schema, Cursor cursor) {
             super(cursor);
-            this.schema = schema;
+            mSchema = schema;
             mObjectKeyColumn = getColumnIndexOrThrow("object_key");
             mObjectDataColumn = getColumnIndexOrThrow("object_data");
         }
 
         @Override
-        public String getSimperiumKey(){
+        public String getSimperiumKey() {
             return super.getString(mObjectKeyColumn);
         }
 
         @Override
-        public T getObject(){
+        public T getObject() {
             String key = getSimperiumKey();
             try {
                 JSONObject data = new JSONObject(super.getString(mObjectDataColumn));
-                return schema.buildWithDefaults(key, data);
+                return mSchema.buildWithDefaults(key, data);
             } catch (org.json.JSONException e) {
-                return schema.buildWithDefaults(key, new JSONObject());
+                return mSchema.buildWithDefaults(key, new JSONObject());
             }
         }
 
     }
 
-    private <T extends Syncable> Bucket.ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor){
+    private <T extends Syncable> Bucket.ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor) {
         return new ObjectCursor<T>(schema, cursor);
     }
     
-    private void configure(){
+    private void configure() {
         // create and validate the tables we'll be using for the datastore
         configureObjects();
         configureIndexes();
     }
         
-    private void configureIndexes(){
+    private void configureIndexes() {
         Cursor tableInfo = tableInfo(INDEXES_TABLE);
         if (tableInfo.getCount() == 0) {
             // create the table
-            database.execSQL(String.format(Locale.US, "CREATE TABLE %s (bucket, key, name, value)", INDEXES_TABLE));
+            mDatabase.execSQL(String.format(Locale.US, "CREATE TABLE %s (bucket, key, name, value)", INDEXES_TABLE));
         }
         tableInfo.close();
-        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_name ON %s(bucket, key, name)", INDEXES_TABLE));
-        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_value ON %s(bucket, key, value)", INDEXES_TABLE));
-        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_key ON %s(bucket, key)", INDEXES_TABLE));
+        mDatabase.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_name ON %s(bucket, key, name)", INDEXES_TABLE));
+        mDatabase.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_value ON %s(bucket, key, value)", INDEXES_TABLE));
+        mDatabase.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS index_key ON %s(bucket, key)", INDEXES_TABLE));
     }
 
-    private void configureObjects(){
+    private void configureObjects() {
         Cursor tableInfo = tableInfo(OBJECTS_TABLE);
         if (tableInfo.getCount() == 0) {
-            database.execSQL(String.format(Locale.US, "CREATE TABLE %s (bucket, key, data)", OBJECTS_TABLE));
+            mDatabase.execSQL(String.format(Locale.US, "CREATE TABLE %s (bucket, key, data)", OBJECTS_TABLE));
         }
         tableInfo.close();
-        database.execSQL(String.format(Locale.US, "CREATE UNIQUE INDEX IF NOT EXISTS bucket_key ON %s (bucket, key)", OBJECTS_TABLE));
-        database.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS object_key ON %s (key)", OBJECTS_TABLE));
+        mDatabase.execSQL(String.format(Locale.US, "CREATE UNIQUE INDEX IF NOT EXISTS bucket_key ON %s (bucket, key)", OBJECTS_TABLE));
+        mDatabase.execSQL(String.format(Locale.US, "CREATE INDEX IF NOT EXISTS object_key ON %s (key)", OBJECTS_TABLE));
 
-        database.execSQL("CREATE TABLE IF NOT EXISTS reindex_queue (bucket, key)");
-        database.execSQL("CREATE INDEX IF NOT EXISTS reindex_bucket ON reindex_queue(bucket)");
-        database.execSQL("CREATE INDEX IF NOT EXISTS reindex_key ON reindex_queue(key)");
+        mDatabase.execSQL("CREATE TABLE IF NOT EXISTS reindex_queue (bucket, key)");
+        mDatabase.execSQL("CREATE INDEX IF NOT EXISTS reindex_bucket ON reindex_queue(bucket)");
+        mDatabase.execSQL("CREATE INDEX IF NOT EXISTS reindex_key ON reindex_queue(key)");
     }
 
-    protected Cursor tableInfo(String tableName){
-        return database.rawQuery(String.format(Locale.US, "PRAGMA table_info(`%s`)", tableName), null);
+    protected Cursor tableInfo(String tableName) {
+        return mDatabase.rawQuery(String.format(Locale.US, "PRAGMA table_info(`%s`)", tableName), null);
     }
 
     protected static class QueryBuilder {
 
-        private Query query;
+        private Query mQuery;
         private DataStore mDataStore;
-        protected StringBuilder selection;
-        protected String statement;
-        protected String[] args;
+        protected StringBuilder mSelection;
+        protected String mStatement;
+        protected String[] mArgs;
 
-        QueryBuilder(DataStore store, Query query){
+        QueryBuilder(DataStore store, Query query) {
             mDataStore = store;
-            this.query = query;
+            mQuery = query;
             compileQuery();
         }
 
-        protected Cursor query(SQLiteDatabase database){
-            String query = selection.append(statement).toString();
-            if (this.query.hasLimit()) {
-                query += String.format(Locale.US, " LIMIT %d", this.query.getLimit());
-                if (this.query.hasOffset())
-                    query += String.format(Locale.US, ", %d", this.query.getOffset());
+        protected Cursor query(SQLiteDatabase database) {
+            String query = mSelection.append(mStatement).toString();
+            if (mQuery.hasLimit()) {
+                query += String.format(Locale.US, " LIMIT %d", mQuery.getLimit());
+                if (mQuery.hasOffset())
+                    query += String.format(Locale.US, ", %d", mQuery.getOffset());
             }
-            return database.rawQuery(query, args);
+            return database.rawQuery(query, mArgs);
         }
 
-        protected Cursor count(SQLiteDatabase database){
-            selection = new StringBuilder("SELECT count(objects.rowid) as `total` ");
-            return database.rawQuery(selection.append(statement).toString(), args);
+        protected Cursor count(SQLiteDatabase database) {
+            mSelection = new StringBuilder("SELECT count(objects.rowid) as `total` ");
+            return database.rawQuery(mSelection.append(mStatement).toString(), mArgs);
         }
 
-        private void compileQuery(){
+        private void compileQuery() {
             // turn comparators into where statements, each comparator joins
-            Iterator<Query.Condition> conditions = query.getConditions().iterator();
-            Iterator<Query.Sorter> sorters = query.getSorters().iterator();
-            Iterator<Query.Field> fields = query.getFields().iterator();
-            String bucketName = mDataStore.bucketName;
+            List<Query.Condition> conditions = mQuery.getConditions();
+            List<Query.Sorter> sorters = mQuery.getSorters();
+            List<Query.Field> fields = mQuery.getFields();
+            String bucketName = mDataStore.mBucketName;
             String ftName = mDataStore.getFullTextTableName();
 
-            selection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
+            mSelection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
             StringBuilder filters = new StringBuilder();
             StringBuilder where = new StringBuilder("WHERE objects.bucket = ?");
 
@@ -464,13 +492,12 @@ public class PersistentStore implements StorageProvider {
             Map<String,String> includedKeys = new HashMap<String,String>();
             Boolean includedFullText = false;
 
-            while(sorters.hasNext()){
-                sortKeys.add(sorters.next().getKey());
+            for(Query.Sorter sorter : sorters) {
+                sortKeys.add(sorter.getKey());
             }
 
             String fullTextFilter = null;
-            while(conditions.hasNext()){
-                Query.Condition condition = conditions.next();
+            for(Query.Condition condition : conditions) {
                 String key = condition.getKey();
 
                 if (condition.getComparisonType() == Query.ComparisonType.MATCH) {
@@ -522,9 +549,9 @@ public class PersistentStore implements StorageProvider {
                 where.append(String.format(Locale.US, " AND ( %s i%d.value %s ", null_condition, i, condition.getComparisonType()));
                 if (subject instanceof Float) {
                     where.append(String.format(Locale.US, " %f)", (Float)subject));
-                } else if (subject instanceof Integer){
+                } else if (subject instanceof Integer) {
                     where.append(String.format(Locale.US, " %d)", (Integer)subject));
-                } else if (subject instanceof Boolean){
+                } else if (subject instanceof Boolean) {
                     where.append(String.format(Locale.US, " %d)", ((Boolean)subject ? 1 : 0)));
                 } else if (subject != null) {
                     where.append(" ?)");
@@ -536,16 +563,15 @@ public class PersistentStore implements StorageProvider {
 
             if(includedFullText) filters.insert(0, fullTextFilter);
 
-            while(fields.hasNext()){
-                Query.Field field = fields.next();
+            for(Query.Field field : fields) {
 
                 if (field instanceof Query.FullTextSnippet) {
                     Query.FullTextSnippet snippet = (Query.FullTextSnippet) field;
-                    int ftColumnIndex = mDataStore.schema.getFullTextIndex().getColumnIndex(snippet.getColumnName());
-                    selection.append(String.format(Locale.US, ", snippet(`%s`, '<match>', '</match>', '\u2026', %d) AS %s", ftName, ftColumnIndex, field.getName()));
+                    int ftColumnIndex = mDataStore.mSchema.getFullTextIndex().getColumnIndex(snippet.getColumnName());
+                    mSelection.append(String.format(Locale.US, ", snippet(`%s`, '<match>', '</match>', '\u2026', %d) AS %s", ftName, ftColumnIndex, field.getName()));
                     continue;
-                } else if (field instanceof Query.FullTextOffsets){
-                    selection.append(String.format(", offsets(`%s`) AS %s", ftName, field.getName()));
+                } else if (field instanceof Query.FullTextOffsets) {
+                    mSelection.append(String.format(", offsets(`%s`) AS %s", ftName, field.getName()));
                     continue;
                 }
 
@@ -556,19 +582,17 @@ public class PersistentStore implements StorageProvider {
                     filters.append(String.format(Locale.US, " LEFT JOIN indexes AS i%d ON objects.bucket = i%d.bucket AND objects.key = i%d.key AND i%d.name=?", i, i, i, i));
                     i++;
                 }
-                selection.append(String.format(Locale.US, ", %s.value AS `%s`", includedKeys.get(fieldName), fieldName));
+                mSelection.append(String.format(Locale.US, ", %s.value AS `%s`", includedKeys.get(fieldName), fieldName));
                 
             }
 
             StringBuilder order = new StringBuilder("ORDER BY");
             int orderLength = order.length();
-            if (query.getSorters().size() > 0){
-                sorters = query.getSorters().iterator();
-                while(sorters.hasNext()){
+            if (sorters.size() > 0) {
+                for(Query.Sorter sorter : sorters) {
                     if (order.length() != orderLength) {
                         order.append(", ");
                     }
-                    Query.Sorter sorter = sorters.next();
                     String sortKey = sorter.getKey();
                     if (sorter instanceof Query.KeySorter) {
                         order.append(String.format(Locale.US, " objects.key %s", sorter.getType()));
@@ -585,9 +609,9 @@ public class PersistentStore implements StorageProvider {
             } else {
                 order.delete(0, order.length());
             }
-            statement = String.format(Locale.US, " FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
+            mStatement = String.format(Locale.US, " FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
             names.addAll(replacements);
-            args = names.toArray(new String[names.size()]);
+            mArgs = names.toArray(new String[names.size()]);
         }
 
     }

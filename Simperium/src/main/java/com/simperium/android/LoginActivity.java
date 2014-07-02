@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.simperium.BuildConfig;
 import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
@@ -227,24 +228,38 @@ public class LoginActivity extends Activity {
 
     private AuthResponseListener mAuthListener = new AuthResponseListener() {
         @Override
-        public void onSuccess(User user) {
-            if(mProgressDialog != null )
-                mProgressDialog.dismiss();
-            registerUser(user);
+        public void onSuccess(final User user) {
+            runOnUiThread(new Runnable() {
+
+               @Override
+               public void run() {
+                   if(mProgressDialog != null )
+                       mProgressDialog.dismiss();
+                   registerUser(user);
+               } 
+
+            });
         }
 
         @Override
-        public void onFailure(User user, AuthException error) {
-            String message;
-            switch (error.failureType) {
-                case EXISTING_ACCOUNT:
-                    message = getString(R.string.login_failed_account_exists);
-                    break;
-                case INVALID_ACCOUNT:
-                default:
-                    message = getString(R.string.login_failed_message);
-            }
-            showLoginError(message);
+        public void onFailure(final User user, final AuthException error) {
+            runOnUiThread(new Runnable() {
+
+                @Override
+                public void run() {
+                    String message;
+                    switch (error.failureType) {
+                        case EXISTING_ACCOUNT:
+                            message = getString(R.string.login_failed_account_exists);
+                            break;
+                        case INVALID_ACCOUNT:
+                        default:
+                            message = getString(R.string.login_failed_message);
+                    }
+                    showLoginError(message);
+                }
+
+            });
         }
 
     };
@@ -255,7 +270,7 @@ public class LoginActivity extends Activity {
         final String password = passwordTextField.getText().toString().trim();
         final String password2 = passwordTextField2.getText().toString().trim();
 
-        if (false == checkUserData())
+        if (!checkUserData())
             return;
 
         if( ! password2.equals(password) ) {
@@ -275,7 +290,7 @@ public class LoginActivity extends Activity {
         final String email = emailTextField.getText().toString().trim();
         final String password = passwordTextField.getText().toString().trim();
 
-        if (false == checkUserData())
+        if (!checkUserData())
             return;
 
         
@@ -302,16 +317,20 @@ public class LoginActivity extends Activity {
 
     private void startSignUpOrSignin(final boolean isSignup) {
         NetworkInfo network = mSystemService.getActiveNetworkInfo();
-        if (isSignup == true)
+        if (isSignup)
             signUp();
         else
             signIn();
-        if(true) return;
+
+        if(!BuildConfig.DEBUG) {
+            return;
+        }
+
         if (network == null || !network.isConnected()) {
             AlertUtil.showAlert(LoginActivity.this, R.string.no_network_title,
                     R.string.no_network_message);
         } else {
-            if (isSignup == true)
+            if (isSignup)
                 signUp();
             else
                 signIn();

@@ -14,7 +14,6 @@ import org.json.JSONObject;
 
 public class GhostStore implements GhostStorageProvider {
 
-    private static final String DATABASE_NAME="simperium-ghost";
     private static final String GHOSTS_TABLE_NAME="ghosts";
     private static final String VERSIONS_TABLE_NAME="changeVersions";
     private static final String CREATE_TABLE_GHOSTS="CREATE TABLE IF NOT EXISTS ghosts (id INTEGER PRIMARY KEY AUTOINCREMENT, bucketName VARCHAR(63), simperiumKey VARCHAR(255), version INTEGER, payload TEXT, UNIQUE(bucketName, simperiumKey) ON CONFLICT REPLACE)";
@@ -56,9 +55,7 @@ public class GhostStore implements GhostStorageProvider {
     protected Cursor queryChangeVersion(Bucket bucket) {
         String[] columns = { BUCKET_NAME_FIELD, CHANGE_VERSION_FIELD };
         String[] args = { bucket.getName() };
-        Cursor cursor = database.query(VERSIONS_TABLE_NAME, columns, "bucketName=?", args, null, null, null);
-        int count = cursor.getCount();
-        return cursor;
+        return database.query(VERSIONS_TABLE_NAME, columns, "bucketName=?", args, null, null, null);
     }
 
     @Override
@@ -66,11 +63,7 @@ public class GhostStore implements GhostStorageProvider {
         Cursor cursor = queryChangeVersion(bucket);
         int count = cursor.getCount();
         cursor.close();
-        if (count > 0) {
-            return !getChangeVersion(bucket).equals("");
-        } else {
-            return false;
-        }
+        return count > 0 && !getChangeVersion(bucket).equals("");
     }
 
     @Override
@@ -141,7 +134,7 @@ public class GhostStore implements GhostStorageProvider {
     @Override
     public boolean hasGhost(Bucket bucket, String key) {
         try {
-            Ghost ghost = getGhost(bucket, key);
+            getGhost(bucket, key);
         } catch (GhostMissingException e) {
             return false;
         }

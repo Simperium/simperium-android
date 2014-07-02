@@ -4,7 +4,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.simperium.Simperium;
+import com.koushikdutta.async.http.AsyncHttpClient;
+
+import org.thoughtcrime.ssl.pinning.PinningTrustManager;
+import org.thoughtcrime.ssl.pinning.SystemKeyStore;
+
+import com.simperium.BuildConfig;
 import com.simperium.Version;
 import com.simperium.client.ClientFactory;
 import com.simperium.util.Uuid;
@@ -12,6 +17,7 @@ import com.simperium.util.Uuid;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import javax.net.ssl.TrustManager;
 
 import android.util.Log;
 
@@ -22,17 +28,19 @@ import android.util.Log;
 public class AndroidClient implements ClientFactory {
 
     public static final String TAG = "Simperium.AndroidClient";
-
     public static final String SHARED_PREFERENCES_NAME = "simperium";
-
     public static final String DEFAULT_DATABASE_NAME = "simperium-store";
-
     public static final String SESSION_ID_PREFERENCE = "simperium-session-id";
+
+    public static final String WEBSOCKET_URL = "https://api.simperium.com/sock/1/%s/websocket";
+    public static final String USER_AGENT_HEADER = "User-Agent";
 
     protected Context mContext;
     protected SQLiteDatabase mDatabase;
+    protected final String mSessionId;
 
     protected ExecutorService mExecutor;
+    protected AsyncHttpClient mHttpClient = AsyncHttpClient.getDefaultInstance();
 
     public AndroidClient(Context context){
         int threads = Runtime.getRuntime().availableProcessors();
@@ -44,21 +52,7 @@ public class AndroidClient implements ClientFactory {
         mExecutor = Executors.newFixedThreadPool(threads);
         mContext = context;
         mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
-    }
 
-    public static SharedPreferences sharedPreferences(Context context){
-        return context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
-    }
-
-    @Override
-    public VolleyAuthClient buildAuthProvider(String appId, String appSecret){
-        VolleyAuthClient client = new VolleyAuthClient(appId, appSecret, mContext);
-        return client;
-    }
-
-    @Override
-    public WebSocketManager buildChannelProvider(String appId){
-        // Simperium Bucket API
         SharedPreferences preferences = sharedPreferences(mContext);
         String sessionToken = null;
 
@@ -75,8 +69,33 @@ public class AndroidClient implements ClientFactory {
             preferences.edit().putString(SESSION_ID_PREFERENCE, sessionToken).commit();
         }
 
-        String sessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
-        return new WebSocketManager(mExecutor, appId, sessionId, new QueueSerializer(mDatabase));
+        mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
+
+        TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
+        mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
+
+    }
+
+    public static TrustManager buildPinnedTrustManager(Context context) {
+        // Pin SSL to Simperium.com SPKI
+        return new PinningTrustManager(SystemKeyStore.getInstance(context),
+                                       new String[] { BuildConfig.SIMPERIUM_COM_SPKI }, 0);
+    }
+
+    public static SharedPreferences sharedPreferences(Context context){
+        return context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    }
+
+    @Override
+    public AsyncAuthClient buildAuthProvider(String appId, String appSecret){
+        return new AsyncAuthClient(mContext, appId, appSecret, mHttpClient);
+    }
+
+    @Override
+    public WebSocketManager buildChannelProvider(String appId){
+        // Simperium Bucket API
+        WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(appId, mSessionId, mHttpClient);
+        return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), provider);
     }
 
     @Override
@@ -93,4 +112,5 @@ public class AndroidClient implements ClientFactory {
     public Executor buildExecutor(){
         return mExecutor;
     }
+
 }

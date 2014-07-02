@@ -88,11 +88,11 @@ public class QueueSerializer implements Channel.Serializer {
             int targetColumn = items.getColumnIndexOrThrow(FIELD_TARGET);
             int ccidColumn = items.getColumnIndexOrThrow(FIELD_CCID);
 
-            String key = null;
-            String operation = null;
-            String status = null;
-            JSONObject origin = null;
-            JSONObject target = null;
+            String key;
+            String operation;
+            String status;
+            JSONObject origin;
+            JSONObject target;
 
             while(items.moveToNext()){
                 try {
@@ -117,7 +117,7 @@ public class QueueSerializer implements Channel.Serializer {
                         queue.pending.put(key, change);
                     }
                 } catch (JSONException e) {
-                    Logger.log(TAG, String.format("Failed to deserialize item", e));
+                    Logger.log(TAG, String.format("Failed to deserialize item %s", e));
                 }
             }
 
