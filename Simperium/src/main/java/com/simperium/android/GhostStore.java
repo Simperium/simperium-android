@@ -14,7 +14,6 @@ import org.json.JSONObject;
 
 public class GhostStore implements GhostStorageProvider {
 
-    private static final String DATABASE_NAME="simperium-ghost";
     private static final String GHOSTS_TABLE_NAME="ghosts";
     private static final String VERSIONS_TABLE_NAME="changeVersions";
     private static final String CREATE_TABLE_GHOSTS="CREATE TABLE IF NOT EXISTS ghosts (id INTEGER PRIMARY KEY AUTOINCREMENT, bucketName VARCHAR(63), simperiumKey VARCHAR(255), version INTEGER, payload TEXT, UNIQUE(bucketName, simperiumKey) ON CONFLICT REPLACE)";

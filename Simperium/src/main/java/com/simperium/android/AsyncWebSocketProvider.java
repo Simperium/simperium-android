@@ -1,7 +1,5 @@
 package com.simperium.android;
 
-import com.simperium.BuildConfig;
-
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpRequest;
@@ -10,7 +8,6 @@ import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
 import com.koushikdutta.async.http.WebSocket;
 
 import android.net.Uri;
-import android.util.Log;
 
 import java.io.IOException;
 
