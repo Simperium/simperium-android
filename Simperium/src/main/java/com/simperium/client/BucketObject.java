@@ -59,6 +59,14 @@ public class BucketObject extends Syncable {
         this(key, new JSONObject());
     }
 
+    public JSONObject getProperties() {
+        return mProperties;
+    }
+
+    public void setProperties(JSONObject properties) {
+        mProperties = properties;
+    }
+
     public Object getProperty(String key) {
         return mProperties.opt(key);
     }
