@@ -21,8 +21,8 @@ import com.simperium.util.Logger;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -175,9 +175,8 @@ public class PersistentStore implements StorageProvider {
             // delete all current idexes
             mDatabase.beginTransaction();
             deleteIndexes(object);
-            Iterator<Index> indexes = indexValues.iterator();
-            while(indexes.hasNext()) {
-                Index index = indexes.next();
+
+            for(Index index : indexValues) {
                 ContentValues values = new ContentValues(4);
                 values.put("bucket", mBucketName);
                 values.put("key", object.getSimperiumKey());
@@ -258,9 +257,7 @@ public class PersistentStore implements StorageProvider {
                 String[] keys = index.getKeys();
                 List<String> columns = new ArrayList<String>(keys.length + 1);
                 columns.add("key");
-                for (String key :keys) {
-                    columns.add(key);
-                }
+                Collections.addAll(columns, keys);
 
                 String tableName = getFullTextTableName();
                 Cursor tableInfo = tableInfo(tableName);
@@ -475,9 +472,9 @@ public class PersistentStore implements StorageProvider {
 
         private void compileQuery() {
             // turn comparators into where statements, each comparator joins
-            Iterator<Query.Condition> conditions = mQuery.getConditions().iterator();
-            Iterator<Query.Sorter> sorters = mQuery.getSorters().iterator();
-            Iterator<Query.Field> fields = mQuery.getFields().iterator();
+            List<Query.Condition> conditions = mQuery.getConditions();
+            List<Query.Sorter> sorters = mQuery.getSorters();
+            List<Query.Field> fields = mQuery.getFields();
             String bucketName = mDataStore.mBucketName;
             String ftName = mDataStore.getFullTextTableName();
 
@@ -495,13 +492,12 @@ public class PersistentStore implements StorageProvider {
             Map<String,String> includedKeys = new HashMap<String,String>();
             Boolean includedFullText = false;
 
-            while(sorters.hasNext()) {
-                sortKeys.add(sorters.next().getKey());
+            for(Query.Sorter sorter : sorters) {
+                sortKeys.add(sorter.getKey());
             }
 
             String fullTextFilter = null;
-            while(conditions.hasNext()) {
-                Query.Condition condition = conditions.next();
+            for(Query.Condition condition : conditions) {
                 String key = condition.getKey();
 
                 if (condition.getComparisonType() == Query.ComparisonType.MATCH) {
@@ -567,8 +563,7 @@ public class PersistentStore implements StorageProvider {
 
             if(includedFullText) filters.insert(0, fullTextFilter);
 
-            while(fields.hasNext()) {
-                Query.Field field = fields.next();
+            for(Query.Field field : fields) {
 
                 if (field instanceof Query.FullTextSnippet) {
                     Query.FullTextSnippet snippet = (Query.FullTextSnippet) field;
@@ -593,13 +588,11 @@ public class PersistentStore implements StorageProvider {
 
             StringBuilder order = new StringBuilder("ORDER BY");
             int orderLength = order.length();
-            if (mQuery.getSorters().size() > 0) {
-                sorters = mQuery.getSorters().iterator();
-                while(sorters.hasNext()) {
+            if (sorters.size() > 0) {
+                for(Query.Sorter sorter : sorters) {
                     if (order.length() != orderLength) {
                         order.append(", ");
                     }
-                    Query.Sorter sorter = sorters.next();
                     String sortKey = sorter.getKey();
                     if (sorter instanceof Query.KeySorter) {
                         order.append(String.format(Locale.US, " objects.key %s", sorter.getType()));
