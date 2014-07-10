@@ -84,14 +84,12 @@ public class QueueSerializer implements Channel.Serializer {
             int statusColumn = items.getColumnIndexOrThrow(FIELD_STATUS);
             int versionColumn = items.getColumnIndexOrThrow(FIELD_VERSION);
             int operationColumn = items.getColumnIndexOrThrow(FIELD_OPERATION);
-            int originColumn = items.getColumnIndexOrThrow(FIELD_ORIGIN);
             int targetColumn = items.getColumnIndexOrThrow(FIELD_TARGET);
             int ccidColumn = items.getColumnIndexOrThrow(FIELD_CCID);
 
             String key;
             String operation;
             String status;
-            JSONObject origin;
             JSONObject target;
 
             while(items.moveToNext()){
@@ -101,15 +99,13 @@ public class QueueSerializer implements Channel.Serializer {
                     status = items.getString(statusColumn);
 
                     if (operation.equals(Change.OPERATION_MODIFY)) {
-                        origin = new JSONObject(items.getString(originColumn));
                         target = new JSONObject(items.getString(targetColumn));
                     } else {
-                        origin = null;
                         target = null;
                     }
 
                     Change change = Change.buildChange(operation, items.getString(ccidColumn),
-                        items.getString(bucketColumn), key, items.getInt(versionColumn), origin, target);
+                        items.getString(bucketColumn), key, items.getInt(versionColumn), target);
 
                     if (status.equals(Status.QUEUED.toString())) {
                         queue.queued.add(change);
@@ -168,7 +164,6 @@ public class QueueSerializer implements Channel.Serializer {
         values.put(FIELD_OPERATION, change.getOperation());
         values.put(FIELD_CCID, change.getChangeId());
         if (change.isModifyOperation()) {
-            values.put(FIELD_ORIGIN, change.getOrigin().toString());
             values.put(FIELD_TARGET, change.getTarget().toString());
         }
 

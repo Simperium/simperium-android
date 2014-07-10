@@ -86,7 +86,7 @@ public class MockChannel implements Bucket.Channel {
         RemoteChange ack;
 
         if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
-            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff(null));
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, null);
         } else {
             ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
         }

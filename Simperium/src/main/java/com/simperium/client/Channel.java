@@ -356,7 +356,7 @@ public class Channel implements Bucket.Channel {
             // We could have merged a remote change since this change was created,
             // so update origin to latest version
             Syncable origin = mBucket.getObject(change.getKey());
-            change = change.reapplyOrigin(origin.getVersion(), origin.getDiffableValue());
+            change.setVersion(origin.getVersion());
             change.incrementRetryCount();
             change.setSendFullObject(true);
             mChangeProcessor.addChange(change);
@@ -1367,7 +1367,8 @@ public class Channel implements Bucket.Channel {
                                     if (queuedChange.getKey().equals(change.getKey())) {
                                         queuedChanges.remove();
                                         if (ghost != null && !remoteChange.isRemoveOperation()) {
-                                            compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
+                                            queuedChange.setVersion(ghost.getVersion());
+                                            compressed = queuedChange;
                                         }
                                     }
                                 }
@@ -1489,18 +1490,23 @@ public class Channel implements Bucket.Channel {
 
             try {
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
+                Object object = mBucket.getObject(change.getKey());
                 Ghost ghost = mBucket.getGhost(change.getKey());
                 sendMessage(String.format("c:%s", change.toJSONObject(ghost)));
                 mSerializer.onSendChange(change);
                 change.setSent();
+            } catch (BucketObjectMissingException e) {
+                Logger.log("Could not get object to send change");
+                throw new ChangeNotSentException(change, e);
+            } catch (GhostMissingException e) {
+                Logger.log("Could not get ghost to send change");
+                throw new ChangeNotSentException(change, e);
             } catch (ChangeEmptyException e) {
                 completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);
             } catch (ChangeException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);
-            } catch (GhostMissingException e) {
-                e.printStackTrace();
             }
 
         }
