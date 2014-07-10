@@ -481,7 +481,6 @@ public class ChannelTest extends BaseSimperiumTest {
         assertEquals(Version.NUMBER, index.getJSONObject("extra").getString("version"));
 
         assertEquals("mock1", index.getJSONArray("pending").getJSONObject(0).getString("id"));
-        assertEquals(1, index.getJSONArray("pending").getJSONObject(0).getInt("sv"));
     }
 
     public void testSendLog()

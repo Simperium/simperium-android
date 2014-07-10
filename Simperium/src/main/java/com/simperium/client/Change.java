@@ -40,7 +40,6 @@ public class Change {
 
     private String operation;
     private String key, bucketName;
-    private Integer version;
     private JSONObject target;
     private String ccid;
     private boolean pending = true, acknowledged = false, sent = false;
@@ -62,30 +61,28 @@ public class Change {
             properties.getString(OPERATION_KEY),
             object.getBucketName(),
             object.getSimperiumKey(),
-            properties.getInt(SOURCE_VERSION_KEY),
             properties.getJSONObject(TARGET_KEY)
         );
     }
 
-    public static Change buildChange(String operation, String ccid, String bucketName, String key, Integer version, JSONObject target){
-        return new Change(operation, ccid, bucketName, key, version, target);
+    public static Change buildChange(String operation, String ccid, String bucketName, String key, JSONObject target){
+        return new Change(operation, ccid, bucketName, key, target);
     }
 
     public Change(String operation, Syncable object){
-        this(operation, object.getBucketName(), object.getSimperiumKey(), object.getVersion(), object.getDiffableValue());
+        this(operation, object.getBucketName(), object.getSimperiumKey(), object.getDiffableValue());
     }
 
-    protected Change(String operation, String bucketName, String key, Integer sourceVersion, JSONObject target){
-        this(operation, uuid(), bucketName, key, sourceVersion, target);
+    protected Change(String operation, String bucketName, String key, JSONObject target){
+        this(operation, uuid(), bucketName, key, target);
     }
 
-    protected Change(String operation, String ccid, String bucketName, String key, Integer sourceVersion, JSONObject target){
+    protected Change(String operation, String ccid, String bucketName, String key, JSONObject target){
         this.operation = operation;
         this.ccid = ccid;
         this.bucketName = bucketName;
         this.key = key;
         if (!operation.equals(OPERATION_REMOVE)) {
-            this.version = sourceVersion;
             this.target = JSONDiff.deepCopy(target);
         }
 
@@ -168,14 +165,6 @@ public class Change {
         return operation;
     }
 
-    public Integer getVersion(){
-        return version;
-    }
-
-    public void setVersion(Integer serverVersion) {
-        version = serverVersion;
-    }
-
     public void setSendFullObject(boolean sendFullObject) {
         this.sendFullObject = sendFullObject;
     }
@@ -188,8 +177,8 @@ public class Change {
             json.put(CHANGE_ID_KEY, getChangeId());
             json.put(JSONDiff.DIFF_OPERATION_KEY, getOperation());
 
-            if (version != null && version > 0) {
-                json.put(SOURCE_VERSION_KEY, version);
+            if (!getOperation().equals(OPERATION_REMOVE) && ghost.getVersion() != null && ghost.getVersion() > 0) {
+                json.put(SOURCE_VERSION_KEY, ghost.getVersion());
             }
 
             JSONObject diff = getDiff(ghost);
@@ -219,9 +208,6 @@ public class Change {
         props.put(OPERATION_KEY, operation);
         props.put(ID_KEY, key);
         props.put(CHANGE_ID_KEY, ccid);
-        if (version != null) {
-            props.put(SOURCE_VERSION_KEY, version);
-        }
         if (operation.equals(OPERATION_MODIFY)) {
             props.put(TARGET_KEY, target);
         }

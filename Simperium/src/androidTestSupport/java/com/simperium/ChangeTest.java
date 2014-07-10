@@ -3,6 +3,7 @@ package com.simperium;
 import com.simperium.client.Change;
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
+import com.simperium.client.Ghost;
 
 import com.simperium.models.Note;
 
@@ -31,10 +32,12 @@ public class ChangeTest extends TestCase {
 
         Change change = new Change(Change.OPERATION_MODIFY, mNote);
 
+        Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
         assertTrue(change.isModifyOperation());
-        assertValidChangeObject(mNote, change);
+        assertValidChangeObject(mNote, ghost, change);
 
-        JSONObject diff = change.toJSONObject().getJSONObject("v");
+
+        JSONObject diff = change.toJSONObject(ghost).getJSONObject("v");
 
         String expected = "{\"tags\":{\"v\":[],\"o\":\"+\"},\"deleted\":{\"v\":false,\"o\":\"+\"},\"title\":{\"v\":\"Hello world\",\"o\":\"+\"}}";
         assertEquals(expected, diff.toString());
@@ -47,9 +50,9 @@ public class ChangeTest extends TestCase {
         mNote.save();
 
         Change change = new Change(Change.OPERATION_REMOVE, mNote);
-
+        Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
         assertTrue(change.isRemoveOperation());
-        assertValidChangeObject(mNote, change);
+        assertValidChangeObject(mNote, ghost, change);
 
     }
 
@@ -59,14 +62,15 @@ public class ChangeTest extends TestCase {
         Change change = new Change(Change.OPERATION_MODIFY, mNote);
         change.setSendFullObject(true);
 
-        assertValidChangeObject(mNote, change);
-        assertEquals(mNote.getDiffableValue().toString(), change.toJSONObject().getJSONObject("d").toString());
+        Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
+        assertValidChangeObject(mNote, ghost, change);
+        assertEquals(mNote.getDiffableValue().toString(), change.toJSONObject(ghost).getJSONObject("d").toString());
     }
 
-    public static void assertValidChangeObject(Syncable object, Change change)
+    public static void assertValidChangeObject(Syncable object, Ghost ghost, Change change)
     throws Exception {
 
-        JSONObject changeJSON = change.toJSONObject();
+        JSONObject changeJSON = change.toJSONObject(ghost);
 
         assertNotNull("Change missing ccid", changeJSON.optString("ccid"));
         assertNotNull("Change missing operation key `o`", changeJSON.optString("o"));

@@ -352,17 +352,9 @@ public class Channel implements Bucket.Channel {
             return;
         }
 
-        try {
-            // We could have merged a remote change since this change was created,
-            // so update origin to latest version
-            Syncable origin = mBucket.getObject(change.getKey());
-            change.setVersion(origin.getVersion());
-            change.incrementRetryCount();
-            change.setSendFullObject(true);
-            mChangeProcessor.addChange(change);
-        } catch (BucketObjectMissingException e) {
-            Logger.log(TAG, String.format("Could not get object while queueing full change: %s", e));
-        }
+        change.incrementRetryCount();
+        change.setSendFullObject(true);
+        mChangeProcessor.addChange(change);
 
 
     }
@@ -510,7 +502,6 @@ public class Channel implements Bucket.Channel {
                     try {
                         JSONObject changeData = new JSONObject();
                         changeData.put("id", change.getKey());
-                        changeData.put("sv", change.getVersion());
                         changeData.put("ccid", change.getChangeId());
                         pendingData.put(changeData);
                     } catch (JSONException e) {
@@ -1200,8 +1191,8 @@ public class Channel implements Bucket.Channel {
         public void addChange(Change change) {
             synchronized(mLock) {
                 // compress all changes for this same key
-                log(LOG_DEBUG, String.format(Locale.US, "Adding new change to queue %s.%d %s %s",
-                    change.getKey(), change.getVersion(), change.getOperation(), change.getChangeId()));
+                log(LOG_DEBUG, String.format(Locale.US, "Adding new change to queue %s %s %s",
+                    change.getKey(), change.getOperation(), change.getChangeId()));
 
                 Iterator<Change> iterator = mLocalQueue.iterator();
                 boolean isModify = change.isModifyOperation();
@@ -1367,7 +1358,6 @@ public class Channel implements Bucket.Channel {
                                     if (queuedChange.getKey().equals(change.getKey())) {
                                         queuedChanges.remove();
                                         if (ghost != null && !remoteChange.isRemoveOperation()) {
-                                            queuedChange.setVersion(ghost.getVersion());
                                             compressed = queuedChange;
                                         }
                                     }
