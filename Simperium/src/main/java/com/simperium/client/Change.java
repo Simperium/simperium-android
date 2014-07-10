@@ -193,7 +193,7 @@ public class Change {
         this.sendFullObject = sendFullObject;
     }
 
-    public JSONObject toJSONObject()
+    public JSONObject toJSONObject(Ghost ghost)
     throws ChangeEmptyException, ChangeInvalidException {
         try {
             JSONObject json = new JSONObject();
@@ -206,7 +206,7 @@ public class Change {
                 json.put(SOURCE_VERSION_KEY, version);
             }
 
-            JSONObject diff = getDiff();
+            JSONObject diff = getDiff(ghost);
             boolean requiresDiff = requiresDiff();
 
             if (requiresDiff && diff.length() == 0) {
@@ -241,7 +241,7 @@ public class Change {
             props.put(TARGET_KEY, target);
         }
         return props;
-        
+
     }
 
     public void setOnAcknowledgedListener(OnAcknowledgedListener listener){
@@ -249,7 +249,7 @@ public class Change {
     }
 
     public void setOnCompleteListener(OnCompleteListener listener){
-        
+
     }
 
     public Integer getRetryCount() {
@@ -294,9 +294,10 @@ public class Change {
         return operation.equals(OPERATION_MODIFY);
     }
 
-    public JSONObject getDiff(){
+    public JSONObject getDiff(Ghost ghost){
         try {
-            return jsondiff.diff(origin, target);
+            JSONObject ghostObject = ghost.getDiffableValue();
+            return jsondiff.diff(ghostObject, target);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

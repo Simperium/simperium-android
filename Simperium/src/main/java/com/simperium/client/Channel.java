@@ -352,9 +352,19 @@ public class Channel implements Bucket.Channel {
             return;
         }
 
-        change.incrementRetryCount();
-        change.setSendFullObject(true);
-        mChangeProcessor.addChange(change);
+        try {
+            // We could have merged a remote change since this change was created,
+            // so update origin to latest version
+            Syncable origin = mBucket.getObject(change.getKey());
+            change = change.reapplyOrigin(origin.getVersion(), origin.getDiffableValue());
+            change.incrementRetryCount();
+            change.setSendFullObject(true);
+            mChangeProcessor.addChange(change);
+        } catch (BucketObjectMissingException e) {
+            Logger.log(TAG, String.format("Could not get object while queueing full change: %s", e));
+        }
+
+
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -1479,7 +1489,8 @@ public class Channel implements Bucket.Channel {
 
             try {
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
-                sendMessage(String.format("c:%s", change.toJSONObject()));
+                Ghost ghost = mBucket.getGhost(change.getKey());
+                sendMessage(String.format("c:%s", change.toJSONObject(ghost)));
                 mSerializer.onSendChange(change);
                 change.setSent();
             } catch (ChangeEmptyException e) {
@@ -1488,6 +1499,8 @@ public class Channel implements Bucket.Channel {
             } catch (ChangeException e) {
                 android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);
+            } catch (GhostMissingException e) {
+                e.printStackTrace();
             }
 
         }
