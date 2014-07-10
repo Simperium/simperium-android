@@ -355,6 +355,8 @@ public class Channel implements Bucket.Channel {
         change.incrementRetryCount();
         change.setSendFullObject(true);
         mChangeProcessor.addChange(change);
+
+
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -500,7 +502,6 @@ public class Channel implements Bucket.Channel {
                     try {
                         JSONObject changeData = new JSONObject();
                         changeData.put("id", change.getKey());
-                        changeData.put("sv", change.getVersion());
                         changeData.put("ccid", change.getChangeId());
                         pendingData.put(changeData);
                     } catch (JSONException e) {
@@ -1190,8 +1191,8 @@ public class Channel implements Bucket.Channel {
         public void addChange(Change change) {
             synchronized(mLock) {
                 // compress all changes for this same key
-                log(LOG_DEBUG, String.format(Locale.US, "Adding new change to queue %s.%d %s %s",
-                    change.getKey(), change.getVersion(), change.getOperation(), change.getChangeId()));
+                log(LOG_DEBUG, String.format(Locale.US, "Adding new change to queue %s %s %s",
+                    change.getKey(), change.getOperation(), change.getChangeId()));
 
                 Iterator<Change> iterator = mLocalQueue.iterator();
                 boolean isModify = change.isModifyOperation();
@@ -1357,7 +1358,7 @@ public class Channel implements Bucket.Channel {
                                     if (queuedChange.getKey().equals(change.getKey())) {
                                         queuedChanges.remove();
                                         if (ghost != null && !remoteChange.isRemoveOperation()) {
-                                            compressed = queuedChange.reapplyOrigin(ghost.getVersion(), ghost.getDiffableValue());
+                                            compressed = queuedChange;
                                         }
                                     }
                                 }
@@ -1479,9 +1480,17 @@ public class Channel implements Bucket.Channel {
 
             try {
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
-                sendMessage(String.format("c:%s", change.toJSONObject()));
+                Syncable target = mBucket.getObject(change.getKey());
+                Ghost ghost = mBucket.getGhost(change.getKey());
+                sendMessage(String.format("c:%s", change.toJSONObject(target.getDiffableValue(), ghost)));
                 mSerializer.onSendChange(change);
                 change.setSent();
+            } catch (BucketObjectMissingException e) {
+                Logger.log("Could not get object to send change");
+                throw new ChangeNotSentException(change, e);
+            } catch (GhostMissingException e) {
+                Logger.log("Could not get ghost to send change");
+                throw new ChangeNotSentException(change, e);
             } catch (ChangeEmptyException e) {
                 completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);

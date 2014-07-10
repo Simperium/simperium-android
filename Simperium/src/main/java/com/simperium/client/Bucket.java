@@ -516,7 +516,7 @@ public class Bucket<T extends Syncable> {
         });
     }
 
-    protected Ghost getGhost(String key) throws GhostMissingException {
+    public Ghost getGhost(String key) throws GhostMissingException {
         return mGhostStore.getGhost(this, key);
     }
     /**

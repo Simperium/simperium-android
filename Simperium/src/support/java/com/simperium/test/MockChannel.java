@@ -5,6 +5,7 @@ package com.simperium.test;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Change;
+import com.simperium.client.Ghost;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.RemoteChangeInvalidException;
 import com.simperium.client.Syncable;
@@ -14,6 +15,7 @@ import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MockChannel implements Bucket.Channel {
 
@@ -72,8 +74,8 @@ public class MockChannel implements Bucket.Channel {
     protected void acknowledge(Change change)
     throws Exception {
 
-        Integer sourceVersion = change.getVersion();
-        Integer entityVersion = null;
+        Integer sourceVersion = mBucket.getObject(change.getKey()).getVersion();
+        Integer entityVersion;
         if (sourceVersion == null) {
             entityVersion = 1;
         } else {
@@ -86,7 +88,9 @@ public class MockChannel implements Bucket.Channel {
         RemoteChange ack;
 
         if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
-            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff());
+            Ghost ghost = mBucket.getGhost(change.getKey());
+            JSONObject object = mBucket.getObject(change.getKey()).getDiffableValue();
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff(object, ghost));
         } else {
             ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
         }
