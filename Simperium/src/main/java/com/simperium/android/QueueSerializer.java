@@ -21,10 +21,7 @@ public class QueueSerializer implements Channel.Serializer {
     static public final String FIELD_BUCKET    = "bucket";
     static public final String FIELD_KEY       = "key";
     static public final String FIELD_STATUS    = "status";
-    static public final String FIELD_VERSION   = "version";
     static public final String FIELD_OPERATION = "operation";
-    static public final String FIELD_ORIGIN    = "origin";
-    static public final String FIELD_TARGET    = "target";
     static public final String FIELD_CCID      = "ccid";
 
     protected SQLiteDatabase mDatabase;
@@ -51,10 +48,9 @@ public class QueueSerializer implements Channel.Serializer {
 
     private void prepare(){
         // create the table for the database
-        // bucket, key, status, version number, operation and diff
-        mDatabase.execSQL(String.format("CREATE TABLE IF NOT EXISTS %s (%s, %s, %s, %s, %s, %s, %s, %s)",
-            TABLE_NAME, FIELD_BUCKET, FIELD_KEY, FIELD_STATUS, FIELD_VERSION, FIELD_OPERATION,
-            FIELD_ORIGIN, FIELD_TARGET, FIELD_CCID));
+        // bucket, key, status, operation and diff
+        mDatabase.execSQL(String.format("CREATE TABLE IF NOT EXISTS %s (%s, %s, %s, %s, %s)",
+            TABLE_NAME, FIELD_BUCKET, FIELD_KEY, FIELD_STATUS, FIELD_OPERATION, FIELD_CCID));
 
         // searching by bucket and key
         mDatabase.execSQL(String.format("CREATE INDEX IF NOT EXISTS queue_object_key ON %s (%s, %s)",
@@ -83,36 +79,24 @@ public class QueueSerializer implements Channel.Serializer {
             int keyColumn = items.getColumnIndexOrThrow(FIELD_KEY);
             int statusColumn = items.getColumnIndexOrThrow(FIELD_STATUS);
             int operationColumn = items.getColumnIndexOrThrow(FIELD_OPERATION);
-            int targetColumn = items.getColumnIndexOrThrow(FIELD_TARGET);
             int ccidColumn = items.getColumnIndexOrThrow(FIELD_CCID);
 
             String key;
             String operation;
             String status;
-            JSONObject target;
 
             while(items.moveToNext()){
-                try {
-                    key = items.getString(keyColumn);
-                    operation = items.getString(operationColumn);
-                    status = items.getString(statusColumn);
+                key = items.getString(keyColumn);
+                operation = items.getString(operationColumn);
+                status = items.getString(statusColumn);
 
-                    if (operation.equals(Change.OPERATION_MODIFY)) {
-                        target = new JSONObject(items.getString(targetColumn));
-                    } else {
-                        target = null;
-                    }
+                Change change = Change.buildChange(operation, items.getString(ccidColumn),
+                    items.getString(bucketColumn), key);
 
-                    Change change = Change.buildChange(operation, items.getString(ccidColumn),
-                        items.getString(bucketColumn), key, target);
-
-                    if (status.equals(Status.QUEUED.toString())) {
-                        queue.queued.add(change);
-                    } else if(status.equals(Status.PENDING.toString())) {
-                        queue.pending.put(key, change);
-                    }
-                } catch (JSONException e) {
-                    Logger.log(TAG, String.format("Failed to deserialize item %s", e));
+                if (status.equals(Status.QUEUED.toString())) {
+                    queue.queued.add(change);
+                } else if(status.equals(Status.PENDING.toString())) {
+                    queue.pending.put(key, change);
                 }
             }
 
@@ -161,9 +145,6 @@ public class QueueSerializer implements Channel.Serializer {
         values.put(FIELD_STATUS, status.toString());
         values.put(FIELD_OPERATION, change.getOperation());
         values.put(FIELD_CCID, change.getChangeId());
-        if (change.isModifyOperation()) {
-            values.put(FIELD_TARGET, change.getTarget().toString());
-        }
 
         try {
             mDatabase.insertOrThrow(TABLE_NAME, null, values);

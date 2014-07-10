@@ -33,11 +33,12 @@ public class ChangeTest extends TestCase {
         Change change = new Change(Change.OPERATION_MODIFY, mNote);
 
         Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
+        JSONObject object = mNote.getDiffableValue();
         assertTrue(change.isModifyOperation());
         assertValidChangeObject(mNote, ghost, change);
 
 
-        JSONObject diff = change.toJSONObject(ghost).getJSONObject("v");
+        JSONObject diff = change.toJSONObject(object, ghost).getJSONObject("v");
 
         String expected = "{\"tags\":{\"v\":[],\"o\":\"+\"},\"deleted\":{\"v\":false,\"o\":\"+\"},\"title\":{\"v\":\"Hello world\",\"o\":\"+\"}}";
         assertEquals(expected, diff.toString());
@@ -63,14 +64,15 @@ public class ChangeTest extends TestCase {
         change.setSendFullObject(true);
 
         Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
+        JSONObject object = mNote.getDiffableValue();
         assertValidChangeObject(mNote, ghost, change);
-        assertEquals(mNote.getDiffableValue().toString(), change.toJSONObject(ghost).getJSONObject("d").toString());
+        assertEquals(mNote.getDiffableValue().toString(), change.toJSONObject(object, ghost).getJSONObject("d").toString());
     }
 
     public static void assertValidChangeObject(Syncable object, Ghost ghost, Change change)
     throws Exception {
 
-        JSONObject changeJSON = change.toJSONObject(ghost);
+        JSONObject changeJSON = change.toJSONObject(object.getDiffableValue(), ghost);
 
         assertNotNull("Change missing ccid", changeJSON.optString("ccid"));
         assertNotNull("Change missing operation key `o`", changeJSON.optString("o"));

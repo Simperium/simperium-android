@@ -75,7 +75,7 @@ public class MockChannel implements Bucket.Channel {
     throws Exception {
 
         Integer sourceVersion = mBucket.getObject(change.getKey()).getVersion();
-        Integer entityVersion = null;
+        Integer entityVersion;
         if (sourceVersion == null) {
             entityVersion = 1;
         } else {
@@ -89,7 +89,8 @@ public class MockChannel implements Bucket.Channel {
 
         if (!change.getOperation().equals(Change.OPERATION_REMOVE)) {
             Ghost ghost = mBucket.getGhost(change.getKey());
-            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff(ghost));
+            JSONObject object = mBucket.getObject(change.getKey()).getDiffableValue();
+            ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, change.getDiff(object, ghost));
         } else {
             ack = new RemoteChange("fake", change.getKey(), ccids, cv, sourceVersion, entityVersion, Change.OPERATION_REMOVE, null);
         }

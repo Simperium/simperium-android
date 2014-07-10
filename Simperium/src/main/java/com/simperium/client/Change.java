@@ -33,14 +33,11 @@ public class Change {
     public static final String ID_KEY             = "id";
     public static final String CHANGE_ID_KEY      = "ccid";
     public static final String SOURCE_VERSION_KEY = "sv";
-    public static final String TARGET_KEY         = "target";
-    public static final String ORIGIN_KEY         = "origin";
     public static final String OPERATION_KEY      = "o";
     public static final String OBJECT_DATA_KEY    = "d";
 
     private String operation;
     private String key, bucketName;
-    private JSONObject target;
     private String ccid;
     private boolean pending = true, acknowledged = false, sent = false;
     private OnRetryListener retryListener;
@@ -60,31 +57,27 @@ public class Change {
         return new Change(
             properties.getString(OPERATION_KEY),
             object.getBucketName(),
-            object.getSimperiumKey(),
-            properties.getJSONObject(TARGET_KEY)
+            object.getSimperiumKey()
         );
     }
 
-    public static Change buildChange(String operation, String ccid, String bucketName, String key, JSONObject target){
-        return new Change(operation, ccid, bucketName, key, target);
+    public static Change buildChange(String operation, String ccid, String bucketName, String key){
+        return new Change(operation, ccid, bucketName, key);
     }
 
     public Change(String operation, Syncable object){
-        this(operation, object.getBucketName(), object.getSimperiumKey(), object.getDiffableValue());
+        this(operation, object.getBucketName(), object.getSimperiumKey());
     }
 
-    protected Change(String operation, String bucketName, String key, JSONObject target){
-        this(operation, uuid(), bucketName, key, target);
+    protected Change(String operation, String bucketName, String key){
+        this(operation, uuid(), bucketName, key);
     }
 
-    protected Change(String operation, String ccid, String bucketName, String key, JSONObject target){
+    protected Change(String operation, String ccid, String bucketName, String key){
         this.operation = operation;
         this.ccid = ccid;
         this.bucketName = bucketName;
         this.key = key;
-        if (!operation.equals(OPERATION_REMOVE)) {
-            this.target = JSONDiff.deepCopy(target);
-        }
 
         this.resetTimer();
     }
@@ -157,10 +150,6 @@ public class Change {
         return this.ccid;
     }
 
-    public JSONObject getTarget(){
-        return target;
-    }
-
     public String getOperation(){
         return operation;
     }
@@ -169,7 +158,7 @@ public class Change {
         this.sendFullObject = sendFullObject;
     }
 
-    public JSONObject toJSONObject(Ghost ghost)
+    public JSONObject toJSONObject(JSONObject target, Ghost ghost)
     throws ChangeEmptyException, ChangeInvalidException {
         try {
             JSONObject json = new JSONObject();
@@ -181,7 +170,7 @@ public class Change {
                 json.put(SOURCE_VERSION_KEY, ghost.getVersion());
             }
 
-            JSONObject diff = getDiff(ghost);
+            JSONObject diff = getDiff(target, ghost);
             boolean requiresDiff = requiresDiff();
 
             if (requiresDiff && diff.length() == 0) {
@@ -208,9 +197,6 @@ public class Change {
         props.put(OPERATION_KEY, operation);
         props.put(ID_KEY, key);
         props.put(CHANGE_ID_KEY, ccid);
-        if (operation.equals(OPERATION_MODIFY)) {
-            props.put(TARGET_KEY, target);
-        }
         return props;
 
     }
@@ -265,10 +251,9 @@ public class Change {
         return operation.equals(OPERATION_MODIFY);
     }
 
-    public JSONObject getDiff(Ghost ghost){
+    public JSONObject getDiff(JSONObject target, Ghost ghost){
         try {
-            JSONObject ghostObject = ghost.getDiffableValue();
-            return jsondiff.diff(ghostObject, target);
+            return jsondiff.diff(ghost.getDiffableValue(), target);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
