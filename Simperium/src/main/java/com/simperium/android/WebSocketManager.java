@@ -187,6 +187,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
             Logger.log(TAG, "Disconnecting");
             // being told to disconnect so don't automatically reconnect
             mConnection.close();
+            onDisconnect(null);
         }
     }
 
