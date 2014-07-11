@@ -23,7 +23,7 @@ android {
     publishNonDefault true
 
     dependencies {
-        compile 'com.koushikdutta.async:androidasync:1.2.6'
+        compile 'com.koushikdutta.async:androidasync:1.2.6@jar'
         compile 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
     }
 
