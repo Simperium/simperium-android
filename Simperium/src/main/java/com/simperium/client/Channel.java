@@ -406,6 +406,7 @@ public class Channel implements Bucket.Channel {
         @Override
         public void onComplete(String cv) {
             mHaveIndex = true;
+            mIndexProcessor = null;
         }
     };
 
@@ -1011,8 +1012,11 @@ public class Channel implements Bucket.Channel {
                 if (!mBucket.hasKeyVersion(version.getKey(), version.getVersion())) {
                     sendMessage(String.format("%s:%s", COMMAND_ENTITY, version.toString()));
                 } else {
-                    Logger.log(TAG, String.format("Already have %s requesting next object", version));
-                    mQueue.remove(versionString);
+                    synchronized(mCountLock) {
+                        mIndexedCount ++;
+                        Logger.log(TAG, String.format("Already have %s requesting next object", version));
+                        mQueue.remove(versionString);
+                    }
                     next();
                     return;
                 }
