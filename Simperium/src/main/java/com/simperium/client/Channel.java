@@ -1491,9 +1491,11 @@ public class Channel implements Bucket.Channel {
                 change.setSent();
             } catch (BucketObjectMissingException e) {
                 Logger.log("Could not get object to send change");
+                completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);
             } catch (GhostMissingException e) {
                 Logger.log("Could not get ghost to send change");
+                completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);
             } catch (ChangeEmptyException e) {
                 completeAndDequeueChange(change);
