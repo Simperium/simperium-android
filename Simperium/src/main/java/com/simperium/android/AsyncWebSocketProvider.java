@@ -8,6 +8,7 @@ import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
 import com.koushikdutta.async.http.WebSocket;
 
 import android.net.Uri;
+import android.os.Handler;
 
 import java.io.IOException;
 
@@ -18,6 +19,7 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
     protected final String mAppId;
     protected final String mSessionId;
     protected final AsyncHttpClient mAsyncClient;
+    protected final Handler mHandler = new Handler();
 
     AsyncWebSocketProvider(String appId, String sessionId, AsyncHttpClient asyncClient) {
         mAppId = appId;
@@ -52,12 +54,26 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
 
                     @Override
                     public void close() {
-                        webSocket.close();
+                        mHandler.post(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                webSocket.close();
+                            }
+
+                        });
                     }
 
                     @Override
-                    public void send(String message) {
-                        webSocket.send(message);
+                    public void send(final String message) {
+                        mHandler.post(new Runnable() {
+
+                            @Override
+                            public void run() {
+                                webSocket.send(message);
+                            }
+
+                        });
                     }
 
                 };
