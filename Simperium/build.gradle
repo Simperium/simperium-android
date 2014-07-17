@@ -8,6 +8,7 @@ buildscript {
 
 apply plugin: 'android-library'
 apply plugin: 'maven'
+apply plugin: 'signing'
 
 version gitVersion()
 
@@ -20,7 +21,7 @@ repositories {
 
 android {
   
-    publishNonDefault true
+    defaultPublishConfig 'clientRelease'
 
     dependencies {
         compile 'com.koushikdutta.async:androidasync:1.2.6@jar'
@@ -87,18 +88,71 @@ public final class Version {
     }
 }
 
-if (project.hasProperty("repository")) {
-  afterEvaluate {
-    uploadArchives {
-      repositories {
-        mavenDeployer {
-          repository(url: project.repository)
-          pom.version = project.version
-          pom.artifactId = 'simperium-android'
-        }
-      }
-    }
-  }
-}
-
 tasks.preBuild.dependsOn versionConfig
+
+afterEvaluate {
+
+    configurations {
+        archives {
+            extendsFrom configurations.default
+        }
+    }
+
+    signing {
+        sign configurations.archives
+    }
+
+    uploadArchives {
+        configuration = configurations.archives
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                if (project.hasProperty("ossrhUsername") && project.hasProperty("ossrhPassword")) {
+                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                      authentication(userName: ossrhUsername, password: ossrhPassword)
+                    }
+
+                    snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                      authentication(userName: ossrhUsername, password: ossrhPassword)
+                    }
+                }
+
+
+                pom.project {
+                    name "Simperium Android Library"
+
+                    groupId 'com.simperium.android'
+                    artifactId 'simperium'
+
+                    packaging 'aar'
+                    description 'Android Library for building applications using Simperium'
+
+                    url 'https://github.com/simperium/simperium-android'
+                    scm {
+                        connection 'scm:git:https://github.com/simperium/simperium-android.git'
+                        developerConnection 'scm:git:https://github.com/simperium/simperium-android.git'
+                        url 'https://github.com/simperium/simperium-android.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'The MIT License (MIT)'
+                            url 'http://opensource.org/licenses/MIT'
+                        }
+                    }
+
+                    developers {
+
+                        developer {
+                            id 'beaucollins'
+                            name 'Robert Collins'
+                            email 'robert@automattic.com'
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+}
