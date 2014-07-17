@@ -117,10 +117,14 @@ afterEvaluate {
                 }
 
                 pom.project {
+                    name "Simperium Android Library"
+
                     groupId 'com.simperium.android'
                     artifactId 'simperium'
-                    packaging 'jar'
-                    description 'A Gradle plugin for configuring WordPress Android library dependency development setup.'
+
+                    packaging 'aar'
+                    description 'Android Library for building applications using Simperium'
+
                     url 'https://github.com/simperium/simperium-android'
                     scm {
                         connection 'scm:git:https://github.com/simperium/simperium-android.git'
