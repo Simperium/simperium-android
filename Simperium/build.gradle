@@ -6,7 +6,7 @@ buildscript {
     dependencies { classpath 'com.android.tools.build:gradle:0.12.+' }
 }
 
-apply plugin: 'android-library'
+apply plugin: 'com.android.library'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
