@@ -34,8 +34,6 @@ android {
     defaultConfig {
         minSdkVersion 8
         targetSdkVersion 19
-        applicationId "com.simperium"
-        versionCode 1
         versionName project.version
 
         // Calculating PIN for certificate: OU=Domain Control Validated, CN=*.simperium.com
