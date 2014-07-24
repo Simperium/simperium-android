@@ -12,10 +12,8 @@
  */
 package com.simperium.client;
 
-import com.simperium.BuildConfig;
 import com.simperium.SimperiumException;
 import com.simperium.Version;
-import com.simperium.util.Logger;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -32,8 +30,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.concurrent.Executor;
-
-import android.util.Log;
 
 public class Channel implements Bucket.Channel {
 
@@ -167,11 +163,11 @@ public class Channel implements Bucket.Channel {
                             return;
                         } else {
                             // TODO retry auth?
-                            Logger.log(TAG, String.format("Unable to auth: %d", code));
+                            // Logger.log(TAG, String.format("Unable to auth: %d", code));
                             return;
                         }
                     } catch (JSONException e) {
-                        Logger.log(TAG, String.format("Unable to parse auth JSON, assume was email %s", param));
+                        // Logger.log(TAG, String.format("Unable to parse auth JSON, assume was email %s", param));
                     }
                 }
                 user.setEmail(param);
@@ -226,7 +222,7 @@ public class Channel implements Bucket.Channel {
             public void execute(String param) {
 
                 if (param.equals(RESPONSE_UNKNOWN)) {
-                    Logger.log(TAG, "CV is out of date");
+                    // Logger.log(TAG, "CV is out of date");
                     stopChangesAndRequestIndex();
                 }
 
@@ -303,7 +299,7 @@ public class Channel implements Bucket.Channel {
                 // noop
                 break;
         }
-        Logger.log(TAG, String.format("Received error from service %s", remoteChange));
+        // Logger.log(TAG, String.format("Received error from service %s", remoteChange));
     }
 
     @Override
@@ -376,7 +372,7 @@ public class Channel implements Bucket.Channel {
         try {
             index = new JSONObject(indexJson);
         } catch (JSONException e) {
-            Logger.log(TAG, String.format("Index had invalid json: %s", indexJson));
+            // Logger.log(TAG, String.format("Index had invalid json: %s", indexJson));
             return;
         }
         // if we don't have a processor or we are getting a different cv
@@ -419,7 +415,7 @@ public class Channel implements Bucket.Channel {
         try {
             changes = new JSONArray(changesJson);
         } catch (JSONException e) {
-            Logger.log(TAG, "Failed to parse remote changes JSON", e);
+            // Logger.log(TAG, "Failed to parse remote changes JSON", e);
             return;
         }
         // Loop through each change? Convert changes to array list
@@ -492,7 +488,7 @@ public class Channel implements Bucket.Channel {
                         objectData.put(versionKey, object.getVersion());
                         objectVersions.put(objectData);
                     } catch (JSONException e) {
-                        Logger.log(TAG, "Unable to add object version", e);
+                        // Logger.log(TAG, "Unable to add object version", e);
                     }
                 }
 
@@ -506,7 +502,7 @@ public class Channel implements Bucket.Channel {
                         changeData.put("ccid", change.getChangeId());
                         pendingData.put(changeData);
                     } catch (JSONException e) {
-                        Logger.log(TAG, "Unable to add change", e);
+                        // Logger.log(TAG, "Unable to add change", e);
                     }
                 }
 
@@ -517,7 +513,7 @@ public class Channel implements Bucket.Channel {
                     index.put("current", getChangeVersion());
                     index.put("pending", pendingData);
                 } catch (JSONException e) {
-                    Logger.log(TAG, "Unable to build index response", e);
+                    // Logger.log(TAG, "Unable to build index response", e);
                 }
 
                 // add extra debugging info
@@ -530,7 +526,7 @@ public class Channel implements Bucket.Channel {
 
                     index.put("extra", extra);
                 } catch (JSONException e) {
-                    Logger.log(TAG, "Unable to add extra info", e);
+                    // Logger.log(TAG, "Unable to add extra info", e);
                 }
 
 
@@ -646,7 +642,7 @@ public class Channel implements Bucket.Channel {
     // websocket
     public void onConnect() {
         mConnected = true;
-        Logger.log(TAG, String.format("onConnect autoStart? %b", mStartOnConnect));
+        // Logger.log(TAG, String.format("onConnect autoStart? %b", mStartOnConnect));
         if(mStartOnConnect) start();
     }
 
@@ -742,7 +738,7 @@ public class Channel implements Bucket.Channel {
                 Command command = mCommands.get(name);
                 command.execute(params);
             } else {
-                Logger.log(TAG, String.format("Unkown command received: %s", name));
+                // Logger.log(TAG, String.format("Unkown command received: %s", name));
             }
         }
     }
@@ -1003,7 +999,7 @@ public class Channel implements Bucket.Channel {
                 try {
                     version = ObjectVersion.parseString(versionString);
                 } catch (ObjectVersionParseException e) {
-                    Logger.log(TAG, "Failed to parse version string, skipping", e);
+                    // Logger.log(TAG, "Failed to parse version string, skipping", e);
                     mQueue.remove(versionString);
                     next();
                     return;
@@ -1014,7 +1010,7 @@ public class Channel implements Bucket.Channel {
                 } else {
                     synchronized(mCountLock) {
                         mIndexedCount ++;
-                        Logger.log(TAG, String.format("Already have %s requesting next object", version));
+                        // Logger.log(TAG, String.format("Already have %s requesting next object", version));
                         mQueue.remove(versionString);
                     }
                     next();
@@ -1031,9 +1027,9 @@ public class Channel implements Bucket.Channel {
 
             // no queue, no next query, all done!
             mComplete = true;
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Done receiving object data " + Channel.this);
-            }
+            // if (BuildConfig.DEBUG) {
+            //     Log.d(TAG, "Done receiving object data " + Channel.this);
+            // }
 
             if (mReceivedCount == mIndexedCount) {
                 notifyDone();
@@ -1051,7 +1047,7 @@ public class Channel implements Bucket.Channel {
             try {
                 currentIndex = indexPage.getString(INDEX_CURRENT_VERSION_KEY);
             } catch(JSONException e) {
-                Logger.log(TAG, String.format("Index did not have current version %s", mCv));
+                // Logger.log(TAG, String.format("Index did not have current version %s", mCv));
                 currentIndex = "";
             }
 
@@ -1063,7 +1059,7 @@ public class Channel implements Bucket.Channel {
             try {
                 indexVersions = indexPage.getJSONArray(INDEX_VERSIONS_KEY);
             } catch(JSONException e) {
-                Logger.log(TAG, String.format("Index did not have entities: %s", indexPage));
+                // Logger.log(TAG, String.format("Index did not have entities: %s", indexPage));
                 return true;
             }
 
@@ -1083,7 +1079,7 @@ public class Channel implements Bucket.Channel {
                         }
 
                     } catch (JSONException e) {
-                        Logger.log(TAG, String.format("Error processing index: %d", i), e);
+                        // Logger.log(TAG, String.format("Error processing index: %d", i), e);
                     }
 
                 }
@@ -1120,18 +1116,18 @@ public class Channel implements Bucket.Channel {
                 return;
             }
             mNotified = true;
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Notifying index done: " + Channel.this);
-            }
+            // if (BuildConfig.DEBUG) {
+            //     Log.d(TAG, "Notifying index done: " + Channel.this);
+            // }
             mBucket.indexComplete(mCv);
             mListener.onComplete(mCv);
         }
 
 
         private void notifyProgress() {
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Notifying index progress: " + Channel.this);
-            }
+            // if (BuildConfig.DEBUG) {
+            //     Log.d(TAG, "Notifying index progress: " + Channel.this);
+            // }
             mBucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
         }
     }
@@ -1177,7 +1173,7 @@ public class Channel implements Bucket.Channel {
         public void addChanges(JSONArray changes) {
             synchronized(mLock) {
                 int length = changes.length();
-                Logger.log(TAG, String.format("Add remote changes to processor %d", length));
+                // Logger.log(TAG, String.format("Add remote changes to processor %d", length));
                 log(LOG_DEBUG, String.format(Locale.US, "Adding %d remote changes to queue", length));
                 for (int i = 0; i < length; i++) {
                     JSONObject change = changes.optJSONObject(i);
@@ -1256,7 +1252,7 @@ public class Channel implements Bucket.Channel {
          */
         protected boolean hasQueuedChanges() {
             synchronized(mLock) {
-                Logger.log(TAG, String.format("Checking for queued changes %d", mLocalQueue.size()));
+                // Logger.log(TAG, String.format("Checking for queued changes %d", mLocalQueue.size()));
                 // if we have have any remote changes to process we have work to do
                 if (!mRemoteQueue.isEmpty()) return true;
                 // if our local queue is empty we don't have work to do
@@ -1280,7 +1276,7 @@ public class Channel implements Bucket.Channel {
         public void run() {
             if(!haveCompleteIndex()) return;
             mIdle = false;
-            Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
+            // Logger.log(TAG, String.format("%s - Starting change queue", Thread.currentThread().getName()));
             while(true) {
                 try {
                     processRemoteChanges();
@@ -1297,27 +1293,27 @@ public class Channel implements Bucket.Channel {
 
                     synchronized(mRunLock) {
                         try {
-                            Logger.log(TAG, String.format("Waiting <%s> mIdle? %b", mBucket.getName(), mIdle));
+                            // Logger.log(TAG, String.format("Waiting <%s> mIdle? %b", mBucket.getName(), mIdle));
                             log(LOG_DEBUG, "Change queue is empty, waiting for changes");
                             mRunLock.wait();
                         } catch (InterruptedException e) {
                             break;
                         }
-                        Logger.log(TAG, "Waking change processor");
+                        // Logger.log(TAG, "Waking change processor");
                         log(LOG_DEBUG, "Processing changes");
                     }
                 }
             }
             mRetryTimer.cancel();
             mRetryTimer = null;
-            Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
+            // Logger.log(TAG, String.format("%s - Queue interrupted", Thread.currentThread().getName()));
         }
 
 
         private void processRemoteChanges()
         throws InterruptedException {
             synchronized(mLock) {
-                Logger.log(TAG, String.format("Processing remote changes %d", mRemoteQueue.size()));
+                // Logger.log(TAG, String.format("Processing remote changes %d", mRemoteQueue.size()));
                 // bail if thread is interrupted
                 while(mRemoteQueue.size() > 0) {
                     if (Thread.interrupted()) {
@@ -1328,7 +1324,7 @@ public class Channel implements Bucket.Channel {
                     try {
                         remoteChange = RemoteChange.buildFromMap(mRemoteQueue.remove(0));
                     } catch (JSONException e) {
-                        Logger.log(TAG, "Failed to build remote change", e);
+                        // Logger.log(TAG, "Failed to build remote change", e);
                         continue;
                     }
                     log(LOG_DEBUG, String.format("Processing remote change with cv: %s", remoteChange.getChangeVersion()));
@@ -1341,14 +1337,14 @@ public class Channel implements Bucket.Channel {
                         // change is no longer pending so remove it
                         mPendingChanges.remove(change.getKey());
                         if (remoteChange.isError()) {
-                            Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
+                            // Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
                             onError(remoteChange, change);
                         } else {
                             Ghost ghost = null;
                             try {
                                 ghost = onAcknowledged(remoteChange, change);
                             } catch (RemoteChangeInvalidException e) {
-                                Logger.log(TAG, "Remote change could not be acknowledged", e);
+                                // Logger.log(TAG, "Remote change could not be acknowledged", e);
                                 log(LOG_DEBUG, String.format("Failed to acknowledge change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
 
                                 // request the full object for the new version
@@ -1373,14 +1369,14 @@ public class Channel implements Bucket.Channel {
                         }
                     } else {
                         if (remoteChange.isError()) {
-                            Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
+                            // Logger.log(TAG, String.format("Remote change %s was an error but not acknowledged", remoteChange));
                             log(LOG_DEBUG, String.format("Received error response for change but not waiting for any ccids <%s>", remoteChange.getChangeVersion()));
                         } else {
                             try {
                                 mBucket.applyRemoteChange(remoteChange);
-                                Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
+                                // Logger.log(TAG, String.format("Succesfully applied remote change <%s>", remoteChange.getChangeVersion()));
                             } catch (RemoteChangeInvalidException e) {
-                                Logger.log(TAG, "Remote change could not be applied", e);
+                                // Logger.log(TAG, "Remote change could not be applied", e);
                                 log(LOG_DEBUG, String.format("Failed to apply change <%s> Reason: %s", remoteChange.getChangeVersion(), e.getMessage()));
 
                                 dequeueLocalChangesForKey(remoteChange.getKey());
@@ -1490,18 +1486,18 @@ public class Channel implements Bucket.Channel {
                 mSerializer.onSendChange(change);
                 change.setSent();
             } catch (BucketObjectMissingException e) {
-                Logger.log("Could not get object to send change");
+                // Logger.log("Could not get object to send change");
                 completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);
             } catch (GhostMissingException e) {
-                Logger.log("Could not get ghost to send change");
+                // Logger.log("Could not get ghost to send change");
                 completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);
             } catch (ChangeEmptyException e) {
                 completeAndDequeueChange(change);
                 throw new ChangeNotSentException(change, e);
             } catch (ChangeException e) {
-                android.util.Log.e(TAG, "Could not send change", e);
+                // android.util.Log.e(TAG, "Could not send change", e);
                 throw new ChangeNotSentException(change, e);
             }
 
@@ -1530,7 +1526,7 @@ public class Channel implements Bucket.Channel {
                     map.put(key, val);
                 }
             } catch (JSONException e) {
-                Logger.log(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
+                // Logger.log(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
             }
         }
         return map;
@@ -1549,7 +1545,7 @@ public class Channel implements Bucket.Channel {
                     list.add(val);
                 }
             } catch (JSONException e) {
-                Logger.log(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
+                // Logger.log(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
             }
 
         }
@@ -1573,7 +1569,7 @@ public class Channel implements Bucket.Channel {
                     json.put(key, val);
                 }
             } catch(JSONException e) {
-               Logger.log(TAG, String.format("Failed to serialize %s", val));
+               // Logger.log(TAG, String.format("Failed to serialize %s", val));
             }
         }
         return json;

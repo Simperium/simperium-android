@@ -617,7 +617,7 @@ public class JSONDiff {
             try {
                 list.add(json.get(i));
             } catch (JSONException e) {
-                android.util.Log.e(TAG, String.format("Failed to convert JSON: %s", e.getMessage()), e);
+                
             }
 
         }

@@ -1,7 +1,5 @@
 package com.simperium;
 
-import android.content.Context;
-
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthProvider;
 import com.simperium.client.AuthResponseHandler;
@@ -18,16 +16,10 @@ import com.simperium.client.User;
 import com.simperium.storage.StorageProvider;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.AuthUtil;
-import com.simperium.util.Logger;
 
 import java.util.concurrent.Executor;
 
 public class Simperium implements User.StatusChangeListener {
-
-    // builds and Android client
-    public static Simperium newClient(String appId, String appSecret, Context context){
-        return newClient(appId, appSecret, new com.simperium.android.AndroidClient(context));
-    }
 
     public static Simperium newClient(String appId, String appSecret, ClientFactory factory){
         simperiumClient = new Simperium(appId, appSecret, factory);
@@ -70,7 +62,7 @@ public class Simperium implements User.StatusChangeListener {
 
         mExecutor = factory.buildExecutor();
 
-        Logger.log(String.format("Initializing Simperium %s%s", CLIENT_ID, (BuildConfig.DEBUG ? " DEBUG" : "")));
+        // Logger.log(String.format("Initializing Simperium %s%s", CLIENT_ID, (BuildConfig.DEBUG ? " DEBUG" : "")));
         loadUser();
     }
 

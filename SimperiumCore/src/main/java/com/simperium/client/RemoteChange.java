@@ -228,7 +228,7 @@ public class RemoteChange {
                 if (ccid.equals(ccids.getString(i)))
                     return true;;
             } catch (JSONException e) {
-                android.util.Log.e(TAG, "Invalid ccid", e);
+                // invalid CCID
             }
         }
 

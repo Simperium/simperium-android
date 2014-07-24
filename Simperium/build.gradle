@@ -24,6 +24,9 @@ android {
     defaultPublishConfig 'clientRelease'
 
     dependencies {
+        compile(project(':SimperiumCore')) {
+            exclude group: 'org.json'
+        }
         compile 'com.koushikdutta.async:androidasync:1.+@jar'
         compile 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
     }
@@ -51,44 +54,6 @@ android {
     }
 
 }
-
-task versionConfig(group: "build", description: "Generate version class") {
-    def dir = "${buildDir}/generated/source/version"
-    def file = new File(dir, "com/simperium/Version.java")
-
-    android.sourceSets.main.java.srcDir dir
-
-    doLast {
-        def describe = gitDescribe()
-
-        logger.info "Version: ${describe}"
-
-        file.getParentFile().mkdirs()
-        def writer = new FileWriter(file)
-        writer.write("""/* auto-generated file do not modify */
-package com.simperium;
-
-public final class Version {
-
-    public static final String LIBRARY_NAME = "android";
-
-    public static final String NAME = "android-${project.version}";
-
-    /* project.version */
-    public static final String NUMBER = "${project.version}";
-
-    /* git rev-parse --short --verify HEAD */
-    public static final String BUILD = "${gitHash()}";
-
-    /* git describe --always --dirty=-dirty */
-    public static final String DESCRIBE = "${gitDescribe()}";
-}
-""")
-        writer.close()
-    }
-}
-
-tasks.preBuild.dependsOn versionConfig
 
 afterEvaluate {
 

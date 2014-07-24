@@ -26,7 +26,6 @@ import android.database.CursorWrapper;
 import com.simperium.SimperiumException;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.JSONDiff;
-import com.simperium.util.Logger;
 import com.simperium.util.Uuid;
 
 import org.json.JSONException;
@@ -358,7 +357,7 @@ public class Bucket<T extends Syncable> {
         if (object == null) {
             throw(new BucketObjectMissingException(String.format("Storage provider for bucket:%s did not have object %s", getName(), key)));
         }
-        Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
+        // Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
         return object;
@@ -615,7 +614,7 @@ public class Bucket<T extends Syncable> {
             try {
                 listener.onSaveObject(this, object);
             } catch(Exception e) {
-                Logger.log(TAG, String.format("Listener failed onSaveObject %s", listener), e);
+                // Logger.log(TAG, String.format("Listener failed onSaveObject %s", listener), e);
             }
         }
     }
@@ -629,7 +628,7 @@ public class Bucket<T extends Syncable> {
             try {
                 listener.onDeleteObject(this, object);
             } catch(Exception e) {
-                Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
+                // Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
             }
         }
     }
@@ -643,7 +642,7 @@ public class Bucket<T extends Syncable> {
             try {
                 listener.onBeforeUpdateObject(this, object);
             } catch(Exception e) {
-                Logger.log(TAG, String.format("Listener failed onBeforeUpdateObject %s", listener), e);
+                // Logger.log(TAG, String.format("Listener failed onBeforeUpdateObject %s", listener), e);
             }
         }
     }
@@ -662,7 +661,7 @@ public class Bucket<T extends Syncable> {
             try {
                 listener.onChange(this, type, key);
             } catch(Exception e) {
-                Logger.log(TAG, String.format("Listener failed onChange %s", listener), e);
+                // Logger.log(TAG, String.format("Listener failed onChange %s", listener), e);
             }
         }
     }
@@ -828,7 +827,7 @@ public class Bucket<T extends Syncable> {
                 }
 
             } catch(SimperiumException e) {
-                Logger.log(TAG, String.format("Unable to apply remote change %s", change), e);
+                // Logger.log(TAG, String.format("Unable to apply remote change %s", change), e);
                 throw(new RemoteChangeInvalidException(change, e));
             }
         }

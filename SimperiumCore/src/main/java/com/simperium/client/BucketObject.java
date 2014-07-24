@@ -75,7 +75,7 @@ public class BucketObject extends Syncable {
         try {
             mProperties.put(key, value);
         } catch (JSONException e) {
-            android.util.Log.e(TAG, "Could not set key" + key, e);
+            // Couldn't set the key
         }
     }
 

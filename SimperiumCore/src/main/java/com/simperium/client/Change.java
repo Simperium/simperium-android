@@ -1,7 +1,6 @@
 package com.simperium.client;
 
 import com.simperium.util.JSONDiff;
-import com.simperium.util.Logger;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -229,7 +228,7 @@ public class Change {
         retryTimer = new TimerTask(){
             @Override
             public void run(){
-                Logger.log("Simperium.Channel", String.format("Retry change: %s", Change.this));
+                // Logger.log("Simperium.Channel", String.format("Retry change: %s", Change.this));
                 if (retryListener != null) {
                     retryListener.onRetry(Change.this);
                 }

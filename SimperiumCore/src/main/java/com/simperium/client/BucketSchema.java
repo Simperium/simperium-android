@@ -81,7 +81,7 @@ public abstract class BucketSchema<T extends Syncable> {
                 try {
                     properties.put(key, JSONDiff.deepCopy(entry.getValue()));
                 } catch (JSONException e) {
-                    android.util.Log.e(TAG, "Could not assign default value " + key, e);
+                    // unable to set default value
                 }
             }
         }
@@ -159,7 +159,7 @@ public abstract class BucketSchema<T extends Syncable> {
                     if (values.has(key))
                         addIndex(indexes, key, values.get(key));
                 } catch (JSONException e) {
-                    android.util.Log.e(TAG, "Unable to index " + key, e);
+                    // failed to index key
                 }
             }
 
@@ -174,7 +174,7 @@ public abstract class BucketSchema<T extends Syncable> {
                     try {
                         addIndex(indexes, key, list.get(i));
                     } catch (JSONException e) {
-                        android.util.Log.e(TAG, "Unable to index array", e);
+                        // couldn't get array value
                     }
                 }
             } else {
