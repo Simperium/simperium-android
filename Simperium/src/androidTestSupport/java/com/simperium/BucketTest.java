@@ -35,7 +35,21 @@ public class BucketTest extends TestCase {
         mSchema = new Note.Schema();
         MemoryStore storage = new MemoryStore();
         mGhostStore = new MockGhostStore();
-        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore);
+
+        mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, storage.createStore(BUCKET_NAME, mSchema), mGhostStore) {
+
+            @Override
+            public ObjectCursor<Note> allObjects() {
+                return null;
+            }
+
+            @Override
+            public ObjectCursor<Note> searchObjects(Query<Note> query) {
+                return null;
+            }
+
+        };
+
         mChannel = new MockChannel(mBucket);
         mBucket.setChannel(mChannel);
         mBucket.start();
