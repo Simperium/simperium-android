@@ -10,8 +10,20 @@ import org.thoughtcrime.ssl.pinning.PinningTrustManager;
 import org.thoughtcrime.ssl.pinning.SystemKeyStore;
 
 import com.simperium.BuildConfig;
+import com.simperium.SimperiumException;
 import com.simperium.Version;
+import com.simperium.client.AuthException;
+import com.simperium.client.AuthResponseHandler;
+import com.simperium.client.AuthResponseListener;
+import com.simperium.client.BucketNameInvalid;
+import com.simperium.client.BucketObject;
+import com.simperium.client.BucketSchema;
 import com.simperium.client.ClientFactory;
+import com.simperium.client.Syncable;
+import com.simperium.client.User;
+import com.simperium.storage.StorageProvider;
+import com.simperium.storage.StorageProvider.BucketStore;
+import com.simperium.util.AuthUtil;
 import com.simperium.util.Uuid;
 
 import java.util.concurrent.Executor;
@@ -25,7 +37,11 @@ import android.util.Log;
  * Refactoring as much of the android specific components of the client
  * and decoupling different parts of the API.
  */
-public class AndroidClient implements ClientFactory {
+public class AndroidClient implements User.StatusChangeListener {
+
+    public interface OnUserCreatedListener {
+        void onUserCreated(User user);
+    }
 
     public static final String TAG = "Simperium.AndroidClient";
     public static final String SHARED_PREFERENCES_NAME = "simperium";
@@ -35,21 +51,63 @@ public class AndroidClient implements ClientFactory {
     public static final String WEBSOCKET_URL = "https://api.simperium.com/sock/1/%s/websocket";
     public static final String USER_AGENT_HEADER = "User-Agent";
 
+    public static final String VERSION = Version.NUMBER;
+    public static final String CLIENT_ID = Version.NAME;
+    public static final int SIGNUP_SIGNIN_REQUEST = 1000;
+
+    private static AndroidClient sAndroidClient;
+
+    public static AndroidClient getInstance()
+    throws SimperiumException {
+        if (null == sAndroidClient) {
+            throw new SimperiumException("AndroidClient has not been initialized");
+        }
+        return sAndroidClient;
+    }
+
+    public static AndroidClient initializeClient(Context context, String appId, String appSecret)
+    throws SimperiumException {
+        if (sAndroidClient != null) {
+            throw new SimperiumException("AndroidClient has already been initialized");
+        }
+        sAndroidClient = new AndroidClient(context, appId, appSecret);
+        return sAndroidClient;
+    }
+
+    public static TrustManager buildPinnedTrustManager(Context context) {
+        // Pin SSL to Simperium.com SPKI
+        return new PinningTrustManager(SystemKeyStore.getInstance(context),
+                                       new String[] { BuildConfig.SIMPERIUM_COM_SPKI }, 0);
+    }
+
+    public static SharedPreferences sharedPreferences(Context context) {
+        return context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    }
+
     protected Context mContext;
     protected SQLiteDatabase mDatabase;
     protected final String mSessionId;
 
-    protected ExecutorService mExecutor;
     protected AsyncHttpClient mHttpClient = AsyncHttpClient.getDefaultInstance();
 
-    public AndroidClient(Context context){
-        int threads = Runtime.getRuntime().availableProcessors();
-        if (threads > 1) {
-            threads -= 1;
-        }
+    private User mUser;
 
-        Log.d(TAG, String.format("Using %d cores for executors", threads));
-        mExecutor = Executors.newFixedThreadPool(threads);
+    final private String mAppId;
+    final private String mAppSecret;
+    final private AsyncAuthClient mAsyncAuthClient;
+    final private PersistentStore mPersistentStore;
+    final private GhostStore mGhostStore;
+    final private WebSocketManager mWebsocketManager;
+    final private Executor mExecutor;
+
+    protected OnUserCreatedListener mOnUserCreatedListener;
+    protected User.StatusChangeListener mUserListener;
+
+    protected AndroidClient(Context context, String appId, String appSecret){
+
+        mAppId = appId;
+        mAppSecret = appSecret;
+
         mContext = context;
         mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
 
@@ -74,43 +132,186 @@ public class AndroidClient implements ClientFactory {
         TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
         mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
 
+        mAsyncAuthClient = buildAuthProvider();
+        mPersistentStore = buildStorageProvider();
+        mGhostStore = buildGhostStorageProvider();
+        mWebsocketManager = buildChannelProvider();
+        mExecutor = buildExecutor();
+
+        loadUser();
+
     }
 
-    public static TrustManager buildPinnedTrustManager(Context context) {
-        // Pin SSL to Simperium.com SPKI
-        return new PinningTrustManager(SystemKeyStore.getInstance(context),
-                                       new String[] { BuildConfig.SIMPERIUM_COM_SPKI }, 0);
+    private void loadUser() {
+        mUser = new User(this);
+        mAsyncAuthClient.restoreUser(mUser);
+        if (mUser.needsAuthorization()) {
+            mUser.setStatus(User.Status.NOT_AUTHORIZED);
+        }
     }
 
-    public static SharedPreferences sharedPreferences(Context context){
-        return context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
+    /**
+     * Creates a bucket and starts syncing data and uses the provided
+     * Class to instantiate data.
+     * 
+     * Should only allow one instance of bucketName and the schema should
+     * match the existing bucket?
+     *
+     * @param bucketName the namespace to store the data in simperium
+     */
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema)
+    throws BucketNameInvalid {
+        return bucket(bucketName, schema, mPersistentStore.createStore(bucketName, schema));
     }
 
-    @Override
-    public AsyncAuthClient buildAuthProvider(String appId, String appSecret){
-        return new AsyncAuthClient(mContext, appId, appSecret, mHttpClient);
+    /**
+     * Allow alternate storage mechanisms
+     */
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema, PersistentStore.DataStore<T> storage)
+    throws BucketNameInvalid {
+
+        // initialize the bucket
+        Bucket<T> bucket = new Bucket<T>(mExecutor, bucketName, schema, mUser, storage, mGhostStore);
+
+        // initialize the communication method for the bucket
+        Bucket.Channel channel = mWebsocketManager.buildChannel(bucket);
+
+        // tell the bucket about the channel
+        bucket.setChannel(channel);
+
+        storage.prepare(bucket);
+        return bucket;
     }
 
-    @Override
-    public WebSocketManager buildChannelProvider(String appId){
-        // Simperium Bucket API
-        WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(appId, mSessionId, mHttpClient);
-        return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), provider);
+
+    /**
+     * Creates a bucket and starts syncing data. Users the generic BucketObject for
+     * serializing and deserializing data
+     *
+     * @param bucketName namespace to store the data in simperium
+     */
+    public Bucket<BucketObject> bucket(String bucketName)
+    throws BucketNameInvalid {
+        return bucket(bucketName, new BucketObject.Schema(bucketName));
     }
 
-    @Override
-    public PersistentStore buildStorageProvider(){
+    /**
+     * Creates a bucket and uses the Schema remote name as the bucket name.
+     */
+    public <T extends Syncable> Bucket<T> bucket(BucketSchema<T> schema)
+    throws BucketNameInvalid {
+        return bucket(schema.getRemoteName(), schema);
+    }
+
+    protected AsyncAuthClient buildAuthProvider() {
+        return new AsyncAuthClient(mContext, mAppId, mAppSecret, mHttpClient);
+    }
+
+    protected WebSocketManager buildChannelProvider() {
+        WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(mAppId, mSessionId, mHttpClient);
+        return new WebSocketManager(mExecutor, mAppId, mSessionId, new QueueSerializer(mDatabase), provider);
+    }
+
+    protected PersistentStore buildStorageProvider(){
         return new PersistentStore(mDatabase);
     }
 
-    @Override
-    public GhostStore buildGhostStorageProvider(){
+    protected GhostStore buildGhostStorageProvider(){
         return new GhostStore(mDatabase);
     }
 
+    protected Executor buildExecutor(){
+        int threads = Runtime.getRuntime().availableProcessors();
+        if (threads > 1) {
+            threads -= 1;
+        }
+        Log.d(TAG, "Using " + threads + " cores for executors");
+        return Executors.newFixedThreadPool(threads);
+    }
+
+    public void setAuthProvider(String providerString){
+        mAsyncAuthClient.setAuthProvider(providerString);
+    }
+
+    public User getUser() {
+        return mUser;
+    }
+
+    public boolean needsAuthorization(){
+        return mUser.needsAuthorization();
+    }
+
+    public User createUser(String email, String password, AuthResponseListener listener){
+        mUser.setCredentials(email, password);
+        AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener){
+            @Override
+            public void onSuccess(User user){
+                super.onSuccess(user);
+                notifyOnUserCreatedListener(user);
+            }
+        };
+        mAsyncAuthClient.createUser(AuthUtil.makeAuthRequestBody(mUser), new AuthResponseHandler(mUser, wrapper));
+        return mUser;
+    }
+
+    public User authorizeUser(String email, String password, AuthResponseListener listener){
+        mUser.setCredentials(email, password);
+        AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener);
+        mAsyncAuthClient.authorizeUser(AuthUtil.makeAuthRequestBody(mUser), new AuthResponseHandler(mUser, wrapper));
+        return mUser;
+    }
+
+    public void deauthorizeUser(){
+        mUser.setAccessToken(null);
+        mUser.setEmail(null);
+        mAsyncAuthClient.deauthorizeUser(mUser);
+        mUser.setStatus(User.Status.NOT_AUTHORIZED);
+    }
+
+    public User.StatusChangeListener getUserStatusChangeListener() {
+        return mUserListener;
+    }
+
+    public void setUserStatusChangeListener(User.StatusChangeListener listener){
+        mUserListener = listener;
+    }
+
     @Override
-    public Executor buildExecutor(){
-        return mExecutor;
+    public void onUserStatusChange(User.Status status){
+        if (mUserListener != null) {
+            mUserListener.onUserStatusChange(status);
+        }
+    }
+
+    public void setOnUserCreatedListener(OnUserCreatedListener listener){
+        mOnUserCreatedListener = listener;
+    }
+
+    protected void notifyOnUserCreatedListener(User user){
+        if (mOnUserCreatedListener != null){
+            mOnUserCreatedListener.onUserCreated(user);
+        }
+    }
+
+    private class AuthResponseListenerWrapper implements AuthResponseListener {
+
+        final private AuthResponseListener mListener;
+
+        public AuthResponseListenerWrapper(final AuthResponseListener listener){
+            mListener = listener;
+        }
+
+        @Override
+        public void onSuccess(User user) {
+            mAsyncAuthClient.saveUser(user);
+            mListener.onSuccess(user);
+        }
+
+        @Override
+        public void onFailure(User user, AuthException error) {
+            mListener.onFailure(user, error);
+        }
+
     }
 
 }
