@@ -15,11 +15,11 @@ public abstract class Syncable implements Diffable {
         return mGhost.getVersion();
     }
 
-    protected Ghost getGhost() {
+    public Ghost getGhost() {
         return mGhost;
     }
 
-    protected void setGhost(Ghost ghost) {
+    public void setGhost(Ghost ghost) {
         synchronized(this) {
             mGhost = ghost;
         }
