@@ -18,7 +18,6 @@ import com.simperium.client.AuthResponseListener;
 import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
-import com.simperium.client.ClientFactory;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
 import com.simperium.storage.StorageProvider;
