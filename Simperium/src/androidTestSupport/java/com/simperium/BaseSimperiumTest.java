@@ -1,7 +1,8 @@
 package com.simperium;
 
 import com.simperium.client.Change;
-import com.simperium.util.Logger;
+
+import android.util.Log;
 
 import junit.framework.TestCase;
 
@@ -12,7 +13,7 @@ class BaseSimperiumTest extends TestCase {
     static protected void waitFor(Change change){
         long timeout = 200; // 100 ms timeout
         long start = System.currentTimeMillis();
-        Logger.log(TAG, String.format("Waiting for change %s", change));
+        Log.d(TAG, "Waiting for change " + change);
         tick();
         while(change.isPending()){
             tick();
@@ -20,14 +21,14 @@ class BaseSimperiumTest extends TestCase {
                 throw( new RuntimeException("Change timed out") );
             }
         }
-        Logger.log(TAG, String.format("Done waiting %s", change));
+        Log.d(TAG, "Done waiting " + change);
     }
     
     static protected void waitFor(long milliseconds){
         try {
             Thread.sleep(milliseconds);
         } catch (InterruptedException e) {
-            Logger.log("Interupted");
+            Log.d(TAG, "Interupted");
         }
     }
 
