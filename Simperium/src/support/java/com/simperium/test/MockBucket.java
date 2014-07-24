@@ -6,6 +6,7 @@ import com.simperium.client.BucketSchema;
 import com.simperium.client.Change;
 import com.simperium.client.ChannelProvider;
 import com.simperium.client.Ghost;
+import com.simperium.client.Query;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.RemoteChangeInvalidException;
 import com.simperium.client.Syncable;
@@ -18,6 +19,7 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
 
     protected RemoteChangeListener mListener;
     public MockGhostStore ghostStore;
+    public BucketStore<T> storage;
 
     public interface RemoteChangeListener {
         public void onApplyRemoteChange(RemoteChange change);
@@ -28,6 +30,23 @@ public class MockBucket<T extends Syncable> extends Bucket<T> {
     throws BucketNameInvalid {
         super(executor, name, schema, user, storage, ghostStore);
         this.ghostStore = ghostStore;
+        this.storage = storage;
+    }
+
+    /**
+     * Find all objects
+     */
+    @Override
+    public ObjectCursor<T> allObjects() {
+        return storage.all();
+    }
+
+    /**
+     * Search using a query
+     */
+    @Override
+    public ObjectCursor<T> searchObjects(Query<T> query) {
+        return storage.all();
     }
 
     public void setRemoteChangeListener(RemoteChangeListener listener){
