@@ -414,8 +414,7 @@ public class JSONDiff {
             if (method.equals(OPERATION_INSERT) || method.equals(OPERATION_REPLACE)) {
                 transformed.put(key, operation.get(DIFF_VALUE_KEY));
             } else if(method.equals(OPERATION_REMOVE)){
-                // NOTE: setting the value to null actually removes the entry
-                transformed.put(key, null);
+                transformed.remove(key);
             } else if(method.equals(OPERATION_OBJECT)){
                 JSONObject child = transformed.getJSONObject(key);
                 transformed.put(key, apply(child, operation.getJSONObject(DIFF_VALUE_KEY)));
