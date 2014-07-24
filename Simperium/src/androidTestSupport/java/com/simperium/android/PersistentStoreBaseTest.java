@@ -3,7 +3,6 @@ package com.simperium.android;
 import android.database.sqlite.SQLiteDatabase;
 import android.test.ActivityInstrumentationTestCase2;
 
-import com.simperium.client.Bucket;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.User;
@@ -25,7 +24,7 @@ public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTes
     protected LoginActivity mActivity;
     
     protected PersistentStore mStore;
-    protected BucketStore<Note> mNoteStore;
+    protected PersistentStore.DataStore<Note> mNoteStore;
     protected SQLiteDatabase mDatabase;
     protected String mDatabaseName = "simperium-test-data";
     protected String[] mTableNames = new String[]{"indexes", "objects", "value_caches"};

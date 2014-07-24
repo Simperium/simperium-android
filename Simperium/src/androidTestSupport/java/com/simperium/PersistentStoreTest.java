@@ -4,10 +4,10 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
-import com.simperium.client.Bucket;
+import com.simperium.android.PersistentStore.DataStore;
+import com.simperium.android.PersistentStore.ObjectCursor;
 import com.simperium.client.Query;
 import com.simperium.models.Note;
-import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.test.MockChannel;
 import com.simperium.test.MockExecutor;
 
@@ -91,7 +91,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         note.save();
         note2.save();
         
-        Bucket.ObjectCursor<Note> cursor = mNoteStore.all();
+        ObjectCursor<Note> cursor = mNoteStore.all();
         assertEquals(2, cursor.getCount());
         cursor.close();
     }
@@ -104,7 +104,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         note.setTitle("Booh yah!");
         note.save();
   
-        Bucket.ObjectCursor<Note> cursor = mNoteStore.all();
+        ObjectCursor<Note> cursor = mNoteStore.all();
         assertEquals(1, cursor.getCount());
         cursor.close();
   
@@ -169,12 +169,12 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         mDatabaseName = helper.getDatabaseName();
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        DataStore<Note> store = mStore.createStore(bucketName, schema);
         mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, store, mGhostStore);
 
         store.prepare(mBucket);
 
-        Bucket.ObjectCursor<Note> cursor;
+        ObjectCursor<Note> cursor;
 
         Query<Note> query = new Query<Note>();
         query.where("special", Query.ComparisonType.EQUAL_TO, true);
@@ -220,7 +220,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         Query<Note> query = new Query<Note>(mBucket);
 
         // with issue #90 this would throw android.database.sqlite.SQLiteException
-        Bucket.ObjectCursor<Note> cursor = query.where("title", Query.ComparisonType.LIKE, null).execute();
+        Bucket<Note>.BucketCursor cursor = mBucket.searchObjects(query.where("title", Query.ComparisonType.LIKE, null));
 
         cursor.close();
     }
@@ -253,7 +253,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         mDatabaseName = helper.getDatabaseName();
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        DataStore<Note> store = mStore.createStore(bucketName, schema);
 
         int count;
 
@@ -271,7 +271,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
     throws Exception {
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
-        BucketStore<Note> store = mStore.createStore(bucketName, schema);
+        DataStore<Note> store = mStore.createStore(bucketName, schema);
         Bucket<Note> bucket = new Bucket<Note>(MockExecutor.immediate(), bucketName, mSchema, mUser, store, mGhostStore);
         store.prepare(bucket);
         bucket.setChannel(new MockChannel(bucket));
@@ -297,7 +297,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
 
         Query<Note> query = new Query<Note>();
         query.order("position");
-        Bucket.ObjectCursor<Note> cursor = store.search(query);
+        ObjectCursor<Note> cursor = store.search(query);
         assertEquals(3, cursor.getCount());
         cursor.moveToFirst();
         Note note = cursor.getObject();
@@ -339,7 +339,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         note.save();
 
         Query<Note> query = mBucket.query().include("preview");
-        Bucket.ObjectCursor<Note> cursor = query.execute();
+        Bucket<Note>.BucketCursor cursor = mBucket.searchObjects(query);
         cursor.moveToFirst();
         assertEquals(5, cursor.getColumnCount());
         assertEquals("Lol", cursor.getString(4));
@@ -380,7 +380,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         Query query = mBucket.query().where(new Query.FullTextMatch("world"));
         query.include(new Query.FullTextSnippet("match"));
 
-        Cursor cursor = query.execute();
+        Cursor cursor = mBucket.searchObjects(query);
         cursor.moveToFirst();
 
         assertEquals("Hello <match>world</match>. Hola mundo. The <match>world</match> is your oyster. Lorem ipsum dolor sit amet, consectetur\u2026", cursor.getString(cursor.getColumnIndexOrThrow("match")));
