@@ -8,8 +8,6 @@ repositories {
     mavenCentral()
 }
 
-version '0.1.0'
-
 dependencies {
     compile 'org.json:json:20140107@jar'
 }
