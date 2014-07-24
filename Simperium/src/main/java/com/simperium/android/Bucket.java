@@ -20,7 +20,7 @@ import java.util.concurrent.Executor;
 
 public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
 
-    private class BucketCursor extends CursorWrapper implements com.simperium.client.Bucket.ObjectCursor<T> {
+    class BucketCursor extends CursorWrapper implements com.simperium.client.Bucket.ObjectCursor<T> {
 
         private PersistentStore.ObjectCursor<T> cursor;
 
@@ -66,7 +66,7 @@ public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
      * Find all objects
      */
     @Override
-    public ObjectCursor<T> allObjects() {
+    public BucketCursor allObjects() {
         return new BucketCursor(mStorage.all());
     }
 
@@ -74,7 +74,7 @@ public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
      * Search using a query
      */
     @Override
-    public ObjectCursor<T> searchObjects(Query<T> query) {
+    public BucketCursor searchObjects(Query<T> query) {
         return new BucketCursor(mStorage.search(query));
     }
 
