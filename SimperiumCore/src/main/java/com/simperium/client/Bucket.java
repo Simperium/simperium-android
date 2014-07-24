@@ -20,9 +20,6 @@
 
 package com.simperium.client;
 
-import android.database.Cursor;
-import android.database.CursorWrapper;
-
 import com.simperium.SimperiumException;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.JSONDiff;
@@ -37,7 +34,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
-public class Bucket<T extends Syncable> {
+public abstract class Bucket<T extends Syncable> {
     
     public interface Channel {
         public Change queueLocalChange(Syncable object);
@@ -46,6 +43,27 @@ public class Bucket<T extends Syncable> {
         public void start();
         public void stop();
         public void reset();
+    }
+
+    /**
+     * Cursor for bucket data
+     */
+    public interface ObjectCursor<T extends Syncable> {
+
+        /**
+         * Return the current item's siperium key
+         */
+        public String getSimperiumKey();
+        /**
+         * Return the object for the current index in the cursor
+         */
+        public T getObject();
+
+        /**
+         * Go to the next item in the cursor
+         */
+        public boolean moveToNext();
+
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -134,53 +152,6 @@ public class Bucket<T extends Syncable> {
      */
     public User getUser() {
         return mUser;
-    }
-
-    /**
-     * Cursor for bucket data
-     */
-    public interface ObjectCursor<T extends Syncable> extends Cursor {
-
-        /**
-         * Return the current item's siperium key
-         */
-        public String getSimperiumKey();
-        /**
-         * Return the object for the current index in the cursor
-         */
-        public T getObject();
-
-    }
-
-    private class BucketCursor extends CursorWrapper implements ObjectCursor<T> {
-
-        private ObjectCursor<T> cursor;
-
-        BucketCursor(ObjectCursor<T> cursor) {
-            super(cursor);
-            this.cursor = cursor;
-        }
-
-        @Override
-        public String getSimperiumKey() {
-            return cursor.getSimperiumKey();
-        }
-
-        @Override
-        public T getObject() {
-            String key = getSimperiumKey();
-
-            T object = cursor.getObject();
-            try {
-                Ghost ghost = mGhostStore.getGhost(Bucket.this, key);
-                object.setGhost(ghost);
-            } catch (GhostMissingException e) {
-                object.setGhost(new Ghost(key, 0, new JSONObject()));
-            }
-            object.setBucket(Bucket.this);
-            return object;
-        }
-
     }
 
     /**
@@ -310,38 +281,6 @@ public class Bucket<T extends Syncable> {
         return object;
     }
 
-    public int count() {
-        return count(query());
-    }
-
-    public int count(Query<T> query) {
-        return mStorage.count(query);
-    }
-
-    /**
-     * Find all objects
-     */
-    public ObjectCursor<T> allObjects() {
-        return new BucketCursor(mStorage.all());
-    }
-
-    /**
-     * Search using a query
-     */
-    public ObjectCursor<T> searchObjects(Query<T> query) {
-        return new BucketCursor(mStorage.search(query));
-    }
-
-    /**
-     * Support cancelation
-     */
-    /**
-     * Build a query for this object
-     */
-    public Query<T> query() {
-        return new Query<T>(this);
-    }
-
     /**
      * Get a single object object that matches key
      */
@@ -408,6 +347,32 @@ public class Bucket<T extends Syncable> {
         mGhostStore.saveGhost(this, ghost);
         return object;
     }
+
+    public int count() {
+        return count(query());
+    }
+
+    public int count(Query<T> query) {
+        return mStorage.count(query);
+    }
+
+    /**
+     * Find all objects
+     */
+    abstract public ObjectCursor<T> allObjects();
+
+    /**
+     * Search using a query
+     */
+    abstract public ObjectCursor<T> searchObjects(Query<T> query);
+
+    /**
+     * Build a query for this object
+     */
+    public Query<T> query() {
+        return new Query<T>(this);
+    }
+
 
     /**
      * Add object from new ghost data, no corresponding change version so this
