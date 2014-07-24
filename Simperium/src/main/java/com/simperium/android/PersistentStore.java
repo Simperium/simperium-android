@@ -44,7 +44,7 @@ public class PersistentStore implements StorageProvider {
     }
 
     @Override
-    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> schema) {
+    public <T extends Syncable> DataStore<T> createStore(String bucketName, BucketSchema<T> schema) {
         return new DataStore<T>(bucketName, schema);
     }
 
@@ -124,7 +124,7 @@ public class PersistentStore implements StorageProvider {
          */
         @Override
         public T get(String key) throws BucketObjectMissingException {
-            Bucket.ObjectCursor<T> cursor = buildCursor(mSchema, queryObject(mBucketName, key));
+            ObjectCursor<T> cursor = buildCursor(mSchema, queryObject(mBucketName, key));
             if (cursor.getCount() == 0) {
                 cursor.close();
                 throw(new BucketObjectMissingException());
@@ -140,7 +140,7 @@ public class PersistentStore implements StorageProvider {
          * All objects, returns a cursor for the given bucket
          */
         @Override
-        public Bucket.ObjectCursor<T> all() {
+        public ObjectCursor<T> all() {
             return buildCursor(mSchema, mDatabase.query(false, OBJECTS_TABLE,
                     new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"},
                     "bucket=?", new String[]{mBucketName}, null, null, null, null));
@@ -163,7 +163,7 @@ public class PersistentStore implements StorageProvider {
          * 
          */
         @Override
-        public Bucket.ObjectCursor<T> search(Query<T> query) {
+        public ObjectCursor<T> search(Query<T> query) {
             QueryBuilder builder = new QueryBuilder(this, query);
             Cursor cursor = builder.query(mDatabase);
             return buildCursor(mSchema, cursor);
@@ -368,7 +368,7 @@ public class PersistentStore implements StorageProvider {
 
     }
 
-    private class ObjectCursor<T extends Syncable> extends CursorWrapper implements Bucket.ObjectCursor<T> {
+    class ObjectCursor<T extends Syncable> extends CursorWrapper implements Bucket.ObjectCursor<T> {
         
         private BucketSchema<T> mSchema;
 
@@ -400,7 +400,7 @@ public class PersistentStore implements StorageProvider {
 
     }
 
-    private <T extends Syncable> Bucket.ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor) {
+    private <T extends Syncable> ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor) {
         return new ObjectCursor<T>(schema, cursor);
     }
     
