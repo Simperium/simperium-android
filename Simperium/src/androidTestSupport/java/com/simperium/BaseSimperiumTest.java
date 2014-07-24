@@ -6,7 +6,7 @@ import android.util.Log;
 
 import junit.framework.TestCase;
 
-class BaseSimperiumTest extends TestCase {
+public class BaseSimperiumTest extends TestCase {
 
     public static final String TAG="SimperiumTest";
 
