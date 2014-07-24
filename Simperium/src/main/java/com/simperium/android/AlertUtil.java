@@ -1,4 +1,4 @@
-package com.simperium.android.util;
+package com.simperium.android;
 /*
  * Copyright (C) 2011 wordpress.org
  *
