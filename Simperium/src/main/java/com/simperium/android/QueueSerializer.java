@@ -4,11 +4,11 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Change;
 import com.simperium.client.Channel;
-import com.simperium.util.Logger;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -101,7 +101,7 @@ public class QueueSerializer implements Channel.Serializer {
             }
 
         } catch (IllegalArgumentException e) {
-            Logger.log(TAG, "Could not restore queue, invalid table columns", e);
+            Log.e(TAG, "Could not restore queue, invalid table columns", e);
             return null;
         }
 
@@ -149,7 +149,7 @@ public class QueueSerializer implements Channel.Serializer {
         try {
             mDatabase.insertOrThrow(TABLE_NAME, null, values);
         } catch (SQLException e) {
-            Logger.log(TAG, "Unable to insert status change", e);
+            Log.e(TAG, "Unable to insert status change", e);
         }
     }
 

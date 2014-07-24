@@ -16,7 +16,6 @@ import com.simperium.client.FullTextIndex;
 import com.simperium.client.Query;
 import com.simperium.client.Syncable;
 import com.simperium.storage.StorageProvider;
-import com.simperium.util.Logger;
 
 import org.json.JSONObject;
 
@@ -356,12 +355,12 @@ public class PersistentStore implements StorageProvider {
                         Thread.sleep(1);
                     }
                 } catch (InterruptedException e) {
-                    Logger.log(TAG, String.format("Indexing interrupted %s", bucketName), e);
+                    if (BuildConfig.DEBUG) Log.e(TAG, "Indexing interrupted " + bucketName, e);
                     mDatabase.delete(REINDEX_QUEUE_TABLE, conditions, args);
                 } catch (SQLException e) {
-                    Logger.log(TAG, String.format("SQL Error %s", bucketName), e);
+                    Log.e(TAG, "SQL Error " + bucketName, e);
                 }
-                if (BuildConfig.DEBUG) Logger.log(TAG, String.format("Done indexing %s", bucketName));
+                if (BuildConfig.DEBUG) Log.d(TAG, "Done indexing " + bucketName);
                 mBucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
             }
 

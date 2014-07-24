@@ -22,7 +22,6 @@ import com.simperium.BuildConfig;
 import com.simperium.client.Bucket;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
-import com.simperium.util.Logger;
 
 import android.util.Log;
 
@@ -111,7 +110,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
             log.put(COMMAND_LOG, message.toString());
             log(level, log);
         } catch (JSONException e) {
-            Logger.log(TAG, "Could not send log", e);
+            Log.e(TAG, "Could not send log", e);
         }
 
     }
@@ -138,8 +137,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         cancelReconnect();
         Log.d(TAG, "Asked to connect");
         if (!isConnected() && !isConnecting() && !mChannels.isEmpty()) {
-            Log.d(TAG, "Connecting");
-            Logger.log(TAG, String.format(Locale.US, "Connecting to %s", mSocketURI));
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Connecting to " + mSocketURI);
+            }
             setConnectionStatus(ConnectionStatus.CONNECTING);
             mReconnect = true;
 
@@ -184,7 +184,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         cancelReconnect();
         if (isConnected()) {
             setConnectionStatus(ConnectionStatus.DISCONNECTING);
-            Logger.log(TAG, "Disconnecting");
+            Log.d(TAG, "Disconnecting");
             // being told to disconnect so don't automatically reconnect
             mConnection.close();
             onDisconnect(null);
@@ -268,7 +268,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
                 connect();
             }
         }, retryIn);
-        Logger.log(String.format(Locale.US, "Retrying in %d", retryIn));
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Retrying in " + retryIn);
+        }
     }
 
     // duplicating javascript reconnect interval calculation
@@ -308,7 +310,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         for (Channel channel : mChannels.values()) {
             if (channel.isStarted()) return;
         }
-        Logger.log(TAG, String.format(Locale.US, "%s disconnect from socket", Thread.currentThread().getName()));
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, Thread.currentThread().getName() + " disconnect from socket");
+        }
         disconnect();
     }
 
@@ -326,13 +330,16 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
             log.put(BUCKET_NAME_KEY, channel.getBucketName());
             log(level, log);
         } catch (JSONException e) {
-            Logger.log(TAG, "Unable to send channel log message", e);
+            Log.e(TAG, "Unable to send channel log message", e);
         }
 
     }
 
     protected void onConnect() {
-        Logger.log(TAG, String.format("Connected"));
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Connected");
+        }
+
         setConnectionStatus(ConnectionStatus.CONNECTED);
         notifyChannelsConnected();
         mHeartbeatCount = 0; // reset heartbeat count
@@ -362,12 +369,14 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
             Channel channel = mChannels.get(channelId);
             channel.receiveMessage(parts[1]);
         } catch (NumberFormatException e) {
-            Logger.log(TAG, String.format(Locale.US, "Unhandled message %s", parts[0]));
+            Log.e(TAG, "Unhandled message " + parts[0], e);
         }
     }
 
     protected void onDisconnect(Exception ex) {
-        Logger.log(TAG, String.format(Locale.US, "Disconnect %s", ex));
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Disconnect " + ex);
+        }
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         notifyChannelsDisconnected();
         cancelHeartbeat();
@@ -375,7 +384,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     protected void onError(Exception error) {
-        Logger.log(TAG, String.format(Locale.US, "Error: %s", error), error);
+        if (BuildConfig.DEBUG) {
+            Log.e(TAG, "Connection error", error);
+        }
         setConnectionStatus(ConnectionStatus.DISCONNECTED);
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && mReconnect) {
             scheduleReconnect();
