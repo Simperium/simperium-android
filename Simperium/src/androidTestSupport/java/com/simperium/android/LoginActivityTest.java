@@ -1,4 +1,4 @@
-package com.simperium;
+package com.simperium.android;
 
 import android.content.Intent;
 import android.test.ActivityInstrumentationTestCase2;
@@ -8,14 +8,14 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.simperium.R;
+
 import com.simperium.android.LoginActivity;
-import com.simperium.test.MockClient;
+import com.simperium.test.MockAndroidClient;
 
 public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginActivity> {
 
-
-    protected MockClient mClient;
-    protected Simperium mSimperium;
+    protected MockAndroidClient mSimperium;
 
     protected LoginActivity mActivity;
     Button mSignupButton;
@@ -37,8 +37,7 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
     protected void setUp() throws Exception {
         super.setUp();
         setActivityInitialTouchMode(false);
-        mClient = new MockClient();
-        mSimperium = Simperium.newClient("fake-app", "fake-secret", mClient);
+        mSimperium = new MockAndroidClient(getActivity());
     }
 
     @Override
