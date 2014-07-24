@@ -17,16 +17,16 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.util.Log;
 
 import com.simperium.BuildConfig;
 import com.simperium.R;
-import com.simperium.Simperium;
-import com.simperium.SimperiumNotInitializedException;
+import com.simperium.SimperiumException;
+import com.simperium.android.AlertUtil;
+import com.simperium.android.AndroidClient;
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.User;
-import com.simperium.util.AlertUtil;
-import com.simperium.util.Logger;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,12 +55,11 @@ public class LoginActivity extends Activity {
     private Button signupButton;
     private Button signinButton;
 
-    private Simperium mSimperium;
-
+    private AndroidClient mSimperium;
 
     protected ProgressDialog mProgressDialog;
 
-    public void setSimperium(Simperium simperium){
+    public void setSimperium(AndroidClient simperium){
         mSimperium = simperium;
     }
 
@@ -72,9 +71,9 @@ public class LoginActivity extends Activity {
         setContentView(R.layout.login);
 
         try {
-            setSimperium(Simperium.getInstance());
-        } catch (SimperiumNotInitializedException e) {
-            Logger.log("Can't create the LoginActivity", e);
+            setSimperium(AndroidClient.getInstance());
+        } catch (SimperiumException e) {
+            Log.e(TAG, "Can't create the LoginActivity", e);
         }
 
         mSystemService = (ConnectivityManager) getApplicationContext()
