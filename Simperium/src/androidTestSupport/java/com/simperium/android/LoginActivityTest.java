@@ -11,11 +11,13 @@ import android.widget.TextView;
 import com.simperium.R;
 
 import com.simperium.android.LoginActivity;
-import com.simperium.test.MockAndroidClient;
+import com.simperium.test.MockClient;
 
 public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginActivity> {
 
-    protected MockAndroidClient mSimperium;
+    public static final String TAG = "Simperium.LoginActivityTest";
+
+    protected Simperium mSimperium;
 
     protected LoginActivity mActivity;
     Button mSignupButton;
@@ -37,7 +39,7 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
     protected void setUp() throws Exception {
         super.setUp();
         setActivityInitialTouchMode(false);
-        mSimperium = new MockAndroidClient(getActivity());
+        mSimperium = Simperium.initializeClient(new MockClient());
     }
 
     @Override
