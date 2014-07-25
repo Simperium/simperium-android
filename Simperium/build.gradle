@@ -7,10 +7,8 @@ buildscript {
 }
 
 apply plugin: 'android-library'
-apply plugin: 'maven'
-apply plugin: 'signing'
 
-group "com.simperium"
+group "com.simperium.android"
 
 repositories {
     mavenCentral()
@@ -22,7 +20,7 @@ android {
     defaultPublishConfig 'clientRelease'
 
     dependencies {
-        compile(project(':SimperiumCore')) {
+        compile(project(':simperium-core')) {
             exclude group: 'org.json'
         }
         compile 'com.koushikdutta.async:androidasync:1.+@jar'
@@ -84,9 +82,6 @@ afterEvaluate {
 
                 pom.project {
                     name "Simperium Android Library"
-
-                    groupId 'com.simperium.android'
-                    artifactId 'simperium'
 
                     packaging 'aar'
                     description 'Android Library for building applications using Simperium'

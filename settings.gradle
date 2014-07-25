@@ -1,2 +1,4 @@
 include ':SimperiumCore'
 include ':Simperium'
+
+project(':SimperiumCore').name = 'simperium-core'
