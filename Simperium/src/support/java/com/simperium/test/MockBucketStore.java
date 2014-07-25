@@ -3,11 +3,11 @@ package com.simperium.test;
 import android.database.AbstractCursor;
 import android.util.Log;
 
-import com.simperium.client.Bucket;
+import com.simperium.android.StorageProvider;
+import com.simperium.android.Bucket;
 import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Query;
 import com.simperium.client.Syncable;
-import com.simperium.storage.StorageProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +22,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
     private Map<String, T> objects = Collections.synchronizedMap(new HashMap<String, T>(32));
 
     @Override
-    public void prepare(Bucket<T> bucket){
+    public void prepare(Bucket<T> bucket) {
         // noop
     }
 
@@ -30,7 +30,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Add/Update the given object
      */
     @Override
-    public void save(T object, List<Index> indexes){
+    public void save(T object, List<Index> indexes) {
         objects.put(object.getSimperiumKey(), object);
     }
 
@@ -38,7 +38,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Remove the given object from the storage
      */
     @Override
-    public void delete(T object){
+    public void delete(T object) {
         objects.remove(object.getSimperiumKey());
     }
 
@@ -46,7 +46,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Delete all objects from storage
      */
     @Override
-    public void reset(){
+    public void reset() {
         objects.clear();
     }
 
@@ -54,7 +54,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Get an object with the given key
      */
     @Override
-    public T get(String key){
+    public T get(String key) {
         return objects.get(key);
     }
 
@@ -62,7 +62,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Get a cursor to all the objects
      */
     @Override
-    public Bucket.ObjectCursor<T> all(){
+    public Bucket.ObjectCursor<T> all() {
         return new MemoryCursor();
     }
 
@@ -70,7 +70,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Search
      */
     @Override
-    public Bucket.ObjectCursor<T> search(Query query){
+    public Bucket.ObjectCursor<T> search(Query query) {
         Log.w(TAG, "Custom queries not supported");
         return all();
     }
@@ -79,7 +79,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Count
      */
     @Override
-    public int count(Query query){
+    public int count(Query query) {
         Log.w(TAG, "Custom queries not supported");
         return objects.size();
     }
@@ -105,7 +105,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
         }
 
         @Override
-        public double getDouble(int column){
+        public double getDouble(int column) {
             throw new RuntimeException("not implemented");
         }
 
