@@ -16,12 +16,6 @@ public interface StorageProvider {
     public interface BucketStore<T extends Syncable> {
 
         /**
-         * For initializing and performaing any necessary setup for storing
-         * bucket data.
-         */
-        public void prepare(Bucket<T> bucket);
-
-        /**
          * Add/Update the given object
          */
         public void save(T object, List<Index> indexes);

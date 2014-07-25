@@ -4,8 +4,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
-import com.simperium.android.PersistentStore.DataStore;
-import com.simperium.android.PersistentStore.ObjectCursor;
+import com.simperium.android.PersistentStore;
+import com.simperium.android.Bucket.ObjectCursor;
 import com.simperium.client.Query;
 import com.simperium.models.Note;
 import com.simperium.test.MockChannel;
@@ -169,7 +169,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         mDatabaseName = helper.getDatabaseName();
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
-        DataStore<Note> store = mStore.createStore(bucketName, schema);
+        StorageProvider.BucketStore<Note> store = mStore.createStore(bucketName, schema);
         mBucket = new Bucket<Note>(MockExecutor.immediate(), BUCKET_NAME, mSchema, mUser, store, mGhostStore);
 
         store.prepare(mBucket);
@@ -220,7 +220,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         Query<Note> query = new Query<Note>(mBucket);
 
         // with issue #90 this would throw android.database.sqlite.SQLiteException
-        Bucket<Note>.BucketCursor cursor = mBucket.searchObjects(query.where("title", Query.ComparisonType.LIKE, null));
+        ObjectCursor<Note> cursor = mBucket.searchObjects(query.where("title", Query.ComparisonType.LIKE, null));
 
         cursor.close();
     }
@@ -253,7 +253,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         mDatabaseName = helper.getDatabaseName();
         helper.createDatabase();
         mStore = new PersistentStore(helper.getWritableDatabase());
-        DataStore<Note> store = mStore.createStore(bucketName, schema);
+        StorageProvider.BucketStore<Note> store = mStore.createStore(bucketName, schema);
 
         int count;
 
@@ -271,7 +271,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
     throws Exception {
         String bucketName = "notes";
         Note.Schema schema = new Note.Schema();
-        DataStore<Note> store = mStore.createStore(bucketName, schema);
+        StorageProvider.BucketStore<Note> store = mStore.createStore(bucketName, schema);
         Bucket<Note> bucket = new Bucket<Note>(MockExecutor.immediate(), bucketName, mSchema, mUser, store, mGhostStore);
         store.prepare(bucket);
         bucket.setChannel(new MockChannel(bucket));
@@ -339,7 +339,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         note.save();
 
         Query<Note> query = mBucket.query().include("preview");
-        Bucket<Note>.BucketCursor cursor = mBucket.searchObjects(query);
+        ObjectCursor<Note> cursor = mBucket.searchObjects(query);
         cursor.moveToFirst();
         assertEquals(5, cursor.getColumnCount());
         assertEquals("Lol", cursor.getString(4));

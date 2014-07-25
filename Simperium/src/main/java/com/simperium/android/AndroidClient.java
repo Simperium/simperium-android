@@ -64,12 +64,18 @@ public class AndroidClient implements User.StatusChangeListener {
         return sAndroidClient;
     }
 
-    public static AndroidClient initializeClient(Context context, String appId, String appSecret)
-    throws SimperiumException {
+    public static AndroidClient initializeClient(Context context, String appId, String appSecret) {
+        Client client = new ClientImpl(context, appId, appSecret);
+        return initializeClient(client);
+    }
+
+    public static AndroidClient initializeClient(Client client) {
         if (sAndroidClient != null) {
-            throw new SimperiumException("AndroidClient has already been initialized");
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "AndroidClient has already been initialized");                
+            }
         }
-        sAndroidClient = new AndroidClient(context, appId, appSecret);
+        sAndroidClient = new AndroidClient(client);
         return sAndroidClient;
     }
 

@@ -20,11 +20,15 @@ import java.util.concurrent.Executor;
 
 public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
 
-    class BucketCursor extends CursorWrapper implements com.simperium.client.Bucket.ObjectCursor<T> {
+    public interface ObjectCursor<T extends Syncable> extends com.simperium.client.Bucket.ObjectCursor<T>, Cursor {
+ 
+    }
 
-        private PersistentStore.ObjectCursor<T> cursor;
+    private class BucketCursor extends CursorWrapper implements ObjectCursor<T> {
 
-        BucketCursor(PersistentStore.ObjectCursor<T> cursor) {
+        private ObjectCursor<T> cursor;
+
+        BucketCursor(ObjectCursor<T> cursor) {
             super(cursor);
             this.cursor = cursor;
         }
@@ -51,11 +55,11 @@ public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
 
     }
 
-    final protected PersistentStore.DataStore<T> mStorage;
+    final protected StorageProvider.BucketStore<T> mStorage;
     final protected GhostStorageProvider mGhostStore;
 
     public Bucket(Executor executor, String name, BucketSchema<T>schema, User user,
-        PersistentStore.DataStore<T> storage, GhostStorageProvider ghostStore)
+        StorageProvider.BucketStore<T> storage, GhostStorageProvider ghostStore)
     throws BucketNameInvalid {
         super(executor, name, schema, user, storage, ghostStore);
         mStorage = storage;
@@ -66,7 +70,7 @@ public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
      * Find all objects
      */
     @Override
-    public BucketCursor allObjects() {
+    public ObjectCursor<T> allObjects() {
         return new BucketCursor(mStorage.all());
     }
 
@@ -74,7 +78,7 @@ public class Bucket<T extends Syncable> extends com.simperium.client.Bucket<T> {
      * Search using a query
      */
     @Override
-    public BucketCursor searchObjects(Query<T> query) {
+    public ObjectCursor<T> searchObjects(Query<T> query) {
         return new BucketCursor(mStorage.search(query));
     }
 

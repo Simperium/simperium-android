@@ -8,14 +8,12 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.simperium.BuildConfig;
-import com.simperium.client.Bucket;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.FullTextIndex;
 import com.simperium.client.Query;
 import com.simperium.client.Syncable;
-import com.simperium.storage.StorageProvider;
 
 import org.json.JSONObject;
 
@@ -44,11 +42,11 @@ public class PersistentStore implements StorageProvider {
     }
 
     @Override
-    public <T extends Syncable> DataStore<T> createStore(String bucketName, BucketSchema<T> schema) {
+    public <T extends Syncable> BucketStore<T> createStore(String bucketName, BucketSchema<T> schema) {
         return new DataStore<T>(bucketName, schema);
     }
 
-    protected class DataStore<T extends Syncable> implements BucketStore<T> {
+    protected class DataStore<T extends Syncable> implements StorageProvider.BucketStore<T> {
 
         final protected BucketSchema<T> mSchema;
         final protected String mBucketName;
@@ -140,7 +138,7 @@ public class PersistentStore implements StorageProvider {
          * All objects, returns a cursor for the given bucket
          */
         @Override
-        public ObjectCursor<T> all() {
+        public Bucket.ObjectCursor<T> all() {
             return buildCursor(mSchema, mDatabase.query(false, OBJECTS_TABLE,
                     new String[]{"objects.rowid AS _id", "objects.bucket", "objects.key as `object_key`", "objects.data as `object_data`"},
                     "bucket=?", new String[]{mBucketName}, null, null, null, null));
@@ -163,7 +161,7 @@ public class PersistentStore implements StorageProvider {
          * 
          */
         @Override
-        public ObjectCursor<T> search(Query<T> query) {
+        public Bucket.ObjectCursor<T> search(Query<T> query) {
             QueryBuilder builder = new QueryBuilder(this, query);
             Cursor cursor = builder.query(mDatabase);
             return buildCursor(mSchema, cursor);

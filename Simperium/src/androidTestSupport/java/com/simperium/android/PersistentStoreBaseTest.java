@@ -24,7 +24,7 @@ public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTes
     protected LoginActivity mActivity;
     
     protected PersistentStore mStore;
-    protected PersistentStore.DataStore<Note> mNoteStore;
+    protected StorageProvider.BucketStore<Note> mNoteStore;
     protected SQLiteDatabase mDatabase;
     protected String mDatabaseName = "simperium-test-data";
     protected String[] mTableNames = new String[]{"indexes", "objects", "value_caches"};
