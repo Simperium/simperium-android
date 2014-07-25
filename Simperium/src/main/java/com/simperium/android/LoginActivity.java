@@ -23,7 +23,7 @@ import com.simperium.BuildConfig;
 import com.simperium.R;
 import com.simperium.SimperiumException;
 import com.simperium.android.AlertUtil;
-import com.simperium.android.AndroidClient;
+import com.simperium.android.Simperium;
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.User;
@@ -55,11 +55,11 @@ public class LoginActivity extends Activity {
     private Button signupButton;
     private Button signinButton;
 
-    private AndroidClient mSimperium;
+    private Simperium mSimperium;
 
     protected ProgressDialog mProgressDialog;
 
-    public void setSimperium(AndroidClient simperium){
+    public void setSimperium(Simperium simperium){
         mSimperium = simperium;
     }
 
@@ -71,9 +71,9 @@ public class LoginActivity extends Activity {
         setContentView(R.layout.login);
 
         try {
-            setSimperium(AndroidClient.getInstance());
+            setSimperium(Simperium.getInstance());
         } catch (SimperiumException e) {
-            Log.e(TAG, "Can't create the LoginActivity", e);
+            Log.e(TAG, "Simperium not initialized");
         }
 
         mSystemService = (ConnectivityManager) getApplicationContext()

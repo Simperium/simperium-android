@@ -1,20 +1,28 @@
 package com.simperium.android;
 
+import android.content.Context;
 import android.test.AndroidTestCase;
 
-import com.simperium.client.Bucket;
+import com.simperium.android.Bucket;
+import com.simperium.client.AuthProvider;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema.Index;
+import com.simperium.client.ChannelProvider;
 import com.simperium.client.User;
+import com.simperium.test.MockAuthProvider;
+import com.simperium.test.MockClient;
+import com.simperium.test.MockChannelProvider;
 import com.simperium.test.MockAuthResponseListener;
 import com.simperium.test.MockBucketStore;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class AndroidClientTest extends AndroidTestCase {
+public class SimperiumTest extends AndroidTestCase {
 
-    protected AndroidClient mSimperium;
+    protected Simperium mSimperium;
+
+    protected MockClient mClient;
 
     protected User.Status mLastStatus;
     protected List<User.Status> mAuthStatuses = new ArrayList<User.Status>();
@@ -30,7 +38,8 @@ public class AndroidClientTest extends AndroidTestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        mSimperium = new AndroidClient(mContext, "fake-id", "fake-token");
+        mClient = new MockClient();
+        mSimperium = new Simperium(mClient);
         mSimperium.setUserStatusChangeListener(mAuthListener);
 
     }
@@ -55,34 +64,33 @@ public class AndroidClientTest extends AndroidTestCase {
         assertEquals(object, other);
     }
 
-    // TODO: Fix alternate storage implementations while using AndroidClient
-    // public void testBuildBucketWithAlternateStorage()
-    // throws Exception {
-    //     BucketObject.Schema schema = new BucketObject.Schema();
-    //     TestStore store = new TestStore();
-    //     Bucket<BucketObject> bucket = mSimperium.bucket("stuff", schema, store);
-    //
-    //     assertTrue(store.prepare);
-    //
-    //     BucketObject thing = bucket.newObject();
-    //     thing.setProperty("title", "hola mundo");
-    //
-    //     thing.save();
-    //     assertTrue(store.save);
-    //
-    //     thing = bucket.get(thing.getSimperiumKey());
-    //     assertTrue(store.get);
-    //
-    //     thing.delete();
-    //     assertTrue(store.delete);
-    //
-    // }
+    public void testBuildBucketWithAlternateStorage()
+    throws Exception {
+        BucketObject.Schema schema = new BucketObject.Schema();
+        TestStore store = new TestStore();
+        Bucket<BucketObject> bucket = mSimperium.bucket("stuff", schema, store);
+
+        assertTrue(store.prepare);
+
+        BucketObject thing = bucket.newObject();
+        thing.setProperty("title", "hola mundo");
+
+        thing.save();
+        assertTrue(store.save);
+
+        thing = bucket.get(thing.getSimperiumKey());
+        assertTrue(store.get);
+
+        thing.delete();
+        assertTrue(store.delete);
+
+    }
 
     public void testInitialAuthState()
     throws Exception {
         // clear out the saved access token and build a new client for this test
-        // mClient.authProvider.accessToken = null;
-        mSimperium = new AndroidClient(mContext, "fake-id", "fake-secret");
+        mClient.authProvider.accessToken = null;
+        mSimperium = new Simperium(mClient);
         mSimperium.setUserStatusChangeListener(mAuthListener);
 
         // we have no access token so we should need authentication
@@ -115,7 +123,7 @@ public class AndroidClientTest extends AndroidTestCase {
         assertEquals(User.Status.AUTHORIZED, mLastStatus);
 
         // make sure the token was saved by the auth client
-        // assertEquals("fake-token", mClient.authProvider.accessToken);
+        assertEquals("fake-token", mClient.authProvider.accessToken);
 
         // make sure callback was called once
         assertEquals(1, mAuthStatuses.size());
@@ -154,7 +162,7 @@ public class AndroidClientTest extends AndroidTestCase {
         assertTrue(mSimperium.needsAuthorization());
 
         // token should be clared from auth client
-        // assertNull(mClient.authProvider.accessToken);
+        assertNull(mClient.authProvider.accessToken);
 
         // last status change should be NOT_AUTHORIZED
         assertEquals(User.Status.NOT_AUTHORIZED, user.getStatus());
@@ -174,7 +182,7 @@ public class AndroidClientTest extends AndroidTestCase {
         assertTrue(userListener.userCreated);
     }
 
-    private static class UserCreatedListener implements AndroidClient.OnUserCreatedListener {
+    private static class UserCreatedListener implements Simperium.OnUserCreatedListener {
 
         public boolean userCreated = false;
 

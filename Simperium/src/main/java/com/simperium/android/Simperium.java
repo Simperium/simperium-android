@@ -12,16 +12,17 @@ import org.thoughtcrime.ssl.pinning.SystemKeyStore;
 import com.simperium.BuildConfig;
 import com.simperium.SimperiumException;
 import com.simperium.Version;
+import com.simperium.client.AuthProvider;
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthResponseHandler;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.BucketNameInvalid;
 import com.simperium.client.BucketObject;
 import com.simperium.client.BucketSchema;
+import com.simperium.client.ChannelProvider;
+import com.simperium.client.GhostStorageProvider;
 import com.simperium.client.Syncable;
 import com.simperium.client.User;
-import com.simperium.storage.StorageProvider;
-import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.AuthUtil;
 import com.simperium.util.Uuid;
 
@@ -36,13 +37,21 @@ import android.util.Log;
  * Refactoring as much of the android specific components of the client
  * and decoupling different parts of the API.
  */
-public class AndroidClient implements User.StatusChangeListener {
+public class Simperium implements User.StatusChangeListener {
 
     public interface OnUserCreatedListener {
         void onUserCreated(User user);
     }
 
-    public static final String TAG = "Simperium.AndroidClient";
+    public interface Client {
+        public Executor buildExecutor();
+        public AuthProvider buildAuthProvider();
+        public ChannelProvider buildChannelProvider();
+        public StorageProvider buildStorageProvider();
+        public GhostStorageProvider buildGhostStorageProvider();
+    }
+
+    public static final String TAG = "Simperium";
     public static final String SHARED_PREFERENCES_NAME = "simperium";
     public static final String DEFAULT_DATABASE_NAME = "simperium-store";
     public static final String SESSION_ID_PREFERENCE = "simperium-session-id";
@@ -54,29 +63,29 @@ public class AndroidClient implements User.StatusChangeListener {
     public static final String CLIENT_ID = Version.NAME;
     public static final int SIGNUP_SIGNIN_REQUEST = 1000;
 
-    private static AndroidClient sAndroidClient;
+    protected static Simperium sSimperium;
 
-    public static AndroidClient getInstance()
+    public static Simperium getInstance()
     throws SimperiumException {
-        if (null == sAndroidClient) {
-            throw new SimperiumException("AndroidClient has not been initialized");
+        if (null == sSimperium) {
+            throw new SimperiumException("Simperium has not been initialized");
         }
-        return sAndroidClient;
+        return sSimperium;
     }
 
-    public static AndroidClient initializeClient(Context context, String appId, String appSecret) {
+    public static Simperium initializeClient(Context context, String appId, String appSecret) {
         Client client = new ClientImpl(context, appId, appSecret);
         return initializeClient(client);
     }
 
-    public static AndroidClient initializeClient(Client client) {
-        if (sAndroidClient != null) {
+    public static Simperium initializeClient(Client client) {
+        if (sSimperium != null) {
             if (BuildConfig.DEBUG) {
-                Log.w(TAG, "AndroidClient has already been initialized");                
+                Log.w(TAG, "Simperium has already been initialized");                
             }
         }
-        sAndroidClient = new AndroidClient(client);
-        return sAndroidClient;
+        sSimperium = new Simperium(client);
+        return sSimperium;
     }
 
     public static TrustManager buildPinnedTrustManager(Context context) {
@@ -89,59 +98,24 @@ public class AndroidClient implements User.StatusChangeListener {
         return context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE);
     }
 
-    protected Context mContext;
-    protected SQLiteDatabase mDatabase;
-    protected final String mSessionId;
-
-    protected AsyncHttpClient mHttpClient = AsyncHttpClient.getDefaultInstance();
-
     private User mUser;
 
-    final private String mAppId;
-    final private String mAppSecret;
-    final private AsyncAuthClient mAsyncAuthClient;
-    final private PersistentStore mPersistentStore;
-    final private GhostStore mGhostStore;
-    final private WebSocketManager mWebsocketManager;
+    final private AuthProvider mAuthProvider;
+    final private StorageProvider mPersistentStore;
+    final private GhostStorageProvider mGhostStore;
+    final private ChannelProvider mChannelProvider;
     final private Executor mExecutor;
 
     protected OnUserCreatedListener mOnUserCreatedListener;
     protected User.StatusChangeListener mUserListener;
 
-    protected AndroidClient(Context context, String appId, String appSecret){
+    protected Simperium(Client client){
 
-        mAppId = appId;
-        mAppSecret = appSecret;
-
-        mContext = context;
-        mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
-
-        SharedPreferences preferences = sharedPreferences(mContext);
-        String sessionToken = null;
-
-        if (preferences.contains(SESSION_ID_PREFERENCE)) {
-            try {
-                sessionToken = preferences.getString(SESSION_ID_PREFERENCE, null);
-            } catch (ClassCastException e) {
-                sessionToken = null;
-            }
-        }
-
-        if (sessionToken == null) {
-            sessionToken = Uuid.uuid(6);
-            preferences.edit().putString(SESSION_ID_PREFERENCE, sessionToken).commit();
-        }
-
-        mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
-
-        TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
-        mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
-
-        mAsyncAuthClient = buildAuthProvider();
-        mPersistentStore = buildStorageProvider();
-        mGhostStore = buildGhostStorageProvider();
-        mWebsocketManager = buildChannelProvider();
-        mExecutor = buildExecutor();
+        mAuthProvider = client.buildAuthProvider();
+        mPersistentStore = client.buildStorageProvider();
+        mGhostStore = client.buildGhostStorageProvider();
+        mChannelProvider = client.buildChannelProvider();
+        mExecutor = client.buildExecutor();
 
         loadUser();
 
@@ -149,7 +123,7 @@ public class AndroidClient implements User.StatusChangeListener {
 
     private void loadUser() {
         mUser = new User(this);
-        mAsyncAuthClient.restoreUser(mUser);
+        mAuthProvider.restoreUser(mUser);
         if (mUser.needsAuthorization()) {
             mUser.setStatus(User.Status.NOT_AUTHORIZED);
         }
@@ -172,14 +146,14 @@ public class AndroidClient implements User.StatusChangeListener {
     /**
      * Allow alternate storage mechanisms
      */
-    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema, PersistentStore.DataStore<T> storage)
+    public <T extends Syncable> Bucket<T> bucket(String bucketName, BucketSchema<T> schema, StorageProvider.BucketStore<T> storage)
     throws BucketNameInvalid {
 
         // initialize the bucket
         Bucket<T> bucket = new Bucket<T>(mExecutor, bucketName, schema, mUser, storage, mGhostStore);
 
         // initialize the communication method for the bucket
-        Bucket.Channel channel = mWebsocketManager.buildChannel(bucket);
+        Bucket.Channel channel = mChannelProvider.buildChannel(bucket);
 
         // tell the bucket about the channel
         bucket.setChannel(channel);
@@ -208,34 +182,8 @@ public class AndroidClient implements User.StatusChangeListener {
         return bucket(schema.getRemoteName(), schema);
     }
 
-    protected AsyncAuthClient buildAuthProvider() {
-        return new AsyncAuthClient(mContext, mAppId, mAppSecret, mHttpClient);
-    }
-
-    protected WebSocketManager buildChannelProvider() {
-        WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(mAppId, mSessionId, mHttpClient);
-        return new WebSocketManager(mExecutor, mAppId, mSessionId, new QueueSerializer(mDatabase), provider);
-    }
-
-    protected PersistentStore buildStorageProvider(){
-        return new PersistentStore(mDatabase);
-    }
-
-    protected GhostStore buildGhostStorageProvider(){
-        return new GhostStore(mDatabase);
-    }
-
-    protected Executor buildExecutor(){
-        int threads = Runtime.getRuntime().availableProcessors();
-        if (threads > 1) {
-            threads -= 1;
-        }
-        Log.d(TAG, "Using " + threads + " cores for executors");
-        return Executors.newFixedThreadPool(threads);
-    }
-
     public void setAuthProvider(String providerString){
-        mAsyncAuthClient.setAuthProvider(providerString);
+        mAuthProvider.setAuthProvider(providerString);
     }
 
     public User getUser() {
@@ -255,21 +203,21 @@ public class AndroidClient implements User.StatusChangeListener {
                 notifyOnUserCreatedListener(user);
             }
         };
-        mAsyncAuthClient.createUser(AuthUtil.makeAuthRequestBody(mUser), new AuthResponseHandler(mUser, wrapper));
+        mAuthProvider.createUser(AuthUtil.makeAuthRequestBody(mUser), new AuthResponseHandler(mUser, wrapper));
         return mUser;
     }
 
     public User authorizeUser(String email, String password, AuthResponseListener listener){
         mUser.setCredentials(email, password);
         AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener);
-        mAsyncAuthClient.authorizeUser(AuthUtil.makeAuthRequestBody(mUser), new AuthResponseHandler(mUser, wrapper));
+        mAuthProvider.authorizeUser(AuthUtil.makeAuthRequestBody(mUser), new AuthResponseHandler(mUser, wrapper));
         return mUser;
     }
 
     public void deauthorizeUser(){
         mUser.setAccessToken(null);
         mUser.setEmail(null);
-        mAsyncAuthClient.deauthorizeUser(mUser);
+        mAuthProvider.deauthorizeUser(mUser);
         mUser.setStatus(User.Status.NOT_AUTHORIZED);
     }
 
@@ -308,13 +256,89 @@ public class AndroidClient implements User.StatusChangeListener {
 
         @Override
         public void onSuccess(User user) {
-            mAsyncAuthClient.saveUser(user);
+            mAuthProvider.saveUser(user);
             mListener.onSuccess(user);
         }
 
         @Override
         public void onFailure(User user, AuthException error) {
             mListener.onFailure(user, error);
+        }
+
+    }
+
+    protected static class ClientImpl implements Client {
+
+        protected final Context mContext;
+        protected AsyncHttpClient mHttpClient = AsyncHttpClient.getDefaultInstance();
+
+        final protected SQLiteDatabase mDatabase;
+        final protected String mAppId;
+        final protected String mAppSecret;
+        protected final String mSessionId;
+        final private Executor mExecutor;
+
+        ClientImpl(Context context, String appId, String appSecret) {
+
+            mAppId = appId;
+            mAppSecret = appSecret;
+            mContext = context;
+
+            mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
+
+            SharedPreferences preferences = sharedPreferences(mContext);
+            String sessionToken = null;
+
+            if (preferences.contains(SESSION_ID_PREFERENCE)) {
+                try {
+                    sessionToken = preferences.getString(SESSION_ID_PREFERENCE, null);
+                } catch (ClassCastException e) {
+                    sessionToken = null;
+                }
+            }
+
+            if (sessionToken == null) {
+                sessionToken = Uuid.uuid(6);
+                preferences.edit().putString(SESSION_ID_PREFERENCE, sessionToken).commit();
+            }
+
+            mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
+
+            TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
+            mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
+
+            int threads = Runtime.getRuntime().availableProcessors();
+            if (threads > 1) {
+                threads -= 1;
+            }
+            Log.d(TAG, "Using " + threads + " cores for executors");
+            mExecutor = Executors.newFixedThreadPool(threads);
+        }
+
+        @Override
+        public AuthProvider buildAuthProvider() {
+            return new AsyncAuthClient(mContext, mAppId, mAppSecret, mHttpClient);
+        }
+
+        @Override
+        public ChannelProvider buildChannelProvider() {
+            WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(mAppId, mSessionId, mHttpClient);
+            return new WebSocketManager(mExecutor, mAppId, mSessionId, new QueueSerializer(mDatabase), provider);
+        }
+
+        @Override
+        public PersistentStore buildStorageProvider(){
+            return new PersistentStore(mDatabase);
+        }
+
+        @Override
+        public GhostStorageProvider buildGhostStorageProvider(){
+            return new GhostStore(mDatabase);
+        }
+
+        @Override
+        public Executor buildExecutor(){
+            return mExecutor;
         }
 
     }
