@@ -1,6 +1,8 @@
 package com.simperium.storage;
 
-import com.simperium.client.Bucket;
+import com.simperium.android.StorageProvider;
+import com.simperium.android.Bucket;
+
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Query;
