@@ -1,4 +1,4 @@
-package com.simperium;
+package com.simperium.android;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
