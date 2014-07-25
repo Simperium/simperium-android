@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 
 public class LoginActivity extends Activity {
 
-    public static final String TAG = "SimperiumLoginActivity";
+    public static final String TAG = "Simperium.LoginActivity";
 
     public static final String EXTRA_SIGN_IN_FIRST = "signInFirst";
     private static final String URL_FORGOT_PASSWORD = "https://simple-note.appspot.com/forgot/";
