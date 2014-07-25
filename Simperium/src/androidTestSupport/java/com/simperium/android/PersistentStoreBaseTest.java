@@ -16,12 +16,12 @@ import com.simperium.test.MockExecutor;
 
 import static com.simperium.TestHelpers.makeUser;
 
-public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTestCase2<LoginActivity> {
+public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTestCase2<TestActivity> {
 
     public static final String MASTER_TABLE = "sqlite_master";
     public static final String BUCKET_NAME="bucket";
 
-    protected LoginActivity mActivity;
+    protected TestActivity mActivity;
     
     protected PersistentStore mStore;
     protected StorageProvider.BucketStore<Note> mNoteStore;
@@ -34,7 +34,7 @@ public abstract class PersistentStoreBaseTest extends ActivityInstrumentationTes
     protected GhostStorageProvider mGhostStore;
 
     public PersistentStoreBaseTest() {
-        super(LoginActivity.class);
+        super(TestActivity.class);
     }
 
     @Override

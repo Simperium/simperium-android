@@ -12,7 +12,7 @@ import com.simperium.client.Change;
 import com.simperium.client.Channel.SerializedQueue;
 import com.simperium.test.MockBucket;
 
-public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginActivity> {
+public class QueueSerializerTest extends ActivityInstrumentationTestCase2<TestActivity> {
 
     protected QueueSerializer mSerializer;
     protected SQLiteDatabase mDatabase;
@@ -20,14 +20,14 @@ public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginA
     protected Bucket<BucketObject> mBucket;
 
     public QueueSerializerTest() {
-        super(LoginActivity.class);
+        super(TestActivity.class);
     }
 
     protected void setUp() throws Exception {
         mDatabase = getActivity().openOrCreateDatabase("queue-test", 0, null);
         mSerializer = new QueueSerializer(mDatabase);
         BucketObject.Schema schema = new BucketObject.Schema("mock-bucket");
-         mBucket = MockBucket.buildBucket(schema);
+        mBucket = MockBucket.buildBucket(schema);
     }
 
     public void testDatabaseSetup() throws Exception {
