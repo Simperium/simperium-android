@@ -15,7 +15,7 @@ public class RemoteChange {
 
     /**
      * Possible simperium response errors
-     * @see https://gist.github.com/beaucollins/6998802#error-responses
+     * see https://gist.github.com/beaucollins/6998802#error-responses
      */
     public enum ResponseCode {
         OK               (200),
