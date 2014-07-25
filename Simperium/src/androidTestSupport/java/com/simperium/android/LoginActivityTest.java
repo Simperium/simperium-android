@@ -57,9 +57,6 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
         return setupActivity();
     }
 
-    /**
-     * Configures a MockClient for use in testing
-     */
     public LoginActivity setupActivity(){
 
         setActivityInitialTouchMode(false);
