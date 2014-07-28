@@ -17,10 +17,11 @@ repositories {
 
 android {
   
-    defaultPublishConfig 'clientRelease'
-
     dependencies {
         compile(project(':simperium-core')) {
+            exclude group: 'org.json'
+        }
+        debugCompile(project(':simperium-test-util')) {
             exclude group: 'org.json'
         }
         compile 'com.koushikdutta.async:androidasync:1.+@jar'
@@ -40,13 +41,6 @@ android {
         // Calculating PIN for certificate: OU=Domain Control Validated, CN=*.simperium.com
         // Pin Value: e25695097d04927c9d90206333a687a7b1f99708
         buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
-    }
-
-    productFlavors {
-        // client is the main production build
-        client
-        // support build is for running tests and includes mock code
-        support
     }
 
 }

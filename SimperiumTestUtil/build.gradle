@@ -1,16 +1,12 @@
 
-apply plugin: 'java'
-
-group 'com.simperium'
-
 repositories {
     mavenCentral()
 }
 
+apply plugin: 'java'
+
 dependencies {
-    compile 'org.json:json:20140107@jar'
-    testCompile 'junit:junit:3.+'
-    testCompile project(':simperium-test-util')
+    compile project(':simperium-core')
 }
 
 task javadocJar(type: Jar) {
@@ -31,44 +27,6 @@ signing {
     sign configurations.archives
 }
 
-task versionConfig(group: "build", description: "Generate version class") {
-    def dir = "${buildDir}/generated/source/version"
-    def file = new File(dir, "com/simperium/Version.java")
-
-    sourceSets.main.java.srcDir dir
-
-    doLast {
-        def describe = gitDescribe()
-
-        logger.info "Version: ${describe}"
-
-        file.getParentFile().mkdirs()
-        def writer = new FileWriter(file)
-        writer.write("""/* auto-generated file do not modify */
-package com.simperium;
-
-public final class Version {
-
-    public static final String LIBRARY_NAME = "java";
-
-    public static final String NAME = "java-${project.version}";
-
-    /* project.version */
-    public static final String NUMBER = "${project.version}";
-
-    /* git rev-parse --short --verify HEAD */
-    public static final String BUILD = "${gitHash()}";
-
-    /* git describe --always --dirty=-dirty */
-    public static final String DESCRIBE = "${gitDescribe()}";
-}
-""")
-        writer.close()
-    }
-}
-
-tasks.compileJava.dependsOn versionConfig
-
 uploadArchives {
     configuration = configurations.archives
     repositories {
@@ -87,9 +45,9 @@ uploadArchives {
 
 
             pom.project {
-                name "Simperium Library"
+                name "Simperium Test Support Library"
 
-                description 'Library for building applications using Simperium'
+                description 'Contains classes for mocking components of Simperium.'
 
                 url 'https://github.com/simperium/simperium-android'
                 scm {
