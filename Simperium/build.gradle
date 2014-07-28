@@ -7,12 +7,8 @@ buildscript {
 }
 
 apply plugin: 'android-library'
-apply plugin: 'maven'
-apply plugin: 'signing'
 
-version gitVersion()
-
-group "com.simperium"
+group "com.simperium.android"
 
 repositories {
     mavenCentral()
@@ -21,9 +17,13 @@ repositories {
 
 android {
   
-    defaultPublishConfig 'clientRelease'
-
     dependencies {
+        compile(project(':simperium-core')) {
+            exclude group: 'org.json'
+        }
+        debugCompile(project(':simperium-test-util')) {
+            exclude group: 'org.json'
+        }
         compile 'com.koushikdutta.async:androidasync:1.+@jar'
         compile 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
     }
@@ -43,52 +43,7 @@ android {
         buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
     }
 
-    productFlavors {
-        // client is the main production build
-        client
-        // support build is for running tests and includes mock code
-        support
-    }
-
 }
-
-task versionConfig(group: "build", description: "Generate version class") {
-    def dir = "${buildDir}/generated/source/version"
-    def file = new File(dir, "com/simperium/Version.java")
-
-    android.sourceSets.main.java.srcDir dir
-
-    doLast {
-        def describe = gitDescribe()
-
-        logger.info "Version: ${describe}"
-
-        file.getParentFile().mkdirs()
-        def writer = new FileWriter(file)
-        writer.write("""/* auto-generated file do not modify */
-package com.simperium;
-
-public final class Version {
-
-    public static final String LIBRARY_NAME = "android";
-
-    public static final String NAME = "android-${project.version}";
-
-    /* project.version */
-    public static final String NUMBER = "${project.version}";
-
-    /* git rev-parse --short --verify HEAD */
-    public static final String BUILD = "${gitHash()}";
-
-    /* git describe --always --dirty=-dirty */
-    public static final String DESCRIBE = "${gitDescribe()}";
-}
-""")
-        writer.close()
-    }
-}
-
-tasks.preBuild.dependsOn versionConfig
 
 afterEvaluate {
 
@@ -121,9 +76,6 @@ afterEvaluate {
 
                 pom.project {
                     name "Simperium Android Library"
-
-                    groupId 'com.simperium.android'
-                    artifactId 'simperium'
 
                     packaging 'aar'
                     description 'Android Library for building applications using Simperium'

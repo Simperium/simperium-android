@@ -74,7 +74,7 @@ public class AsyncAuthClient implements AuthProvider {
     // save this user
     @Override
     public void saveUser(User user) {
-        SharedPreferences.Editor editor = AndroidClient.sharedPreferences(mContext).edit();
+        SharedPreferences.Editor editor = Simperium.sharedPreferences(mContext).edit();
         editor.putString(USER_ACCESS_TOKEN_PREFERENCE, user.getAccessToken());
         editor.putString(USER_EMAIL_PREFERENCE, user.getEmail());
         editor.commit();
@@ -83,7 +83,7 @@ public class AsyncAuthClient implements AuthProvider {
     // restore account credentials between sessions
     @Override
     public void restoreUser(User user) {
-        SharedPreferences preferences = AndroidClient.sharedPreferences(mContext);
+        SharedPreferences preferences = Simperium.sharedPreferences(mContext);
         user.setAccessToken(preferences.getString(USER_ACCESS_TOKEN_PREFERENCE, null));
         user.setEmail(preferences.getString(USER_EMAIL_PREFERENCE, null));
     }
@@ -91,7 +91,7 @@ public class AsyncAuthClient implements AuthProvider {
     // clear user token/email
     @Override
     public void deauthorizeUser(User user) {
-        SharedPreferences.Editor editor = AndroidClient.sharedPreferences(mContext).edit();
+        SharedPreferences.Editor editor = Simperium.sharedPreferences(mContext).edit();
         editor.remove(USER_ACCESS_TOKEN_PREFERENCE);
         editor.remove(USER_EMAIL_PREFERENCE);
         editor.commit();

@@ -1,0 +1,120 @@
+
+apply plugin: 'java'
+
+group 'com.simperium'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.json:json:20140107@jar'
+    testCompile 'junit:junit:3.+'
+    testCompile project(':simperium-test-util')
+}
+
+task javadocJar(type: Jar) {
+    classifier 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+task versionConfig(group: "build", description: "Generate version class") {
+    def dir = "${buildDir}/generated/source/version"
+    def file = new File(dir, "com/simperium/Version.java")
+
+    sourceSets.main.java.srcDir dir
+
+    doLast {
+        def describe = gitDescribe()
+
+        logger.info "Version: ${describe}"
+
+        file.getParentFile().mkdirs()
+        def writer = new FileWriter(file)
+        writer.write("""/* auto-generated file do not modify */
+package com.simperium;
+
+public final class Version {
+
+    public static final String LIBRARY_NAME = "java";
+
+    public static final String NAME = "java-${project.version}";
+
+    /* project.version */
+    public static final String NUMBER = "${project.version}";
+
+    /* git rev-parse --short --verify HEAD */
+    public static final String BUILD = "${gitHash()}";
+
+    /* git describe --always --dirty=-dirty */
+    public static final String DESCRIBE = "${gitDescribe()}";
+}
+""")
+        writer.close()
+    }
+}
+
+tasks.compileJava.dependsOn versionConfig
+
+uploadArchives {
+    configuration = configurations.archives
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            if (project.hasProperty("ossrhUsername") && project.hasProperty("ossrhPassword")) {
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                  authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                  authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+            }
+
+
+            pom.project {
+                name "Simperium Library"
+
+                description 'Library for building applications using Simperium'
+
+                url 'https://github.com/simperium/simperium-android'
+                scm {
+                    connection 'scm:git:https://github.com/simperium/simperium-android.git'
+                    developerConnection 'scm:git:https://github.com/simperium/simperium-android.git'
+                    url 'https://github.com/simperium/simperium-android.git'
+                }
+
+                licenses {
+                    license {
+                        name 'The MIT License (MIT)'
+                        url 'http://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+
+                    developer {
+                        id 'beaucollins'
+                        name 'Robert Collins'
+                        email 'robert@automattic.com'
+                    }
+
+                }
+            }
+        }
+    }
+}

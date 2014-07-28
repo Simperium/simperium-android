@@ -30,10 +30,10 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
     @Override
     public void connect(final WebSocketManager.ConnectionListener listener) {
 
-        Uri uri = Uri.parse(String.format(AndroidClient.WEBSOCKET_URL, mAppId));
+        Uri uri = Uri.parse(String.format(Simperium.WEBSOCKET_URL, mAppId));
 
         AsyncHttpRequest request = new AsyncHttpGet(uri);
-        request.setHeader(AndroidClient.USER_AGENT_HEADER, mSessionId);
+        request.setHeader(Simperium.USER_AGENT_HEADER, mSessionId);
 
         // Protocol is null
         mAsyncClient.websocket(request, null, new WebSocketConnectCallback() {

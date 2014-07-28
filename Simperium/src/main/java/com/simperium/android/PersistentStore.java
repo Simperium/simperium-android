@@ -8,15 +8,12 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.simperium.BuildConfig;
-import com.simperium.client.Bucket;
 import com.simperium.client.BucketObjectMissingException;
 import com.simperium.client.BucketSchema;
 import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.FullTextIndex;
 import com.simperium.client.Query;
 import com.simperium.client.Syncable;
-import com.simperium.storage.StorageProvider;
-import com.simperium.util.Logger;
 
 import org.json.JSONObject;
 
@@ -49,7 +46,7 @@ public class PersistentStore implements StorageProvider {
         return new DataStore<T>(bucketName, schema);
     }
 
-    protected class DataStore<T extends Syncable> implements BucketStore<T> {
+    protected class DataStore<T extends Syncable> implements StorageProvider.BucketStore<T> {
 
         final protected BucketSchema<T> mSchema;
         final protected String mBucketName;
@@ -125,7 +122,7 @@ public class PersistentStore implements StorageProvider {
          */
         @Override
         public T get(String key) throws BucketObjectMissingException {
-            Bucket.ObjectCursor<T> cursor = buildCursor(mSchema, queryObject(mBucketName, key));
+            ObjectCursor<T> cursor = buildCursor(mSchema, queryObject(mBucketName, key));
             if (cursor.getCount() == 0) {
                 cursor.close();
                 throw(new BucketObjectMissingException());
@@ -356,12 +353,12 @@ public class PersistentStore implements StorageProvider {
                         Thread.sleep(1);
                     }
                 } catch (InterruptedException e) {
-                    Logger.log(TAG, String.format("Indexing interrupted %s", bucketName), e);
+                    if (BuildConfig.DEBUG) Log.e(TAG, "Indexing interrupted " + bucketName, e);
                     mDatabase.delete(REINDEX_QUEUE_TABLE, conditions, args);
                 } catch (SQLException e) {
-                    Logger.log(TAG, String.format("SQL Error %s", bucketName), e);
+                    Log.e(TAG, "SQL Error " + bucketName, e);
                 }
-                if (BuildConfig.DEBUG) Logger.log(TAG, String.format("Done indexing %s", bucketName));
+                if (BuildConfig.DEBUG) Log.d(TAG, "Done indexing " + bucketName);
                 mBucket.notifyOnNetworkChangeListeners(Bucket.ChangeType.INDEX);
             }
 
@@ -369,7 +366,7 @@ public class PersistentStore implements StorageProvider {
 
     }
 
-    private class ObjectCursor<T extends Syncable> extends CursorWrapper implements Bucket.ObjectCursor<T> {
+    class ObjectCursor<T extends Syncable> extends CursorWrapper implements Bucket.ObjectCursor<T> {
         
         private BucketSchema<T> mSchema;
 
@@ -401,7 +398,7 @@ public class PersistentStore implements StorageProvider {
 
     }
 
-    private <T extends Syncable> Bucket.ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor) {
+    private <T extends Syncable> ObjectCursor<T> buildCursor(BucketSchema<T> schema, Cursor cursor) {
         return new ObjectCursor<T>(schema, cursor);
     }
     

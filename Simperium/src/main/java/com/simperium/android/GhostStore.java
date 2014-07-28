@@ -3,16 +3,18 @@ package com.simperium.android;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Ghost;
 import com.simperium.client.GhostMissingException;
 import com.simperium.client.GhostStorageProvider;
-import com.simperium.util.Logger;
 
 import org.json.JSONObject;
 
 public class GhostStore implements GhostStorageProvider {
+
+    public static final String TAG = "Simperium.GhostStore";
 
     private static final String GHOSTS_TABLE_NAME="ghosts";
     private static final String VERSIONS_TABLE_NAME="changeVersions";
@@ -160,7 +162,7 @@ public class GhostStore implements GhostStorageProvider {
         try {
             return new JSONObject(data);
         } catch (org.json.JSONException e) {
-            Logger.log(String.format("Failed to deserialize ghost data %s", data), e);
+            Log.e(TAG, "Failed to deserialize ghost data %s", e);
             return null;
         }
     }

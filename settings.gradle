@@ -1,1 +1,6 @@
+include ':SimperiumCore'
+include ':SimperiumTestUtil'
 include ':Simperium'
+
+project(':SimperiumCore').name = 'simperium-core'
+project(':SimperiumTestUtil').name = 'simperium-test-util'

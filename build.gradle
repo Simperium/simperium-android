@@ -1,4 +1,12 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+allprojects {
+    version gitVersion()
+
+    apply plugin: 'maven'
+    apply plugin: 'signing'
+}
+
 def gitHash() {
     try {
         def code = new ByteArrayOutputStream()

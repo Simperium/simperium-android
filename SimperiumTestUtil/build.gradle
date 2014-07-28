@@ -1,0 +1,78 @@
+
+repositories {
+    mavenCentral()
+}
+
+apply plugin: 'java'
+
+dependencies {
+    compile project(':simperium-core')
+}
+
+task javadocJar(type: Jar) {
+    classifier 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+uploadArchives {
+    configuration = configurations.archives
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            if (project.hasProperty("ossrhUsername") && project.hasProperty("ossrhPassword")) {
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                  authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                  authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+            }
+
+
+            pom.project {
+                name "Simperium Test Support Library"
+
+                description 'Contains classes for mocking components of Simperium.'
+
+                url 'https://github.com/simperium/simperium-android'
+                scm {
+                    connection 'scm:git:https://github.com/simperium/simperium-android.git'
+                    developerConnection 'scm:git:https://github.com/simperium/simperium-android.git'
+                    url 'https://github.com/simperium/simperium-android.git'
+                }
+
+                licenses {
+                    license {
+                        name 'The MIT License (MIT)'
+                        url 'http://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+
+                    developer {
+                        id 'beaucollins'
+                        name 'Robert Collins'
+                        email 'robert@automattic.com'
+                    }
+
+                }
+            }
+        }
+    }
+}

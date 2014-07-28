@@ -17,23 +17,23 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.util.Log;
 
 import com.simperium.BuildConfig;
 import com.simperium.R;
-import com.simperium.Simperium;
-import com.simperium.SimperiumNotInitializedException;
+import com.simperium.SimperiumException;
+import com.simperium.android.AlertUtil;
+import com.simperium.android.Simperium;
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.User;
-import com.simperium.util.AlertUtil;
-import com.simperium.util.Logger;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LoginActivity extends Activity {
 
-    public static final String TAG = "SimperiumLoginActivity";
+    public static final String TAG = "Simperium.LoginActivity";
 
     public static final String EXTRA_SIGN_IN_FIRST = "signInFirst";
     private static final String URL_FORGOT_PASSWORD = "https://simple-note.appspot.com/forgot/";
@@ -57,7 +57,6 @@ public class LoginActivity extends Activity {
 
     private Simperium mSimperium;
 
-
     protected ProgressDialog mProgressDialog;
 
     public void setSimperium(Simperium simperium){
@@ -73,8 +72,8 @@ public class LoginActivity extends Activity {
 
         try {
             setSimperium(Simperium.getInstance());
-        } catch (SimperiumNotInitializedException e) {
-            Logger.log("Can't create the LoginActivity", e);
+        } catch (SimperiumException e) {
+            Log.e(TAG, "Simperium not initialized");
         }
 
         mSystemService = (ConnectivityManager) getApplicationContext()
