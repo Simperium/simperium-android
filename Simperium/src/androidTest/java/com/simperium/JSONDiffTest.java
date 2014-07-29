@@ -31,8 +31,6 @@ public class JSONDiffTest extends TestCase {
         String origin = new StringBuffer("This ").append(EmojiUtil.PILE_OF_POO).append(" stinks").toString();
         String emoji = "This stinks less";
 
-        assertEquals(14, origin.length());
-
         JSONObject diff = JSONDiff.diff(origin, emoji);
 
         assertEquals("=5\t-3\t=6\t+ less", diff.getString("v"));
