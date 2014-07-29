@@ -297,7 +297,7 @@ public class JSONDiffTest extends TestCase {
         operations.put("2", op(JSONDiff.OPERATION_REMOVE));
         JSONObject expected = list_op(operations);
         assertEquals(expected, JSONDiff.diff(origin,target));
-        assertEquals(target, JSONDiff.apply((Object) origin, expected));
+        assertEquals(target.toString(), JSONDiff.apply((Object) origin, expected).toString());
     }
 
     public void testAddArrayItemsThatAreSame()
@@ -309,7 +309,7 @@ public class JSONDiffTest extends TestCase {
         operations.put("2", op(JSONDiff.OPERATION_INSERT, "a"));
         JSONObject expected = list_op(operations);
         assertEquals(expected, JSONDiff.diff(origin,target));
-        assertEquals(target, JSONDiff.apply((Object) origin, expected));
+        assertEquals(target.toString(), JSONDiff.apply((Object) origin, expected).toString());
     }
 
     public void testObjectEqualityWithListsAndUnsortedKeys()
