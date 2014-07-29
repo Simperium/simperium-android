@@ -19,4 +19,4 @@ before_script:
   - adb devices
   - adb logcat -s TestRunner &
 
-script: ./gradlew connectedCheck
+script: ./gradlew check connectedCheck
