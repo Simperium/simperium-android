@@ -79,7 +79,7 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
 
         String[] columns = new String[]{"simperiumKey", "object"};
         List<T> objects;
-        private int mPosition = 0;
+        private int mPosition = -1;
 
         MemoryCursor() {
             objects = new ArrayList<T>(MockBucketStore.this.objects.values());
@@ -106,11 +106,12 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
         }
 
         public boolean moveToNext() {
-            if (mPosition + 1 >= objects.size()) {
-                return false;
-            }
 
             mPosition ++;
+
+            if (mPosition >= objects.size()) {
+                return false;
+            }
 
             return true;
         }
