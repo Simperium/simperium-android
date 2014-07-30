@@ -96,6 +96,13 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
 
                 });
 
+                webSocket.setClosedCallback(new CompletedCallback() {
+                    @Override
+                    public void onCompleted(Exception ex) {
+                        listener.onDisconnect(ex);
+                    }
+                });
+
                 listener.onConnect(connection);
 
             }
