@@ -93,6 +93,8 @@ public class PersistentStore implements StorageProvider {
             } else {
                 mDatabase.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{mBucketName, key});
             }
+
+            cursor.close();
             index(object, indexes);
             if (BuildConfig.DEBUG) Log.d(TAG, "Saved indexes for " + object);
         }
@@ -348,7 +350,10 @@ public class PersistentStore implements StorageProvider {
                             if (BuildConfig.DEBUG) {
                                 Log.d(TAG, "Reindexer could not find object `" + key + "` in bucket " + mBucket.getName());
                             }
+                        } finally {
+                            next.close();
                         }
+
                         if (BuildConfig.DEBUG) {
                             Log.d(TAG, "Reindexed `" + bucketName + "." + key + "`");
                         }

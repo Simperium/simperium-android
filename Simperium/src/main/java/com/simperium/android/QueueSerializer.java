@@ -103,6 +103,8 @@ public class QueueSerializer implements Channel.Serializer {
         } catch (IllegalArgumentException e) {
             Logger.log(TAG, "Could not restore queue, invalid table columns", e);
             return null;
+        } finally {
+            items.close();
         }
 
         return queue;
