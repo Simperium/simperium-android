@@ -478,7 +478,6 @@ public class PersistentStore implements StorageProvider {
             List<Query.Field> fields = mQuery.getFields();
             String bucketName = mDataStore.mBucketName;
             String ftName = mDataStore.getFullTextTableName();
-            Boolean useDistinct = false;
             Boolean usesFullText = false;
 
             mSelection = new StringBuilder("objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
