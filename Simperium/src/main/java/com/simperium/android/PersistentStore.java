@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.util.Log;
 
 import com.simperium.BuildConfig;
@@ -482,8 +483,10 @@ public class PersistentStore implements StorageProvider {
             List<Query.Field> fields = mQuery.getFields();
             String bucketName = mDataStore.mBucketName;
             String ftName = mDataStore.getFullTextTableName();
+            Boolean usesFullText = false;
 
-            mSelection = new StringBuilder("SELECT DISTINCT objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
+            mSelection = new StringBuilder("objects.rowid AS `_id`, objects.bucket || objects.key AS `key`, objects.key as `object_key`, objects.data as `object_data` ");
+
             StringBuilder filters = new StringBuilder();
             StringBuilder where = new StringBuilder("WHERE objects.bucket = ?");
 
@@ -511,6 +514,7 @@ public class PersistentStore implements StorageProvider {
                         fullTextFilter = String.format(Locale.US, " JOIN `%s` ON objects.key = `%s`.`key` ", ftName, ftName);
 
                     includedFullText = true;
+                    usesFullText = true;
                     // add the condition and argument to the where statement
                     String field = key == null ? ftName : String.format(Locale.US, "`%s`.`%s`", ftName, condition.getKey());
                     where.append(String.format(Locale.US, " AND ( %s %s ? )", field, condition.getComparisonType()));
@@ -574,9 +578,11 @@ public class PersistentStore implements StorageProvider {
                     Query.FullTextSnippet snippet = (Query.FullTextSnippet) field;
                     int ftColumnIndex = mDataStore.mSchema.getFullTextIndex().getColumnIndex(snippet.getColumnName());
                     mSelection.append(String.format(Locale.US, ", snippet(`%s`, '<match>', '</match>', '\u2026', %d) AS %s", ftName, ftColumnIndex, field.getName()));
+                    usesFullText = true;
                     continue;
                 } else if (field instanceof Query.FullTextOffsets) {
                     mSelection.append(String.format(", offsets(`%s`) AS %s", ftName, field.getName()));
+                    usesFullText = true;
                     continue;
                 }
 
@@ -614,10 +620,25 @@ public class PersistentStore implements StorageProvider {
             } else {
                 order.delete(0, order.length());
             }
-            mStatement = String.format(Locale.US, " FROM `objects` %s %s %s", filters.toString(), where.toString(), order.toString());
+
+
+            mSelection.insert(0, (supportsDistinct(usesFullText) ? "SELECT DISTINCT " : "SELECT "));
+            mStatement = " FROM `objects` " + filters.toString() + " " + where.toString() + " " + order.toString();
             names.addAll(replacements);
             mArgs = names.toArray(new String[names.size()]);
         }
+
+    }
+
+    // See issue #150, Android < 15 can't use distinct in full text queries
+    public static boolean supportsDistinct(boolean fullTextQuery) {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            return true;
+        }
+
+        // Otherwise only use distinct if it's not a full text query
+        return !fullTextQuery;
 
     }
 
