@@ -48,7 +48,9 @@ public class AndroidClient implements ClientFactory {
             threads -= 1;
         }
 
-        Log.d(TAG, String.format("Using %d cores for executors", threads));
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, String.format("Using %d cores for executors", threads));
+        }
         mExecutor = Executors.newFixedThreadPool(threads);
         mContext = context;
         mDatabase = mContext.openOrCreateDatabase(DEFAULT_DATABASE_NAME, 0, null);
@@ -95,7 +97,7 @@ public class AndroidClient implements ClientFactory {
     public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
         WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(appId, mSessionId, mHttpClient);
-        return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), provider);
+        return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), provider, mContext);
     }
 
     @Override

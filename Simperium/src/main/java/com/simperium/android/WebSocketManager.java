@@ -24,6 +24,12 @@ import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
 import com.simperium.util.Logger;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.Log;
 
 public class WebSocketManager implements ChannelProvider, Channel.OnMessageListener {
@@ -55,7 +61,6 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
 
     final protected ConnectionProvider mConnectionProvider;
     protected Connection mConnection = new NullConnection();
-    protected String mSocketURI;
     private String mAppId, mSessionId;
     private boolean mReconnect = true;
     private HashMap<Channel,Integer> mChannelIndex = new HashMap<Channel,Integer>();
@@ -72,14 +77,41 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
 
     final protected Channel.Serializer mSerializer;
     final protected Executor mExecutor;
+    final protected ConnectivityManager mConnectivityManager;
 
     public WebSocketManager(Executor executor, String appId, String sessionId, Channel.Serializer channelSerializer,
         ConnectionProvider connectionProvider) {
+        this(executor, appId, sessionId, channelSerializer, connectionProvider, null);
+    }
+
+    public WebSocketManager(Executor executor, String appId, String sessionId, Channel.Serializer channelSerializer,
+        ConnectionProvider connectionProvider, Context context) {
         mExecutor = executor;
         mAppId = appId;
         mSessionId = sessionId;
         mSerializer = channelSerializer;
         mConnectionProvider = connectionProvider;
+
+        if (context != null) {
+            mConnectivityManager = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+            context.registerReceiver(new BroadcastReceiver() {
+
+                @Override
+                public void onReceive(Context context, Intent intent) {
+
+                    boolean noConnection = intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY, false);
+
+                    if (!noConnection && mReconnect) {
+                        connect();
+                    }
+                }
+
+            }, filter);
+        } else {
+            mConnectivityManager = null;
+        }
+
     }
 
     /**
@@ -136,38 +168,57 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     public void connect() {
         // if we have channels, then connect, otherwise wait for a channel
         cancelReconnect();
-        Log.d(TAG, "Asked to connect");
-        if (!isConnected() && !isConnecting() && !mChannels.isEmpty()) {
-            Log.d(TAG, "Connecting");
-            Logger.log(TAG, String.format(Locale.US, "Connecting to %s", mSocketURI));
-            setConnectionStatus(ConnectionStatus.CONNECTING);
-            mReconnect = true;
 
-            mConnectionProvider.connect(new ConnectionListener() {
-
-                public void onError(Exception exception) {
-                    mConnection = new NullConnection();
-                    WebSocketManager.this.onError(exception);
-                }
-
-                public void onConnect(Connection connection) {
-                    mConnection = connection;
-                    WebSocketManager.this.onConnect();
-                }
-
-                public void onMessage(String message) {
-                    WebSocketManager.this.onMessage(message);
-                }
-
-                public void onDisconnect(Exception exception) {
-                    mConnection = new NullConnection();
-                    WebSocketManager.this.onDisconnect(exception);
-                }
-
-
-            });
-
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Asked to connect");
         }
+
+        if (isConnected() || isConnecting() || mChannels.isEmpty()) {
+            // do not attempt to connect, we don't need to
+            return;
+        }
+
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Connecting");
+        }
+
+        Logger.log(TAG, "Connecting to simperium");
+        setConnectionStatus(ConnectionStatus.CONNECTING);
+        mReconnect = true;
+
+        // if there is no network available, do not attempt to connect
+        if (!isNetworkConnected()) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Network Manager reports no connection available. Wait for network.");
+            }
+            setConnectionStatus(ConnectionStatus.DISCONNECTED);
+            return;
+        }
+
+        mConnectionProvider.connect(new ConnectionListener() {
+
+            public void onError(Exception exception) {
+                mConnection = new NullConnection();
+                WebSocketManager.this.onError(exception);
+            }
+
+            public void onConnect(Connection connection) {
+                mConnection = connection;
+                WebSocketManager.this.onConnect();
+            }
+
+            public void onMessage(String message) {
+                WebSocketManager.this.onMessage(message);
+            }
+
+            public void onDisconnect(Exception exception) {
+                mConnection = new NullConnection();
+                WebSocketManager.this.onDisconnect(exception);
+            }
+
+
+        });
+
     }
 
     protected void send(String message) {
@@ -380,6 +431,32 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         if (java.io.IOException.class.isAssignableFrom(error.getClass()) && mReconnect) {
             scheduleReconnect();
         }
+    }
+
+    private boolean isNetworkConnected() {
+
+        // if there is no connectivity manager, assume network is avilable
+        if (mConnectivityManager == null) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "No network manager available");
+            }
+            return true;
+        }
+
+        final NetworkInfo networkInfo = mConnectivityManager.getActiveNetworkInfo();
+
+        if (networkInfo == null) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "No network available");
+            }
+            return false;
+        }
+
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Network info available: " + networkInfo);
+        }
+
+        return networkInfo.isConnected();
     }
 
     private class NullConnection implements Connection {
