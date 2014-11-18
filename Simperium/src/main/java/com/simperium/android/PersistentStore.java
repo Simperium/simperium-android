@@ -82,12 +82,23 @@ public class PersistentStore implements StorageProvider {
          */
         @Override
         public void save(T object, List<Index> indexes) {
+
+            // Concurrencey protection synchronizing on diffalbe value
+            // real fix will be using a copy of an Syncable's data instead
+            // of accessing the syncable. See #158 and #159
+            JSONObject data = object.getDiffableValue();
+
+            String raw = "";
+            synchronized (data) {
+                raw = data.toString();
+            }
+
             String key = object.getSimperiumKey();
             mReindexer.skip(key);
             ContentValues values = new ContentValues();
             values.put("bucket", mBucketName);
             values.put("key", key);
-            values.put("data", object.getDiffableValue().toString());
+            values.put("data", raw);
             Cursor cursor = queryObject(mBucketName, key);
             if (cursor.getCount() == 0) {
                 mDatabase.insert(OBJECTS_TABLE, null, values);

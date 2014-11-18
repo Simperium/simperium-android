@@ -36,7 +36,13 @@ public abstract class Syncable implements Diffable {
      * Does the local object have modifications?
      */
     public Boolean isModified() {
-        return !JSONDiff.equals(getDiffableValue(), mGhost.getDiffableValue());
+
+        // Protected against Concurrent modification exception: see #158
+        JSONObject value = getDiffableValue();
+
+        synchronized (value) {
+            return !JSONDiff.equals(value, mGhost.getDiffableValue());
+        }
     }
 
     public String getBucketName() {
