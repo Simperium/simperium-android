@@ -314,11 +314,17 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         mReconnectTimer = new Timer();
         // exponential backoff
         long retryIn = nextReconnectInterval();
-        mReconnectTimer.schedule(new TimerTask() {
-            public void run() {
-                connect();
-            }
-        }, retryIn);
+        try {
+            mReconnectTimer.schedule(new TimerTask() {
+                public void run() {
+                    connect();
+                }
+            }, retryIn);
+        } catch (IllegalStateException e) {
+            Logger.log(TAG, "Unable to schedule timer", e);
+            return;
+        }
+
         Logger.log(String.format(Locale.US, "Retrying in %d", retryIn));
     }
 
