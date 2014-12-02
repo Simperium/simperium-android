@@ -132,7 +132,7 @@ public class BucketListenerTest extends TestCase {
         }
 
         @Override
-        public void onChange(Bucket<Note> bucket, Bucket.ChangeType type, String key){
+        public void onNetworkChange(Bucket<Note> bucket, Bucket.ChangeType type, String key){
             changed = true;
         }
 
