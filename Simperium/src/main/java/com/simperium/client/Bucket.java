@@ -62,7 +62,7 @@ public class Bucket<T extends Syncable> {
     }
 
     public interface OnNetworkChangeListener<T extends Syncable> {
-        void onChange(Bucket<T> bucket, ChangeType type, String key);
+        void onNetworkChange(Bucket<T> bucket, ChangeType type, String key);
     }
 
     public interface Listener<T extends Syncable> extends
@@ -661,9 +661,9 @@ public class Bucket<T extends Syncable> {
         while(iterator.hasNext()) {
             OnNetworkChangeListener listener = iterator.next();
             try {
-                listener.onChange(this, type, key);
+                listener.onNetworkChange(this, type, key);
             } catch(Exception e) {
-                Logger.log(TAG, String.format("Listener failed onChange %s", listener), e);
+                Logger.log(TAG, String.format("Listener failed onNetworkChange %s", listener), e);
             }
         }
     }
