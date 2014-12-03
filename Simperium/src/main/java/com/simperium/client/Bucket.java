@@ -225,12 +225,12 @@ public class Bucket<T extends Syncable> {
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
+                mStorage.delete(object);
+
                 if (isLocal) {
                     mChannel.queueLocalDeletion(object);
                     notifyOnDeleteListeners(object);
                 }
-
-                mStorage.delete(object);
             }
         });
     }
