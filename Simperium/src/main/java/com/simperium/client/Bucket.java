@@ -72,7 +72,7 @@ public class Bucket<T extends Syncable> {
     }
 
     public enum ChangeType {
-        REMOVE, MODIFY, INDEX, RESET
+        REMOVE, MODIFY, INDEX, RESET, INSERT
     }
 
     public static final String TAG="Simperium.Bucket";
@@ -834,7 +834,16 @@ public class Bucket<T extends Syncable> {
         }
         setChangeVersion(change.getChangeVersion());
         change.setApplied();
-        ChangeType type = change.isRemoveOperation() ? ChangeType.REMOVE : ChangeType.MODIFY;
+
+        ChangeType type;
+        if (change.isAddOperation()) {
+            type = ChangeType.INSERT;
+        } else if (change.isRemoveOperation()) {
+            type = ChangeType.REMOVE;
+        } else {
+            type = ChangeType.MODIFY;
+        }
+
         notifyOnNetworkChangeListeners(type, change.getKey());
         return updatedGhost;
     }
