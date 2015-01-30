@@ -350,8 +350,9 @@ public class JSONDiffTest extends TestCase {
         JSONObject diff_2 = JSONDiff.diff(origin, target);
 
         JSONObject transformed = JSONDiff.transform(diff_2.getJSONObject("v"), diff_1.getJSONObject("v"), origin);
-        assertEquals(target, JSONDiff.apply(JSONDiff.apply(origin, diff_1.getJSONObject("v")), transformed));
-
+        JSONObject applied = JSONDiff.apply(JSONDiff.apply(origin, diff_1.getJSONObject("v")), transformed);
+        assertEquals(target.get("b"), applied.get("b"));
+        assertEquals(target.get("a"), applied.get("a"));
     }
 
     public void testTransformBothAdd()
