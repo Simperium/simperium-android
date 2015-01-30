@@ -8,8 +8,6 @@ import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpPost;
 import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.koushikdutta.async.http.body.JSONObjectBody;
-import com.koushikdutta.async.http.libcore.RawHeaders;
-import com.koushikdutta.async.http.libcore.ResponseHeaders;
 import com.koushikdutta.async.parser.JSONObjectParser;
 import com.simperium.BuildConfig;
 import com.simperium.client.AuthException;
@@ -118,9 +116,7 @@ public class AsyncAuthClient implements AuthProvider {
                 int responseCode = AuthException.ERROR_STATUS_CODE;
 
                 if (source != null) {
-                    ResponseHeaders headers = source.getHeaders();
-                    RawHeaders rawHeaders = headers.getHeaders();
-                    responseCode = rawHeaders.getResponseCode();
+                    responseCode = source.code();
                 }
 
                 if (e != null) {
