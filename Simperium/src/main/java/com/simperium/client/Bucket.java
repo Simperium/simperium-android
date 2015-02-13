@@ -33,8 +33,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -96,6 +98,8 @@ public class Bucket<T extends Syncable> {
     private BucketSchema<T> mSchema;
     private GhostStorageProvider mGhostStore;
     final private Executor mExecutor;
+
+    private Map<String,T> mBackupStore = new HashMap<>();
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
@@ -193,6 +197,11 @@ public class Bucket<T extends Syncable> {
             public void run() {
                 Boolean modified = object.isModified();
                 mStorage.save(object, mSchema.indexesFor(object));
+
+                // TODO: Modify to only clear the HashMap if there are no pending changes for any object in the bucket
+                mBackupStore.clear();
+                // Save a copy in case the object is removed from storage before this modification has been processed
+                mBackupStore.put(object.getSimperiumKey(), object);
 
                 mChannel.queueLocalChange(object);
 
@@ -365,6 +374,25 @@ public class Bucket<T extends Syncable> {
         Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
+        return object;
+    }
+
+    /**
+     * Get an object by its key, checking the backup store if the object has been removed from the persistent store
+     */
+    public T getObjectOrBackup(String key) throws BucketObjectMissingException {
+        T object;
+        try {
+            object = get(key);
+        } catch (BucketObjectMissingException e) {
+            // If the object has been removed from the persistent store, check the backup store
+            object = mBackupStore.get(key);
+            if (object == null) {
+                throw(new BucketObjectMissingException(String.format(
+                        "Storage provider for bucket:%s did not have object %s and there was no stored backup",
+                        getName(), key)));
+            }
+        }
         return object;
     }
 
@@ -743,7 +771,7 @@ public class Bucket<T extends Syncable> {
         Ghost ghost = null;
         if (!remoteChange.isRemoveOperation()) {
             try {
-                T object = get(remoteChange.getKey());
+                T object = getObjectOrBackup(remoteChange.getKey());
                 // apply the diff to the underyling object
                 ghost = remoteChange.apply(object.getGhost());
                 mGhostStore.saveGhost(this, ghost);
@@ -780,7 +808,7 @@ public class Bucket<T extends Syncable> {
                     object = newObject(change.getKey());
                     isNew = true;
                 } else {
-                    object = getObject(change.getKey());
+                    object = getObjectOrBackup(change.getKey());
                     isNew = false;
 
                     notifyOnBeforeUpdateObjectListeners(object);
