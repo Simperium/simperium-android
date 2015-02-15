@@ -99,7 +99,7 @@ public class Bucket<T extends Syncable> {
     private GhostStorageProvider mGhostStore;
     final private Executor mExecutor;
 
-    private Map<String,T> mBackupStore = new HashMap<>();
+    private final Map<String,T> mBackupStore = new HashMap<>();
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
@@ -374,6 +374,7 @@ public class Bucket<T extends Syncable> {
         Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
+        updateBackupStoreGhost(ghost);
         return object;
     }
 
@@ -546,6 +547,16 @@ public class Bucket<T extends Syncable> {
             }
 
         });
+    }
+
+    /**
+     * Update the ghost of an object in the backup store
+     */
+    private void updateBackupStoreGhost(Ghost ghost) {
+        T object = mBackupStore.get(ghost.getSimperiumKey());
+        if (object != null) {
+            object.setGhost(ghost);
+        }
     }
 
     public Ghost getGhost(String key) throws GhostMissingException {
@@ -777,6 +788,7 @@ public class Bucket<T extends Syncable> {
                 mGhostStore.saveGhost(this, ghost);
                 // update the object's ghost
                 object.setGhost(ghost);
+                updateBackupStoreGhost(ghost);
             } catch (BucketObjectMissingException e) {
                 throw(new RemoteChangeInvalidException(remoteChange, e));
             }
@@ -831,6 +843,7 @@ public class Bucket<T extends Syncable> {
                 // persist the ghost to storage
                 mGhostStore.saveGhost(this, updatedGhost);
                 object.setGhost(updatedGhost);
+                updateBackupStoreGhost(updatedGhost);
 
                 // allow the schema to update the object instance with the new
                 if (isNew) {
