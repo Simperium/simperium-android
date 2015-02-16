@@ -74,6 +74,53 @@ public class Bucket<T extends Syncable> {
             // implements all listener methods
     }
 
+    /**
+     * A one-way exclusion lock that stores multiple keys in a Set. Designed for use with two types of threads,
+     * primary and secondary, which share a key.
+     *
+     * Primary threads control locking by creating a key using <code>lock(E)</code> and deleting it using
+     * <code>unlock(E)</code>.
+     *
+     * Secondary threads check whether their key is safe to use using <code>checkLocked(E)</code>. If their key is
+     * present it's not safe to use it, and the threads are blocked until the key is removed from the set.
+     *
+     * @param <E> the type of keys maintained
+     */
+    public class LockSet<E> {
+        private final Set<E> mKeys = new HashSet<>();
+
+        /**
+         * Create a new key, blocking secondary threads using that key until <code>unlock(E)</code> is called
+         */
+        public synchronized void lock(E key) {
+            mKeys.add(key);
+        }
+
+        /**
+         * Block calling thread until lock is released
+         */
+        public synchronized void checkLocked(E key) throws InterruptedException {
+            while (mKeys.contains(key)) {
+                wait();
+            }
+        }
+
+        /**
+         * Remove a key from the map, releasing the lock
+         */
+        public synchronized void unlock(E key){
+            mKeys.remove(key);
+            notify();
+        }
+
+        /**
+         * Return lock status for given key
+         */
+        public synchronized boolean isLocked(E key){
+            return mKeys.contains(key);
+        }
+    }
+
     public enum ChangeType {
         REMOVE, MODIFY, INDEX, RESET, INSERT
     }
@@ -102,8 +149,9 @@ public class Bucket<T extends Syncable> {
     private BucketSchema<T> mSchema;
     private GhostStorageProvider mGhostStore;
     final private Executor mExecutor;
-
     private final Map<String,T> mBackupStore = new TimestampHashMap<>(BACKUP_STORE_RESET_DELAY);
+
+    private final LockSet<String> mSaveDeleteLock = new LockSet<>();
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
@@ -232,21 +280,26 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(final T object) {
+        mSaveDeleteLock.lock(object.getSimperiumKey());
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                Boolean modified = object.isModified();
-                mStorage.save(object, mSchema.indexesFor(object));
+                try {
+                    Boolean modified = object.isModified();
+                    mStorage.save(object, mSchema.indexesFor(object));
 
-                // Save a copy in case the object is removed from storage before this modification has been processed
-                storeBackupCopy(object);
+                    // Save a copy in case the object is removed from storage before this modification has been processed
+                    storeBackupCopy(object);
 
-                mChannel.queueLocalChange(object);
+                    mChannel.queueLocalChange(object);
 
-                if (modified) {
-                    // Notify listeners that an object has been saved, this was
-                    // triggered locally
-                    notifyOnSaveListeners(object);
+                    if (modified) {
+                        // Notify listeners that an object has been saved, this was
+                        // triggered locally
+                        notifyOnSaveListeners(object);
+                    }
+                } finally {
+                    mSaveDeleteLock.unlock(object.getSimperiumKey());
                 }
             }
         });
@@ -273,6 +326,17 @@ public class Bucket<T extends Syncable> {
             @Override
             public void run() {
                 if (isLocal) {
+                    try {
+                        mSaveDeleteLock.checkLocked(object.getSimperiumKey());
+                    } catch (InterruptedException e) {
+                        Logger.log(TAG, String.format("Delete lock interrupted for %s, did not remove from storage",
+                                object.getSimperiumKey()));
+                        // Proceed, but don't remove from storage
+                        mChannel.queueLocalDeletion(object);
+                        notifyOnDeleteListeners(object);
+                        return;
+                    }
+
                     mChannel.queueLocalDeletion(object);
                 }
 
@@ -444,6 +508,7 @@ public class Bucket<T extends Syncable> {
                         "Storage provider for bucket:%s did not have object %s and there was no stored backup",
                         getName(), key)));
             }
+            Logger.log(TAG, String.format("Fetched backup copy for %s", key));
         }
         return object;
     }
