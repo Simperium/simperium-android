@@ -23,6 +23,7 @@ public class MockChannel implements Bucket.Channel {
 
     private Bucket mBucket;
     private boolean started = false;
+    private boolean idle = false;
 
     public boolean autoAcknowledge = true;
 
@@ -39,6 +40,11 @@ public class MockChannel implements Bucket.Channel {
             throw(new RuntimeException(e));
         }
         return change;
+    }
+
+    @Override
+    public boolean isIdle() {
+        return idle;
     }
 
     @Override

@@ -49,6 +49,7 @@ public class Bucket<T extends Syncable> {
         public void start();
         public void stop();
         public void reset();
+        public boolean isIdle();
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -78,6 +79,9 @@ public class Bucket<T extends Syncable> {
     }
 
     public static final String TAG="Simperium.Bucket";
+
+    private static final int BACKUP_STORE_RESET_DELAY = 5000;
+
     // The name used for the Simperium namespace
     private String mName;
     // User provides the access token for authentication
@@ -99,7 +103,7 @@ public class Bucket<T extends Syncable> {
     private GhostStorageProvider mGhostStore;
     final private Executor mExecutor;
 
-    private final Map<String,T> mBackupStore = new HashMap<>();
+    private final Map<String,T> mBackupStore = new TimestampHashMap<>(BACKUP_STORE_RESET_DELAY);
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
@@ -189,6 +193,42 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
+     * A HashMap which maintains a timestamp of its last put call and only performs <code>remove(Object)</code>
+     * and <code>clear()</code> operations if a long enough interval has elapsed.
+     */
+    public class TimestampHashMap<K,V> extends HashMap<K,V> {
+        private long mTimestamp;
+        private long mClearDelay;
+
+        public TimestampHashMap(long clearDelay) {
+            mClearDelay = clearDelay;
+        }
+
+        @Override
+        public V put(K key, V value) {
+            V result = super.put(key, value);
+            mTimestamp = System.currentTimeMillis();
+            return result;
+        }
+
+        @Override
+        public V remove(Object key) {
+            V object = null;
+            if ((System.currentTimeMillis() - mTimestamp) > mClearDelay) {
+                object = super.remove(key);
+            }
+            return object;
+        }
+
+        @Override
+        public void clear() {
+            if ((System.currentTimeMillis() - mTimestamp) > mClearDelay) {
+                super.clear();
+            }
+        }
+    }
+
+    /**
      * Tell the bucket to sync changes.
      */
     public void sync(final T object) {
@@ -198,10 +238,8 @@ public class Bucket<T extends Syncable> {
                 Boolean modified = object.isModified();
                 mStorage.save(object, mSchema.indexesFor(object));
 
-                // TODO: Modify to only clear the HashMap if there are no pending changes for any object in the bucket
-                mBackupStore.clear();
                 // Save a copy in case the object is removed from storage before this modification has been processed
-                mBackupStore.put(object.getSimperiumKey(), object);
+                storeBackupCopy(object);
 
                 mChannel.queueLocalChange(object);
 
@@ -256,6 +294,19 @@ public class Bucket<T extends Syncable> {
         if (object != null) {
             // this will call onObjectRemoved on the listener
             remove(object, false);
+        }
+    }
+
+    /**
+     * Store a copy of the object in the backup store
+     */
+    private void storeBackupCopy(T object) {
+        synchronized(mBackupStore) {
+            if (mChannel.isIdle()) {
+                // If there is no activity in the Channel, we can try to clean up obsolete backups
+                mBackupStore.clear();
+            }
+            mBackupStore.put(object.getSimperiumKey(), object);
         }
     }
 

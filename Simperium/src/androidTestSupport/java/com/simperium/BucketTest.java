@@ -191,4 +191,59 @@ public class BucketTest extends TestCase {
         assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
     }
 
+    /**
+     * If two different notes are both saved and then both deleted, they should both be missing from persistent store
+     * but present in the backup store.
+     *
+     * This also checks that the backup store isn't being cleared before the Channel has a chance to retrieve a backup
+     * object and send it.
+     */
+    public void testConsecutiveSaveDeleteObjects() {
+        Note note1 = mBucket.newObject();
+        note1.setTitle("Hello World");
+
+        Note note2 = mBucket.newObject();
+        note2.setTitle("Hello Again World");
+
+        note1.save();
+        note2.save();
+
+        note1.delete();
+        note2.delete();
+
+        // Test retrieving notes from persistent store
+        BucketObjectMissingException note1MissingException = null;
+        BucketObjectMissingException note2MissingException = null;
+        try {
+            mBucket.getObject(note1.getSimperiumKey());
+        } catch (BucketObjectMissingException e) {
+            note1MissingException = e;
+        }
+        try {
+            mBucket.getObject(note2.getSimperiumKey());
+        } catch (BucketObjectMissingException e) {
+            note2MissingException = e;
+        }
+        // Retrieval from persistent store should fail
+        assertNotNull(note1MissingException);
+        assertNotNull(note2MissingException);
+
+        // Test retrieving notes from backup store
+        note1MissingException = null;
+        note2MissingException = null;
+        try {
+            mBucket.getObjectOrBackup(note1.getSimperiumKey());
+        } catch (BucketObjectMissingException e) {
+            note1MissingException = e;
+        }
+        try {
+            mBucket.getObjectOrBackup(note2.getSimperiumKey());
+        } catch (BucketObjectMissingException e) {
+            note2MissingException = e;
+        }
+        // Retrieval from backup store should succeed
+        assertNull(note1MissingException);
+        assertNull(note2MissingException);
+    }
+
 }
