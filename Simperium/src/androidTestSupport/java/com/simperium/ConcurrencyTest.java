@@ -121,39 +121,6 @@ public class ConcurrencyTest extends BaseSimperiumTest {
 
     }
 
-//    public void testSendFinalModificationsBeforeDeleteOperation() throws Exception {
-//
-//        startWithEmptyIndex();
-//
-//        String key = "test-multi-save";
-//        Note note = mBucket.newObject(key);
-//
-//        note.setTitle("title1");
-//        note.save();
-//
-//        note.setContent("another name");
-//        note.save();
-//
-//        // Queue a deletion and remove the object from the local persistent store before the modification has been sent
-//        note.delete();
-//
-//        clearMessages();
-//        waitForMessage();
-//
-//        // Message should be a change message "c:{}"
-//        Logger.log("WHEE", mListener.lastMessage.toString());
-//        assertMatchesRegex("^c:\\{.*\\}$", mListener.lastMessage.toString());
-//
-////        // First change has been sent and it's a modification
-////        assertEquals(1, mChannelSerializer.queue.pending.size());
-////        assertTrue(mChannelSerializer.queue.pending.get(key).isModifyOperation());
-////
-////        // Second change is queued and it's a deletion
-////        assertEquals(1, mChannelSerializer.queue.queued.size());
-////        assertTrue(mChannelSerializer.queue.queued.get(0).isRemoveOperation());
-//
-//    }
-
     /**
      * Same as BucketTest.testConsecutiveSaveDeleteObjects() but with concurrency enabled.
      *
