@@ -17,8 +17,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.Map;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static android.test.MoreAsserts.assertMatchesRegex;
 import static com.simperium.TestHelpers.makeUser;
@@ -43,7 +43,7 @@ public class ConcurrencyTest extends BaseSimperiumTest {
 
     protected User.Status mAuthStatus;
 
-    private Executor mExecutor;
+    private ThreadPoolExecutor mExecutor;
 
     /**
      * Build Bucket and Channel instances using a multi-threaded Executor
@@ -55,11 +55,9 @@ public class ConcurrencyTest extends BaseSimperiumTest {
         int threads = Runtime.getRuntime().availableProcessors();
         if (threads > 1) {
             threads -= 1;
-        } else {
-            Logger.log(TAG, "Single-threaded. ConcurrencyTest won't give any new information.");
         }
 
-        mExecutor = Executors.newFixedThreadPool(threads);
+        mExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(threads);
 
         mUser = makeUser();
         mSchema = new Note.Schema();
@@ -130,7 +128,7 @@ public class ConcurrencyTest extends BaseSimperiumTest {
      * This also checks that the backup store isn't being cleared before the Channel has a chance to retrieve a backup
      * object and send it.
      */
-    public void testConsecutiveSaveDeleteObjectsConcurrent() {
+    public void testConsecutiveSaveDeleteObjectsConcurrent() throws InterruptedException {
         Note note1 = mBucket.newObject();
         note1.setTitle("Hello World");
 
@@ -143,8 +141,8 @@ public class ConcurrencyTest extends BaseSimperiumTest {
         note1.delete();
         note2.delete();
 
-        // Allow the save threads to finish writing to storage before querying it
-        waitFor(10);
+        // Allow the save and delete tasks to finish before querying storage
+        waitForExecutorCompletedTasks(4);
 
         // Test retrieving notes from persistent store
         BucketObjectMissingException note1MissingException = null;
@@ -282,6 +280,15 @@ public class ConcurrencyTest extends BaseSimperiumTest {
                 return mChannel.haveCompleteIndex();
             }
         }, "Index never received", 5000);
+    }
+
+    protected void waitForExecutorCompletedTasks(final int completedTasks) throws InterruptedException {
+        waitUntil(new TestHelpers.Flag(){
+            @Override
+            public boolean isComplete(){
+                return (mExecutor.getCompletedTaskCount() == completedTasks);
+            }
+        }, "Completed task amount never reached", 5000);
     }
 
     private class NewMessageFlagger implements TestHelpers.Flag {
