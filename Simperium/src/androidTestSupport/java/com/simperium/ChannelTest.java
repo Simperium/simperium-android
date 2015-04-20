@@ -99,7 +99,7 @@ public class ChannelTest extends BaseSimperiumTest {
      * Some objects require a certain state before they can be deleted from a bucket so this ensures
      * the object is at the desired state before the delete operation is sent.
      */
-    public void testSendFinalModificationBeforeDeleteOperation() throws Exception {
+    public void testQueueFinalModificationBeforeDeleteOperation() throws Exception {
 
         mListener.autoAcknowledge = true;
 
@@ -132,6 +132,40 @@ public class ChannelTest extends BaseSimperiumTest {
 
         assertTrue(mChannelSerializer.queue.queued.get(0).isModifyOperation());
         assertTrue(mChannelSerializer.queue.queued.get(1).isRemoveOperation());
+
+    }
+
+    /**
+     * See https://github.com/Simperium/simperium-android/issues/159
+     * Ensures that the channel is able to send out final modification operations for an object even if
+     * the object has since been removed from the local persistent store.
+     */
+    public void testSendFinalModificationBeforeDeleteOperation() throws Exception {
+
+        startWithEmptyIndex();
+
+        String key = "test-modify-before-delete-object";
+        Note note = mBucket.newObject(key);
+        note.setTitle("Bonjour le monde!");
+
+        note.save();
+
+        // Queue a deletion and remove the object from the local persistent store before the modification has been sent
+        note.delete();
+
+        clearMessages();
+        waitForMessage();
+
+        // Message should be a change message "c:{}"
+        assertMatchesRegex("^c:\\{.*\\}$", mListener.lastMessage.toString());
+
+        // First change has been sent and it's a modification
+        assertEquals(1, mChannelSerializer.queue.pending.size());
+        assertTrue(mChannelSerializer.queue.pending.get(key).isModifyOperation());
+
+        // Second change is queued and it's a deletion
+        assertEquals(1, mChannelSerializer.queue.queued.size());
+        assertTrue(mChannelSerializer.queue.queued.get(0).isRemoveOperation());
 
     }
 

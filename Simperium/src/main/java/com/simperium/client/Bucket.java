@@ -33,8 +33,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -47,6 +49,7 @@ public class Bucket<T extends Syncable> {
         public void start();
         public void stop();
         public void reset();
+        public boolean isIdle();
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -71,11 +74,61 @@ public class Bucket<T extends Syncable> {
             // implements all listener methods
     }
 
+    /**
+     * A one-way exclusion lock that stores multiple keys in a Set. Designed for use with two types of threads,
+     * primary and secondary, which share a key.
+     *
+     * Primary threads control locking by creating a key using <code>lock(E)</code> and deleting it using
+     * <code>unlock(E)</code>.
+     *
+     * Secondary threads check whether their key is safe to use using <code>checkLocked(E)</code>. If their key is
+     * present it's not safe to use it, and the threads are blocked until the key is removed from the set.
+     *
+     * @param <E> the type of keys maintained
+     */
+    public class LockSet<E> {
+        private final Set<E> mKeys = new HashSet<>();
+
+        /**
+         * Create a new key, blocking secondary threads using that key until <code>unlock(E)</code> is called
+         */
+        public synchronized void lock(E key) {
+            mKeys.add(key);
+        }
+
+        /**
+         * Block calling thread until lock is released
+         */
+        public synchronized void checkLocked(E key) throws InterruptedException {
+            while (mKeys.contains(key)) {
+                wait();
+            }
+        }
+
+        /**
+         * Remove a key from the map, releasing the lock
+         */
+        public synchronized void unlock(E key){
+            mKeys.remove(key);
+            notify();
+        }
+
+        /**
+         * Return lock status for given key
+         */
+        public synchronized boolean isLocked(E key){
+            return mKeys.contains(key);
+        }
+    }
+
     public enum ChangeType {
         REMOVE, MODIFY, INDEX, RESET, INSERT
     }
 
     public static final String TAG="Simperium.Bucket";
+
+    private static final int BACKUP_STORE_RESET_DELAY = 5000;
+
     // The name used for the Simperium namespace
     private String mName;
     // User provides the access token for authentication
@@ -96,6 +149,9 @@ public class Bucket<T extends Syncable> {
     private BucketSchema<T> mSchema;
     private GhostStorageProvider mGhostStore;
     final private Executor mExecutor;
+    private final Map<String,T> mBackupStore = new TimestampHashMap<>(BACKUP_STORE_RESET_DELAY);
+
+    private final LockSet<String> mSaveDeleteLock = new LockSet<>();
 
     /**
      * Represents a Simperium bucket which is a namespace where an app syncs a user's data
@@ -185,21 +241,65 @@ public class Bucket<T extends Syncable> {
     }
 
     /**
+     * A HashMap which maintains a timestamp of its last put call and only performs <code>remove(Object)</code>
+     * and <code>clear()</code> operations if a long enough interval has elapsed.
+     */
+    public class TimestampHashMap<K,V> extends HashMap<K,V> {
+        private long mTimestamp;
+        private long mClearDelay;
+
+        public TimestampHashMap(long clearDelay) {
+            mClearDelay = clearDelay;
+        }
+
+        @Override
+        public V put(K key, V value) {
+            V result = super.put(key, value);
+            mTimestamp = System.currentTimeMillis();
+            return result;
+        }
+
+        @Override
+        public V remove(Object key) {
+            V object = null;
+            if ((System.currentTimeMillis() - mTimestamp) > mClearDelay) {
+                object = super.remove(key);
+            }
+            return object;
+        }
+
+        @Override
+        public void clear() {
+            if ((System.currentTimeMillis() - mTimestamp) > mClearDelay) {
+                super.clear();
+            }
+        }
+    }
+
+    /**
      * Tell the bucket to sync changes.
      */
     public void sync(final T object) {
+        mSaveDeleteLock.lock(object.getSimperiumKey());
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                Boolean modified = object.isModified();
-                mStorage.save(object, mSchema.indexesFor(object));
+                try {
+                    Boolean modified = object.isModified();
+                    mStorage.save(object, mSchema.indexesFor(object));
 
-                mChannel.queueLocalChange(object);
+                    // Save a copy in case the object is removed from storage before this modification has been processed
+                    storeBackupCopy(object);
 
-                if (modified) {
-                    // Notify listeners that an object has been saved, this was
-                    // triggered locally
-                    notifyOnSaveListeners(object);
+                    mChannel.queueLocalChange(object);
+
+                    if (modified) {
+                        // Notify listeners that an object has been saved, this was
+                        // triggered locally
+                        notifyOnSaveListeners(object);
+                    }
+                } finally {
+                    mSaveDeleteLock.unlock(object.getSimperiumKey());
                 }
             }
         });
@@ -226,6 +326,17 @@ public class Bucket<T extends Syncable> {
             @Override
             public void run() {
                 if (isLocal) {
+                    try {
+                        mSaveDeleteLock.checkLocked(object.getSimperiumKey());
+                    } catch (InterruptedException e) {
+                        Logger.log(TAG, String.format("Delete lock interrupted for %s, did not remove from storage",
+                                object.getSimperiumKey()));
+                        // Proceed, but don't remove from storage
+                        mChannel.queueLocalDeletion(object);
+                        notifyOnDeleteListeners(object);
+                        return;
+                    }
+
                     mChannel.queueLocalDeletion(object);
                 }
 
@@ -247,6 +358,19 @@ public class Bucket<T extends Syncable> {
         if (object != null) {
             // this will call onObjectRemoved on the listener
             remove(object, false);
+        }
+    }
+
+    /**
+     * Store a copy of the object in the backup store
+     */
+    private void storeBackupCopy(T object) {
+        synchronized(mBackupStore) {
+            if (mChannel.isIdle()) {
+                // If there is no activity in the Channel, we can try to clean up obsolete backups
+                mBackupStore.clear();
+            }
+            mBackupStore.put(object.getSimperiumKey(), object);
         }
     }
 
@@ -365,6 +489,27 @@ public class Bucket<T extends Syncable> {
         Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
+        updateBackupStoreGhost(ghost);
+        return object;
+    }
+
+    /**
+     * Get an object by its key, checking the backup store if the object has been removed from the persistent store
+     */
+    public T getObjectOrBackup(String key) throws BucketObjectMissingException {
+        T object;
+        try {
+            object = get(key);
+        } catch (BucketObjectMissingException e) {
+            // If the object has been removed from the persistent store, check the backup store
+            object = mBackupStore.get(key);
+            if (object == null) {
+                throw(new BucketObjectMissingException(String.format(
+                        "Storage provider for bucket:%s did not have object %s and there was no stored backup",
+                        getName(), key)));
+            }
+            Logger.log(TAG, String.format("Fetched backup copy for %s", key));
+        }
         return object;
     }
 
@@ -518,6 +663,16 @@ public class Bucket<T extends Syncable> {
             }
 
         });
+    }
+
+    /**
+     * Update the ghost of an object in the backup store
+     */
+    private void updateBackupStoreGhost(Ghost ghost) {
+        T object = mBackupStore.get(ghost.getSimperiumKey());
+        if (object != null) {
+            object.setGhost(ghost);
+        }
     }
 
     public Ghost getGhost(String key) throws GhostMissingException {
@@ -743,12 +898,13 @@ public class Bucket<T extends Syncable> {
         Ghost ghost = null;
         if (!remoteChange.isRemoveOperation()) {
             try {
-                T object = get(remoteChange.getKey());
+                T object = getObjectOrBackup(remoteChange.getKey());
                 // apply the diff to the underyling object
                 ghost = remoteChange.apply(object.getGhost());
                 mGhostStore.saveGhost(this, ghost);
                 // update the object's ghost
                 object.setGhost(ghost);
+                updateBackupStoreGhost(ghost);
             } catch (BucketObjectMissingException e) {
                 throw(new RemoteChangeInvalidException(remoteChange, e));
             }
@@ -780,7 +936,7 @@ public class Bucket<T extends Syncable> {
                     object = newObject(change.getKey());
                     isNew = true;
                 } else {
-                    object = getObject(change.getKey());
+                    object = getObjectOrBackup(change.getKey());
                     isNew = false;
 
                     notifyOnBeforeUpdateObjectListeners(object);
@@ -803,6 +959,7 @@ public class Bucket<T extends Syncable> {
                 // persist the ghost to storage
                 mGhostStore.saveGhost(this, updatedGhost);
                 object.setGhost(updatedGhost);
+                updateBackupStoreGhost(updatedGhost);
 
                 // allow the schema to update the object instance with the new
                 if (isNew) {

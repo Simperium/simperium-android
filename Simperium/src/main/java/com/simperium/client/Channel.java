@@ -1484,7 +1484,7 @@ public class Channel implements Bucket.Channel {
 
             try {
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
-                Syncable target = mBucket.getObject(change.getKey());
+                Syncable target = mBucket.getObjectOrBackup(change.getKey());
                 Ghost ghost = mBucket.getGhost(change.getKey());
                 sendMessage(String.format("c:%s", change.toJSONObject(target.getDiffableValue(), ghost)));
                 mSerializer.onSendChange(change);
