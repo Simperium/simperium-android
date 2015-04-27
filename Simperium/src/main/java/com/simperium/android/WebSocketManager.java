@@ -320,7 +320,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
                     connect();
                 }
             }, retryIn);
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException | NullPointerException e) {
             Logger.log(TAG, "Unable to schedule timer", e);
             return;
         }
