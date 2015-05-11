@@ -65,11 +65,7 @@ public class Change {
         return new Change(operation, ccid, bucketName, key);
     }
 
-    public Change(String operation, Syncable object){
-        this(operation, object.getBucketName(), object.getSimperiumKey());
-    }
-
-    protected Change(String operation, String bucketName, String key){
+    public Change(String operation, String bucketName, String key){
         this(operation, uuid(), bucketName, key);
     }
 

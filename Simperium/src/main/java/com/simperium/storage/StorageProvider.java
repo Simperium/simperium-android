@@ -7,6 +7,8 @@ import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Query;
 import com.simperium.client.Syncable;
 
+import org.json.JSONObject;
+
 import java.util.List;
 
 public interface StorageProvider {
@@ -24,6 +26,8 @@ public interface StorageProvider {
         /**
          * Add/Update the given object
          */
+        public void save(String simperiumKey, String json, List<Index> indexes);
+
         public void save(T object, List<Index> indexes);
 
         /**
