@@ -30,17 +30,12 @@ public class MemoryStore implements StorageProvider {
             // noop
         }
 
-        @Override
-        public void save(String simperiumKey, String json, List<Index> indexes) {
-            // noop
-        }
-
         /**
          * Add/Update the given object
          */
         @Override
-        public void save(T object, List<Index> indexes){
-            objects.put(object.getSimperiumKey(), object);
+        public void save(T object, String simperiumKey, String json, List<Index> indexes) {
+            objects.put(simperiumKey, object);
         }
 
         /**

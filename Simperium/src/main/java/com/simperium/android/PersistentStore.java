@@ -81,7 +81,7 @@ public class PersistentStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(String simperiumKey, String json, List<Index> indexes) {
+        public void save(T object, String simperiumKey, String json, List<Index> indexes) {
             mReindexer.skip(simperiumKey);
             ContentValues values = new ContentValues();
             values.put("bucket", mBucketName);
@@ -95,13 +95,8 @@ public class PersistentStore implements StorageProvider {
             }
 
             cursor.close();
-            // TODO FIXME: index(object, indexes);
+            index(object, indexes);
             if (BuildConfig.DEBUG) Log.d(TAG, "Saved indexes for " + json);
-        }
-
-        @Override
-        public void save(T object, List<Index> indexes) {
-            //noop
         }
 
         /**

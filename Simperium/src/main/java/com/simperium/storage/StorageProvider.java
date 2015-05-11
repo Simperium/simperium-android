@@ -26,9 +26,7 @@ public interface StorageProvider {
         /**
          * Add/Update the given object
          */
-        public void save(String simperiumKey, String json, List<Index> indexes);
-
-        public void save(T object, List<Index> indexes);
+        public void save(T object, String simperiumKey, String json, List<Index> indexes);
 
         /**
          * Remove the given object from the storage

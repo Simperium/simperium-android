@@ -292,11 +292,7 @@ public class Bucket<T extends Syncable> {
             @Override
             public void run() {
                 try {
-                    if (mStorage instanceof MemoryStore) {
-                        mStorage.save(object, mSchema.indexesFor(object));
-                    } else {
-                        mStorage.save(simperiumKey, objectJSON, mSchema.indexesFor(object));
-                    }
+                    mStorage.save(object, simperiumKey, objectJSON, mSchema.indexesFor(object));
 
                     // Save a copy in case the object is removed from storage before this modification has been processed
                     storeBackupCopy(object);
@@ -711,7 +707,7 @@ public class Bucket<T extends Syncable> {
         }
         object.setBucket(this);
         JSONObject objectJSON = object.getDiffableValue();
-        mStorage.save(object.getSimperiumKey(), objectJSON.toString(), mSchema.indexesFor(object));
+        mStorage.save(object, object.getSimperiumKey(), objectJSON.toString(), mSchema.indexesFor(object));
         // notify listeners that an object has been added
     }
 
@@ -722,7 +718,7 @@ public class Bucket<T extends Syncable> {
         object.setBucket(this);
 
         String json = object.getDiffableValue().toString();
-        mStorage.save(object.getSimperiumKey(), json, mSchema.indexesFor(object));
+        mStorage.save(object, object.getSimperiumKey(), json, mSchema.indexesFor(object));
     }
 
     /**
