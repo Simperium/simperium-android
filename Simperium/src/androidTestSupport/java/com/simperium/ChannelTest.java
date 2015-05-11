@@ -702,7 +702,7 @@ public class ChannelTest extends BaseSimperiumTest {
         Note note = mBucket.newObject();
         note.setTitle("My plane is full of snakes");
 
-        Change change = new Change(Change.OPERATION_MODIFY, note);
+        Change change = new Change(Change.OPERATION_MODIFY, mBucket.getName(), note.getSimperiumKey());
 
         // Spam a lot of attempts to requeue a change
         for (int i=0; i < 10; i++) {
@@ -756,7 +756,7 @@ public class ChannelTest extends BaseSimperiumTest {
         note.save();
 
         // queue the note, the change will be empty since it hasn't bee modified
-        mChannel.queueLocalChange(note);
+        mChannel.queueLocalChange(note.getSimperiumKey());
 
         waitFor(200);
 

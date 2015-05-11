@@ -38,7 +38,7 @@ public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginA
         BucketObject object = mBucket.newObject();
         object.setProperty("title", "Hola Mundo");
 
-        Change change = new Change(Change.OPERATION_MODIFY, object);
+        Change change = new Change(Change.OPERATION_MODIFY, mBucket.getName(), object.getSimperiumKey());
 
         mSerializer.onQueueChange(change);
 
@@ -55,7 +55,7 @@ public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginA
         BucketObject object = mBucket.newObject();
         object.setProperty("title", "Hola Mundo");
 
-        Change change = new Change(Change.OPERATION_REMOVE, object);
+        Change change = new Change(Change.OPERATION_REMOVE, mBucket.getName(), object.getSimperiumKey());
         mSerializer.onQueueChange(change);
 
         SerializedQueue queue = mSerializer.restore(mBucket);

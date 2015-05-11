@@ -201,9 +201,9 @@ public class SimperiumTest extends BaseSimperiumTest {
         }
 
         @Override
-        public void save(BucketObject object, List<Index> indexes){
+        public void save(BucketObject object, String simperiumKey, String json, List<Index> indexes) {
             save = true;
-            super.save(object, indexes);
+            super.save(object, simperiumKey, json, indexes);
         }
 
         @Override

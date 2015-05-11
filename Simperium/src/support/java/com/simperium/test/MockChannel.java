@@ -33,7 +33,7 @@ public class MockChannel implements Bucket.Channel {
 
     @Override
     public Change queueLocalDeletion(Syncable object){
-        Change change = new Change(Change.OPERATION_REMOVE, object);
+        Change change = new Change(Change.OPERATION_REMOVE, mBucket.getName(), object.getSimperiumKey());
         try {
             if(started && autoAcknowledge) acknowledge(change);
         } catch (Exception e) {
@@ -48,8 +48,8 @@ public class MockChannel implements Bucket.Channel {
     }
 
     @Override
-    public Change queueLocalChange(Syncable object) {
-        Change change = new Change(Change.OPERATION_MODIFY, object);
+    public Change queueLocalChange(String simperiumKey) {
+        Change change = new Change(Change.OPERATION_MODIFY, mBucket.getName(), simperiumKey);
         try {
             if(started && autoAcknowledge) acknowledge(change);
         } catch (Exception e) {

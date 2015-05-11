@@ -32,13 +32,8 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Add/Update the given object
      */
     @Override
-    public void save(T object, List<Index> indexes){
-        objects.put(object.getSimperiumKey(), object);
-    }
-
-    @Override
-    public void save(String simperiumKey, JSONObject data, List<Index> indexes) {
-        //noop
+    public void save(T object, String simperiumKey, String json, List<Index> indexes) {
+        objects.put(simperiumKey, object);
     }
 
     /**
