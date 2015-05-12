@@ -282,8 +282,6 @@ public class Bucket<T extends Syncable> {
      */
     public void sync(final T object) {
         final String simperiumKey = object.getSimperiumKey();
-
-        // TODO Analyze performance
         final String objectJSON = object.getDiffableValue().toString();
         final Boolean modified = object.isModified();
 
@@ -314,7 +312,7 @@ public class Bucket<T extends Syncable> {
     /**
      * Delete the object from the bucket.
      *
-     * @param object the object to remove from the bucket
+     * @param object the Syncable to remove from the bucket
      */
     public void remove(T object) {
         remove(object, true);
@@ -493,7 +491,7 @@ public class Bucket<T extends Syncable> {
         if (object == null) {
             throw(new BucketObjectMissingException(String.format("Storage provider for bucket:%s did not have object %s", getName(), key)));
         }
-        Logger.log(TAG, String.format("Fetched ghostly for %s %s", key, ghost));
+        Logger.log(TAG, String.format("Fetched ghost for %s %s", key, ghost));
         object.setBucket(this);
         object.setGhost(ghost);
         updateBackupStoreGhost(ghost);

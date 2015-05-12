@@ -96,7 +96,7 @@ public class PersistentStore implements StorageProvider {
 
             cursor.close();
             index(object, indexes);
-            if (BuildConfig.DEBUG) Log.d(TAG, "Saved indexes for " + json);
+            if (BuildConfig.DEBUG) Log.d(TAG, "Saved indexes for " + object);
         }
 
         /**
