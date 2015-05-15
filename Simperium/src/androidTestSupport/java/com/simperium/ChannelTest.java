@@ -380,17 +380,18 @@ public class ChannelTest extends BaseSimperiumTest {
      * When started without an index a Channel should send a valid init message with the an initial
      * `i` message.
      */
-    public void testInitMessageWithNoChangeVersion(){
-        // 
-        String initMessage = String.format(Locale.US,
-            "init:{\"library\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
-            "android", mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID
-        );
+    public void testInitMessageWithNoChangeVersion() throws Exception {
+
+        String json = String.format(Locale.US,
+            "{\"library\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
+            "android", mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID);
+
+        JSONObject initMessage = new JSONObject(json);
 
         start();
 
         assertNotNull(mListener.lastMessage);
-        assertEquals(initMessage, mListener.lastMessage.toString());
+        assertEquals("init:" + initMessage.toString(), mListener.lastMessage.toString());
         assertEquals("1.1", mListener.api);
     }
 
@@ -398,19 +399,20 @@ public class ChannelTest extends BaseSimperiumTest {
      * When started with an existing index a Channel should send a valid init message with an
      * initial <code>cv</code> command.
      */
-    public void testInitMessageWithChangeVersion(){
+    public void testInitMessageWithChangeVersion() throws Exception {
         // set a fake change version on the bucket
         String cv = "fake-cv";
 
-        String initMessage = String.format(Locale.US,
-            "init:{\"library\":\"%s\",\"cmd\":\"cv:%s\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
-            "android", cv, mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID
-        );
+        String json = String.format(Locale.US,
+                        "{\"library\":\"%s\",\"cmd\":\"cv:%s\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
+                        "android", cv, mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID);
+
+        JSONObject initMessage = new JSONObject(json);
         mBucket.setChangeVersion(cv);
 
         start();
 
-        assertEquals(initMessage, mListener.lastMessage.toString());
+        assertEquals("init:" + initMessage.toString(), mListener.lastMessage.toString());
 
     }
 
