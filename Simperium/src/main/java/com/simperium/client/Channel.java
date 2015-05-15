@@ -333,14 +333,14 @@ public class Channel implements Bucket.Channel {
     /**
      * Diffs and object's local modifications and queues up the changes
      */
-    public Change queueLocalChange(Syncable object) {
-        Change change = new Change(Change.OPERATION_MODIFY, object);
+    public Change queueLocalChange(String simperiumKey) {
+        Change change = new Change(Change.OPERATION_MODIFY, this.getBucketName(), simperiumKey);
         mChangeProcessor.addChange(change);
         return change;
     }
 
     public Change queueLocalDeletion(Syncable object) {
-        Change change = new Change(Change.OPERATION_REMOVE, object);
+        Change change = new Change(Change.OPERATION_REMOVE, this.getBucketName(), object.getSimperiumKey());
         mChangeProcessor.addChange(change);
         return change;
     }

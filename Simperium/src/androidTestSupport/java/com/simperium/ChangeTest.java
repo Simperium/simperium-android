@@ -29,8 +29,7 @@ public class ChangeTest extends TestCase {
 
     public void testModifyPayload()
     throws Exception {
-
-        Change change = new Change(Change.OPERATION_MODIFY, mNote);
+        Change change = new Change(Change.OPERATION_MODIFY, mBucket.getName(), mNote.getSimperiumKey());
 
         Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
         JSONObject object = mNote.getDiffableValue();
@@ -40,8 +39,8 @@ public class ChangeTest extends TestCase {
 
         JSONObject diff = change.toJSONObject(object, ghost).getJSONObject("v");
 
-        String expected = "{\"tags\":{\"o\":\"+\",\"v\":[]},\"deleted\":{\"o\":\"+\",\"v\":false},\"title\":{\"o\":\"+\",\"v\":\"Hello world\"}}";
-        assertEquals(expected, diff.toString());
+        JSONObject expected = new JSONObject("{\"tags\":{\"o\":\"+\",\"v\":[]},\"deleted\":{\"o\":\"+\",\"v\":false},\"title\":{\"o\":\"+\",\"v\":\"Hello world\"}}");
+        assertEquals(expected.toString(), diff.toString());
 
     }
 
@@ -50,7 +49,7 @@ public class ChangeTest extends TestCase {
 
         mNote.save();
 
-        Change change = new Change(Change.OPERATION_REMOVE, mNote);
+        Change change = new Change(Change.OPERATION_REMOVE, mBucket.getName(), mNote.getSimperiumKey());
         Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());
         assertTrue(change.isRemoveOperation());
         assertValidChangeObject(mNote, ghost, change);
@@ -60,7 +59,7 @@ public class ChangeTest extends TestCase {
     public void testChangeWithFullObjectDataPaylaod()
     throws Exception {
 
-        Change change = new Change(Change.OPERATION_MODIFY, mNote);
+        Change change = new Change(Change.OPERATION_MODIFY, mBucket.getName(), mNote.getSimperiumKey());
         change.setSendFullObject(true);
 
         Ghost ghost = mBucket.getGhost(mNote.getSimperiumKey());

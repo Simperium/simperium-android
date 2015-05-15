@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONObject;
+
 public class MockBucketStore<T extends Syncable> implements StorageProvider.BucketStore<T> {
 
     static public final String TAG = "Simperium.MockBucketStore";
@@ -30,8 +32,8 @@ public class MockBucketStore<T extends Syncable> implements StorageProvider.Buck
      * Add/Update the given object
      */
     @Override
-    public void save(T object, List<Index> indexes){
-        objects.put(object.getSimperiumKey(), object);
+    public void save(T object, String simperiumKey, String json, List<Index> indexes) {
+        objects.put(simperiumKey, object);
     }
 
     /**

@@ -6,6 +6,8 @@ import com.simperium.client.BucketSchema.Index;
 import com.simperium.client.Query;
 import com.simperium.client.Syncable;
 
+import org.json.JSONObject;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -32,8 +34,8 @@ public class MemoryStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(T object, List<Index> indexes){
-            objects.put(object.getSimperiumKey(), object);
+        public void save(T object, String simperiumKey, String json, List<Index> indexes) {
+            objects.put(simperiumKey, object);
         }
 
         /**

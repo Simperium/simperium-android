@@ -81,22 +81,17 @@ public class PersistentStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(T object, List<Index> indexes) {
-
-            JSONObject data = object.getDiffableValue();
-            String raw = data.toString();
-
-            String key = object.getSimperiumKey();
-            mReindexer.skip(key);
+        public void save(T object, String simperiumKey, String json, List<Index> indexes) {
+            mReindexer.skip(simperiumKey);
             ContentValues values = new ContentValues();
             values.put("bucket", mBucketName);
-            values.put("key", key);
-            values.put("data", raw);
-            Cursor cursor = queryObject(mBucketName, key);
+            values.put("key", simperiumKey);
+            values.put("data", json);
+            Cursor cursor = queryObject(mBucketName, simperiumKey);
             if (cursor.getCount() == 0) {
                 mDatabase.insert(OBJECTS_TABLE, null, values);
             } else {
-                mDatabase.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{mBucketName, key});
+                mDatabase.update(OBJECTS_TABLE, values, "bucket=? AND key=?", new String[]{mBucketName, simperiumKey});
             }
 
             cursor.close();

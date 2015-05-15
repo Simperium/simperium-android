@@ -24,6 +24,7 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 
 import com.simperium.SimperiumException;
+import com.simperium.storage.MemoryStore;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
@@ -43,7 +44,7 @@ import java.util.concurrent.Executor;
 public class Bucket<T extends Syncable> {
     
     public interface Channel {
-        public Change queueLocalChange(Syncable object);
+        public Change queueLocalChange(String simperiumKey);
         public Change queueLocalDeletion(Syncable object);
         public void log(int level, CharSequence message);
         public void start();
@@ -280,18 +281,21 @@ public class Bucket<T extends Syncable> {
      * Tell the bucket to sync changes.
      */
     public void sync(final T object) {
-        mSaveDeleteLock.lock(object.getSimperiumKey());
+        final String simperiumKey = object.getSimperiumKey();
+        final String objectJSON = object.getDiffableValue().toString();
+        final Boolean modified = object.isModified();
+
+        mSaveDeleteLock.lock(simperiumKey);
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
                 try {
-                    Boolean modified = object.isModified();
-                    mStorage.save(object, mSchema.indexesFor(object));
+                    mStorage.save(object, simperiumKey, objectJSON, mSchema.indexesFor(object));
 
                     // Save a copy in case the object is removed from storage before this modification has been processed
                     storeBackupCopy(object);
 
-                    mChannel.queueLocalChange(object);
+                    mChannel.queueLocalChange(simperiumKey);
 
                     if (modified) {
                         // Notify listeners that an object has been saved, this was
@@ -299,7 +303,7 @@ public class Bucket<T extends Syncable> {
                         notifyOnSaveListeners(object);
                     }
                 } finally {
-                    mSaveDeleteLock.unlock(object.getSimperiumKey());
+                    mSaveDeleteLock.unlock(simperiumKey);
                 }
             }
         });
@@ -307,7 +311,7 @@ public class Bucket<T extends Syncable> {
 
     /**
      * Delete the object from the bucket.
-     * 
+     *
      * @param object the Syncable to remove from the bucket
      */
     public void remove(T object) {
@@ -317,11 +321,12 @@ public class Bucket<T extends Syncable> {
     /**
      * Remove the object from the bucket. If isLocal is true, this will queue
      * an operation to sync with the Simperium service.
-     * 
+     *
      * @param object The Syncable to remove from the bucket
      * @param isLocal if the operation originates from this client
      */
     private void remove(final T object, final boolean isLocal) {
+
         mExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -699,7 +704,8 @@ public class Bucket<T extends Syncable> {
             notifyListeners = true;
         }
         object.setBucket(this);
-        mStorage.save(object, mSchema.indexesFor(object));
+        JSONObject objectJSON = object.getDiffableValue();
+        mStorage.save(object, object.getSimperiumKey(), objectJSON.toString(), mSchema.indexesFor(object));
         // notify listeners that an object has been added
     }
 
@@ -708,7 +714,9 @@ public class Bucket<T extends Syncable> {
      */
     protected void updateObject(T object) {
         object.setBucket(this);
-        mStorage.save(object, mSchema.indexesFor(object));
+
+        String json = object.getDiffableValue().toString();
+        mStorage.save(object, object.getSimperiumKey(), json, mSchema.indexesFor(object));
     }
 
     /**
