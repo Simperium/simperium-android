@@ -3,6 +3,7 @@ package com.simperium.android;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.text.TextUtils;
 
 import com.simperium.client.Bucket;
 import com.simperium.client.Ghost;
@@ -87,6 +88,10 @@ public class GhostStore implements GhostStorageProvider {
 
     @Override
     public void setChangeVersion(Bucket bucket, String cv) {
+        if (TextUtils.isEmpty(cv)) {
+            return;
+        }
+
         ContentValues values = new ContentValues();
         String where = "bucketName=?";
         String[] args = { bucket.getName() };
