@@ -312,10 +312,6 @@ public class Channel implements Bucket.Channel {
     }
 
     private void getLatestVersions() {
-        // TODO: should local changes still be stored?
-        // abort any remote and local changes since we're getting new data
-        // and top the processor
-        mChangeProcessor.abort();
         mHaveIndex = false;
         // initialize the new query for new index data
         IndexQuery query = new IndexQuery();
@@ -374,9 +370,6 @@ public class Channel implements Bucket.Channel {
         // if we don't have a processor or we are getting a different cv
         if (mIndexProcessor == null || !mIndexProcessor.addIndexPage(index)) {
             // make sure we're not processing changes and clear pending changes
-            // TODO: pause the change processor instead of clearing it :(
-            mChangeProcessor.reset();
-            // start a new index
             String currentIndex;
             try {
                 currentIndex = index.getString(INDEX_CURRENT_VERSION_KEY);

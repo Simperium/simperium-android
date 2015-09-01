@@ -767,6 +767,22 @@ public class ChannelTest extends BaseSimperiumTest {
 
     }
 
+    public void testKeepLocalDataWhenConnecting() throws Exception {
+        // content to the channel before it's started
+        // 1) Queue up local data
+        Note note = mBucket.newObject();
+        note.setTitle("keep me");
+        note.setContent("this note should not get deleted");
+        note.save();
+
+        // 2) Ask the channel to connect
+        startWithEmptyIndex();
+
+        // 3) Local data should still exist and should sync
+        waitFor(200);
+        assertEquals(1, mChannelSerializer.queue.queued.size());
+    }
+
     /**
      * Get's the channel into a started state
      */
