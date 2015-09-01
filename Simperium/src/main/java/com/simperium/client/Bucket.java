@@ -24,7 +24,6 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 
 import com.simperium.SimperiumException;
-import com.simperium.storage.MemoryStore;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.JSONDiff;
 import com.simperium.util.Logger;
@@ -36,7 +35,6 @@ import org.json.JSONObject;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -44,13 +42,13 @@ import java.util.concurrent.Executor;
 public class Bucket<T extends Syncable> {
     
     public interface Channel {
-        public Change queueLocalChange(String simperiumKey);
-        public Change queueLocalDeletion(Syncable object);
-        public void log(int level, CharSequence message);
-        public void start();
-        public void stop();
-        public void reset();
-        public boolean isIdle();
+        Change queueLocalChange(String simperiumKey);
+        Change queueLocalDeletion(Syncable object);
+        void log(int level, CharSequence message);
+        void start();
+        void stop();
+        void reset();
+        boolean isIdle();
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -202,11 +200,11 @@ public class Bucket<T extends Syncable> {
         /**
          * Return the current item's siperium key
          */
-        public String getSimperiumKey();
+        String getSimperiumKey();
         /**
          * Return the object for the current index in the cursor
          */
-        public T getObject();
+        T getObject();
 
     }
 
@@ -395,10 +393,6 @@ public class Bucket<T extends Syncable> {
         return mGhostStore.hasChangeVersion(this);
     }
 
-    public Boolean hasChangeVersion(String version) {
-        return mGhostStore.hasChangeVersion(this, version);
-    }
-
     public String getChangeVersion() {
         String version = mGhostStore.getChangeVersion(this);
         if (version == null) {
@@ -436,7 +430,7 @@ public class Bucket<T extends Syncable> {
     protected T buildObject(String key) {
         return buildObject(key, new JSONObject());
     }
-    
+
     protected T buildObject(Ghost ghost) {
         T object = mSchema.buildWithDefaults(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
         object.setGhost(ghost);
@@ -481,7 +475,7 @@ public class Bucket<T extends Syncable> {
      */
     public T get(String key) throws BucketObjectMissingException {
         // Datastore constructs the object for us
-        Ghost ghost = null;
+        Ghost ghost;
         try {
             ghost = mGhostStore.getGhost(this, key);
         } catch (GhostMissingException e) {
@@ -552,7 +546,7 @@ public class Bucket<T extends Syncable> {
     public T insertObject(String key, JSONObject properties)
     throws BucketObjectNameInvalid {
         if (key == null)
-            throw new BucketObjectNameInvalid(key);
+            throw new BucketObjectNameInvalid(null);
 
         String name = key.trim();
         validateObjectName(name);
@@ -643,11 +637,8 @@ public class Bucket<T extends Syncable> {
                             mSchema.update(object, updatedProperties);
                             object.setGhost(ghost);
                             updateObject(object);
-                        } catch (JSONException e) {
+                        } catch (JSONException | IllegalArgumentException e) {
                             // Could not apply patch, update from the ghost
-                            updateObjectWithGhost(ghost);
-                        } catch (IllegalArgumentException e) {
-                            // JSONDiff argument failure, update from the ghost
                             updateObjectWithGhost(ghost);
                         }
                     } else {
@@ -698,11 +689,6 @@ public class Bucket<T extends Syncable> {
             object.setGhost(new Ghost(object.getSimperiumKey()));
         }
         
-        // Allows the storage provider to persist the object
-        Boolean notifyListeners = true;
-        if (!object.getBucket().equals(this)) {
-            notifyListeners = true;
-        }
         object.setBucket(this);
         JSONObject objectJSON = object.getDiffableValue();
         mStorage.save(object, object.getSimperiumKey(), objectJSON.toString(), mSchema.indexesFor(object));
@@ -774,42 +760,36 @@ public class Bucket<T extends Syncable> {
     }
 
     public void notifyOnSaveListeners(T object) {
-        Set<OnSaveObjectListener<T>> notify = new HashSet<OnSaveObjectListener<T>>(onSaveListeners);
+        Set<OnSaveObjectListener<T>> notify = new HashSet<>(onSaveListeners);
 
-        Iterator<OnSaveObjectListener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            OnSaveObjectListener<T> listener = iterator.next();
+        for (OnSaveObjectListener<T> listener : notify) {
             try {
                 listener.onSaveObject(this, object);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Logger.log(TAG, String.format("Listener failed onSaveObject %s", listener), e);
             }
         }
     }
 
     public void notifyOnDeleteListeners(T object) {
-        Set<OnDeleteObjectListener<T>> notify = new HashSet<OnDeleteObjectListener<T>>(onDeleteListeners);
-        
-        Iterator<OnDeleteObjectListener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            OnDeleteObjectListener<T> listener = iterator.next();
+        Set<OnDeleteObjectListener<T>> notify = new HashSet<>(onDeleteListeners);
+
+        for (OnDeleteObjectListener<T> listener : notify) {
             try {
                 listener.onDeleteObject(this, object);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
             }
         }
     }
 
     public void notifyOnBeforeUpdateObjectListeners(T object) {
-        Set<OnBeforeUpdateObjectListener<T>> notify = new HashSet<OnBeforeUpdateObjectListener<T>>(onBeforeUpdateListeners);
+        Set<OnBeforeUpdateObjectListener<T>> notify = new HashSet<>(onBeforeUpdateListeners);
 
-        Iterator<OnBeforeUpdateObjectListener<T>> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            OnBeforeUpdateObjectListener<T> listener = iterator.next();
+        for (OnBeforeUpdateObjectListener<T> listener : notify) {
             try {
                 listener.onBeforeUpdateObject(this, object);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Logger.log(TAG, String.format("Listener failed onBeforeUpdateObject %s", listener), e);
             }
         }
@@ -820,15 +800,13 @@ public class Bucket<T extends Syncable> {
     }
 
     public void notifyOnNetworkChangeListeners(ChangeType type, String key) {
-        Set<OnNetworkChangeListener> notify =
-            new HashSet<OnNetworkChangeListener>(onChangeListeners);
+        Set<OnNetworkChangeListener<T>> notify =
+            new HashSet<>(onChangeListeners);
 
-        Iterator<OnNetworkChangeListener> iterator = notify.iterator();
-        while(iterator.hasNext()) {
-            OnNetworkChangeListener listener = iterator.next();
+        for (OnNetworkChangeListener<T> listener : notify) {
             try {
                 listener.onNetworkChange(this, type, key);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Logger.log(TAG, String.format("Listener failed onNetworkChange %s", listener), e);
             }
         }
@@ -937,8 +915,8 @@ public class Bucket<T extends Syncable> {
             }
         } else {
             try {
-                T object = null;
-                Boolean isNew = false;
+                T object;
+                Boolean isNew;
 
                 if (change.isAddOperation()) {
                     object = newObject(change.getKey());
@@ -984,11 +962,9 @@ public class Bucket<T extends Syncable> {
 
                             updatedProperties = JSONDiff.apply(updatedProperties, transformedDiff);
 
-                        } catch (JSONException e) {
+                        } catch (JSONException | IllegalArgumentException e) {
                             // could not transform properties
                             // continue with updated properties
-                        } catch (IllegalArgumentException e) {
-                            // could not apply diff, continue
                         }
                     }
 
