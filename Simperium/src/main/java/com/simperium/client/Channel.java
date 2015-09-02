@@ -392,6 +392,7 @@ public class Channel implements Bucket.Channel {
         public void onComplete(String cv) {
             mHaveIndex = true;
             mIndexProcessor = null;
+            mChangeProcessor.start();
         }
     };
 
