@@ -39,10 +39,6 @@ public class Channel implements Bucket.Channel {
 
     public static class ChangeNotSentException extends ChangeException {
 
-        public ChangeNotSentException(Change change, String message) {
-            super(change, message);
-        }
-
         public ChangeNotSentException(Change change, Throwable cause) {
             super(change, cause);
         }
@@ -85,7 +81,6 @@ public class Channel implements Bucket.Channel {
 
     static final String EXPIRED_AUTH      = "expired"; // after unsuccessful init:
     static final String EXPIRED_AUTH_INDICATOR = "{";
-    static final String EXPIRED_AUTH_REASON_KEY = "msg";
     static final String EXPIRED_AUTH_CODE_KEY = "code";
     static final int EXPIRED_AUTH_MALFORMED_TOKEN_CODE = 400;
     static final int EXPIRED_AUTH_INVALID_TOKEN_CODE = 401;
@@ -94,13 +89,10 @@ public class Channel implements Bucket.Channel {
 
     // Parameters for querying bucket
     static final Integer INDEX_PAGE_SIZE  = 50;
-    static final Integer INDEX_BATCH_SIZE = 10;
-    static final Integer INDEX_QUEUE_SIZE = 5;
 
     // Constants for parsing command messages
     static final Integer MESSAGE_PARTS = 2;
     static final Integer COMMAND_PART  = 0;
-    static final Integer PAYLOAD_PART  = 1;
     static final String  COMMAND_FORMAT = "%s:%s";
 
     // bucket determines which mBucket we are using on this channel
@@ -121,12 +113,12 @@ public class Channel implements Bucket.Channel {
     
     public interface Serializer {
         // public <T extends Syncable> void save(Bucket<T> mBucket, SerializedQueue<T> data);
-        public SerializedQueue restore(Bucket mBucket);
-        public void reset(Bucket mBucket);
-        public void onQueueChange(Change change);
-        public void onDequeueChange(Change change);
-        public void onSendChange(Change change);
-        public void onAcknowledgeChange(Change change);
+        SerializedQueue restore(Bucket mBucket);
+        void reset(Bucket mBucket);
+        void onQueueChange(Change change);
+        void onDequeueChange(Change change);
+        void onSendChange(Change change);
+        void onAcknowledgeChange(Change change);
     }
 
     public static class SerializedQueue {
@@ -320,10 +312,6 @@ public class Channel implements Bucket.Channel {
     }
 
     private void getLatestVersions() {
-        // TODO: should local changes still be stored?
-        // abort any remote and local changes since we're getting new data
-        // and top the processor
-        mChangeProcessor.abort();
         mHaveIndex = false;
         // initialize the new query for new index data
         IndexQuery query = new IndexQuery();
@@ -382,9 +370,6 @@ public class Channel implements Bucket.Channel {
         // if we don't have a processor or we are getting a different cv
         if (mIndexProcessor == null || !mIndexProcessor.addIndexPage(index)) {
             // make sure we're not processing changes and clear pending changes
-            // TODO: pause the change processor instead of clearing it :(
-            mChangeProcessor.reset();
-            // start a new index
             String currentIndex;
             try {
                 currentIndex = index.getString(INDEX_CURRENT_VERSION_KEY);
@@ -407,6 +392,7 @@ public class Channel implements Bucket.Channel {
         public void onComplete(String cv) {
             mHaveIndex = true;
             mIndexProcessor = null;
+            mChangeProcessor.start();
         }
     };
 
@@ -477,7 +463,6 @@ public class Channel implements Bucket.Channel {
             @Override
             public void run() {
 
-                int total = mBucket.count();
                 JSONArray objectVersions = new JSONArray();
                 String idKey = "id";
                 String versionKey = "v";
@@ -617,7 +602,7 @@ public class Channel implements Bucket.Channel {
         }
 
         // Build the required json object for initializing
-        HashMap<String,Object> init = new HashMap<String,Object>(6);
+        HashMap<String,Object> init = new HashMap<>(6);
         init.put(FIELD_API_VERSION, SIMPERIUM_API_VERSION);
         init.put(FIELD_CLIENT_ID, mSessionId);
         init.put(FIELD_APP_ID, mAppId);
@@ -730,7 +715,7 @@ public class Channel implements Bucket.Channel {
     }
 
     private class CommandInvoker {
-        private HashMap<String,Command> mCommands = new HashMap<String,Command>();
+        private HashMap<String,Command> mCommands = new HashMap<>();
 
         protected CommandInvoker add(String name, Command command) {
             mCommands.put(name, command);
@@ -748,9 +733,6 @@ public class Channel implements Bucket.Channel {
     }
 
     static final String CURSOR_FORMAT = "%s::%s::%s";
-    static final String QUERY_DELIMITER = ":";
-    // static final Integer INDEX_MARK = 2;
-    // static final Integer INDEX_LIMIT = 5;
     /**
      * IndexQuery provides an interface for managing a query cursor and limit fields.
      * TODO: add a way to build an IndexQuery from an index response
@@ -764,10 +746,6 @@ public class Channel implements Bucket.Channel {
 
         public IndexQuery(String mark) {
             this(mark, INDEX_PAGE_SIZE);
-        }
-
-        public IndexQuery(Integer limit) {
-            mLimit = limit;
         }
 
         public IndexQuery(String mark, Integer limit) {
@@ -949,12 +927,13 @@ public class Channel implements Bucket.Channel {
         protected boolean mComplete = false, mNotified = false;
         final private IndexProcessorListener mListener;
         protected int mIndexedCount = 0, mReceivedCount = 0;
-        protected Object mCountLock = new Object();
+        final protected Object mCountLock;
 
         public IndexProcessor(Bucket bucket, String cv, IndexProcessorListener listener) {
             mBucket = bucket;
             mCv = cv;
             mListener = listener;
+            mCountLock = new Object();
         }
 
         /**
@@ -1108,13 +1087,6 @@ public class Channel implements Bucket.Channel {
             return true;
         }
 
-        /**
-         * If the index is done processing
-         */
-        public boolean isComplete() {
-            return mComplete;
-        }
-
         synchronized private void notifyDone() {
             if (mNotified) {
                 return;
@@ -1232,16 +1204,6 @@ public class Channel implements Bucket.Channel {
             }
         }
 
-        public void stop() {
-            // interrupt the thread
-            if (mThread != null) {
-                mThread.interrupt();
-                synchronized(mRunLock) {
-                    mRunLock.notify();
-                }
-            }
-        }
-
         protected void reset() {
             mPendingChanges.clear();
             mSerializer.reset(mBucket);
@@ -1262,18 +1224,10 @@ public class Channel implements Bucket.Channel {
                 // if our local queue is empty we don't have work to do
                 if (mLocalQueue.isEmpty()) return false;
                 // if we have queued changes, if there's no corresponding pending change then there's still work to do
-                Iterator<Change> changes = mLocalQueue.iterator();
-                while(changes.hasNext()) {
-                    Change change = changes.next();
+                for (Change change : mLocalQueue) {
                     if (!mPendingChanges.containsKey(change.getKey())) return true;
                 }
                 return false;
-            }
-        }
-
-        protected boolean hasPendingChanges() {
-            synchronized(mLock) {
-                return !mPendingChanges.isEmpty() || !mLocalQueue.isEmpty();
             }
         }
 
@@ -1324,7 +1278,7 @@ public class Channel implements Bucket.Channel {
                         throw new InterruptedException();
                     }
                     // take an item off the queue
-                    RemoteChange remoteChange = null;
+                    RemoteChange remoteChange;
                     try {
                         remoteChange = RemoteChange.buildFromMap(mRemoteQueue.remove(0));
                     } catch (JSONException e) {
@@ -1415,7 +1369,7 @@ public class Channel implements Bucket.Channel {
                 if (mLocalQueue.isEmpty()) {
                     return;
                 }
-                final List<Change> sendLater = new ArrayList<Change>();
+                final List<Change> sendLater = new ArrayList<>();
                 // find the first local change whose key does not exist in the pendingChanges and there are no remote changes
                 while(!mLocalQueue.isEmpty()) {
                     if (Thread.interrupted()) {
@@ -1558,22 +1512,20 @@ public class Channel implements Bucket.Channel {
 
     public static JSONObject serializeJSON(Map<String,Object>map) {
         JSONObject json = new JSONObject();
-        Iterator<String> keys = map.keySet().iterator();
-        while(keys.hasNext()) {
-            String key = keys.next();
+        for (String key : map.keySet()) {
             Object val = map.get(key);
             try {
                 if (val instanceof Map) {
-                    json.put(key, serializeJSON((Map<String,Object>) val));
-                } else if(val instanceof List) {
+                    json.put(key, serializeJSON((Map<String, Object>) val));
+                } else if (val instanceof List) {
                     json.put(key, serializeJSON((List<Object>) val));
-                } else if(val instanceof Change) {
+                } else if (val instanceof Change) {
                     json.put(key, serializeJSON(((Change) val).toJSONSerializable()));
                 } else {
                     json.put(key, val);
                 }
-            } catch(JSONException e) {
-               Logger.log(TAG, String.format("Failed to serialize %s", val));
+            } catch (JSONException e) {
+                Logger.log(TAG, String.format("Failed to serialize %s", val));
             }
         }
         return json;
@@ -1581,14 +1533,12 @@ public class Channel implements Bucket.Channel {
 
     public static JSONArray serializeJSON(List<Object>list) {
         JSONArray json = new JSONArray();
-        Iterator<Object> vals = list.iterator();
-        while(vals.hasNext()) {
-            Object val = vals.next();
+        for (Object val : list) {
             if (val instanceof Map) {
-                json.put(serializeJSON((Map<String,Object>) val));
-            } else if(val instanceof List) {
+                json.put(serializeJSON((Map<String, Object>) val));
+            } else if (val instanceof List) {
                 json.put(serializeJSON((List<Object>) val));
-            } else if(val instanceof Change) {
+            } else if (val instanceof Change) {
                 json.put(serializeJSON(((Change) val).toJSONSerializable()));
             } else {
                 json.put(val);
