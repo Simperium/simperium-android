@@ -137,6 +137,23 @@ public class GhostStore implements GhostStorageProvider {
     }
 
     @Override
+    public int getGhostVersion(Bucket bucket, String key) throws GhostMissingException {
+        String[] columns = { VERSION_FIELD };
+        String where = "bucketName=? AND simperiumKey=?";
+        String[] args = { bucket.getName(), key };
+
+        Cursor cursor = database.query(GHOSTS_TABLE_NAME, columns, where, args, null, null, "version DESC", "1");
+        int version = -1;
+        if(cursor.moveToFirst()){
+            version = cursor.getInt(0);
+        }
+        cursor.close();
+        if (version == -1) throw(new GhostMissingException(String.format("Ghost %s does not exist for bucket %s", bucket.getName(), key)));
+        return version;
+    }
+
+
+    @Override
     public boolean hasGhost(Bucket bucket, String key) {
         try {
             getGhost(bucket, key);
