@@ -424,6 +424,13 @@ public class Channel implements Bucket.Channel {
 
             mIndexProcessor.addObjectData(objectVersion);
 
+            // if we have any revision requests pending, we want to collect the objects
+            Iterator<RevisionsCollector> collectors = revisionCollectors.iterator();
+            while(collectors.hasNext()){
+                RevisionsCollector collector = collectors.next();
+                collector.addObjectData(objectVersion);
+            }
+
         } catch (ObjectVersionUnexpectedException e) {
 
             ObjectVersionData data = e.versionData;
@@ -905,6 +912,60 @@ public class Channel implements Bucket.Channel {
         }
 
     }
+
+    // Collects revisions for a Simperium object
+    private class RevisionsCollector implements Bucket.RevisionsRequest {
+
+        final private String key;
+        final private int sinceVersion;
+        final private Bucket.RevisionsRequestCallbacks callbacks;
+        private boolean completed = true;
+        private boolean sent = false;
+        private List<Integer> versions = Collections.synchronizedList(new ArrayList<Integer>());
+
+        RevisionsCollector(String key, int sinceVersion, Bucket.RevisionsRequestCallbacks callbacks) {
+            this.key = key;
+            this.sinceVersion = sinceVersion;
+            this.callbacks = callbacks;
+        }
+
+        private void send() {
+            if (!sent) {
+                sent = true;
+                // for each version send an e: request
+                for (int i = 1; i < sinceVersion; i++) {
+                    sendObjectVersionRequest(key, i);
+                }
+            }
+        }
+
+        public void addObjectData(ObjectVersionData objectVersionData) {
+            int version = objectVersionData.getVersion();
+            if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versions.indexOf(version) == -1) {
+                versions.add(version);
+
+                JSONObject data = objectVersionData.getData();
+                callbacks.onRevision(key, version, data);
+
+                if (versions.size() == sinceVersion - 1) {
+                    revisionCollectors.remove(this);
+                    completed = true;
+                    callbacks.onComplete();
+                }
+            }
+        }
+
+        @Override
+        public boolean isComplete() {
+            return completed;
+        }
+    }
+
+    private void sendObjectVersionRequest(String key, int version){
+        sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, version));
+    }
+
+    private List<RevisionsCollector> revisionCollectors = Collections.synchronizedList(new ArrayList<RevisionsCollector>());
 
     private interface IndexProcessorListener {
         
