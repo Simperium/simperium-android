@@ -560,11 +560,16 @@ public class Channel implements Bucket.Channel {
         return mIdle;
     }
 
+    @Override
+    public Bucket.RevisionsRequest getRevisions(String key, int sinceVersion, Bucket.RevisionsRequestCallbacks callbacks) {
+        // todo get the revisions :)
+        return null;
+    }
+
     public void log(int level, CharSequence message) {
         if (this.mListener != null) {
             this.mListener.onLog(this, level, message);
         }
-
     }
 
     /**

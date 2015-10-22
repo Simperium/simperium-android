@@ -49,6 +49,7 @@ public class Bucket<T extends Syncable> {
         void stop();
         void reset();
         boolean isIdle();
+        RevisionsRequest getRevisions(String key, int sinceVersion, RevisionsRequestCallbacks callbacks);
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -72,6 +73,17 @@ public class Bucket<T extends Syncable> {
         OnNetworkChangeListener<T>, OnBeforeUpdateObjectListener<T> {
             // implements all listener methods
     }
+
+    public interface RevisionsRequestCallbacks<T extends Syncable> {
+        void onComplete();
+        void onRevision(String key, int version, JSONObject object);
+        void onError(Throwable exception);
+    }
+
+    public interface RevisionsRequest {
+        boolean isComplete();
+    }
+
 
     /**
      * A one-way exclusion lock that stores multiple keys in a Set. Designed for use with two types of threads,
@@ -688,7 +700,7 @@ public class Bucket<T extends Syncable> {
         if (object.getGhost() == null) {
             object.setGhost(new Ghost(object.getSimperiumKey()));
         }
-        
+
         object.setBucket(this);
         JSONObject objectJSON = object.getDiffableValue();
         mStorage.save(object, object.getSimperiumKey(), objectJSON.toString(), mSchema.indexesFor(object));
@@ -1010,5 +1022,46 @@ public class Bucket<T extends Syncable> {
             throw new BucketNameInvalid(name);
         }
     }
+
+    public RevisionsRequest getRevisions(T object, RevisionsRequestCallbacks<T> callbacks){
+        return getRevisions(object.getSimperiumKey(), object.getVersion(), callbacks);
+    }
+
+    /**
+     * Request revision history for object with the given key
+     */
+    public RevisionsRequest getRevisions(String key, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
+        int version;
+        try {
+            version = mGhostStore.getGhostVersion(this, key);
+        } catch (GhostMissingException e) {
+            callbacks.onError(e);
+            throw e;
+        }
+        return getRevisions(key, version, callbacks);
+    }
+
+    public RevisionsRequest getRevisions(String key, int version, final RevisionsRequestCallbacks<T> callbacks){
+        return mChannel.getRevisions(key, version, new RevisionsRequestCallbacks() {
+
+            @Override
+            public void onComplete() {
+                callbacks.onComplete();
+            }
+
+            @Override
+            public void onRevision(String key, int version, JSONObject object) {
+                // build the object, set the read only ghost and call the callback
+                callbacks.onRevision(key, version, object);
+            }
+
+            @Override
+            public void onError(Throwable exception) {
+                callbacks.onError(exception);
+            }
+
+        });
+    }
+
 
 }
