@@ -390,6 +390,19 @@ public class JSONDiffTest extends TestCase {
     }
 
 
+    public void testMaxInt() throws Exception {
+
+        JSONObject origin = object("number", 100);
+        // MAX_INT + 1
+        JSONObject target = new JSONObject("{\"number\": 3147483648 }");
+
+        JSONObject diff = JSONDiff.diff(origin, target);
+
+        JSONObject applied = JSONDiff.apply(origin, diff.getJSONObject(JSONDiff.DIFF_VALUE_KEY));
+
+        assertEquals(applied, target);
+    }
+
     /*
      * Convenient object building methods for test use
      *
