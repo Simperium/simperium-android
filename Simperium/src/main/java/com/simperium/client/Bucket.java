@@ -75,7 +75,7 @@ public class Bucket<T extends Syncable> {
     }
 
     public interface RevisionsRequestCallbacks<T extends Syncable> {
-        void onComplete();
+        void onComplete(Map<Integer, T> revisions);
         void onRevision(String key, int version, JSONObject object);
         void onError(Throwable exception);
     }
@@ -83,7 +83,6 @@ public class Bucket<T extends Syncable> {
     public interface RevisionsRequest {
         boolean isComplete();
     }
-
 
     /**
      * A one-way exclusion lock that stores multiple keys in a Set. Designed for use with two types of threads,
@@ -599,7 +598,6 @@ public class Bucket<T extends Syncable> {
         });
     }
 
-
     /**
      * Update the ghost data
      */
@@ -1045,13 +1043,12 @@ public class Bucket<T extends Syncable> {
         return mChannel.getRevisions(key, version, new RevisionsRequestCallbacks() {
 
             @Override
-            public void onComplete() {
-                callbacks.onComplete();
+            public void onComplete(Map revisions) {
+                callbacks.onComplete(revisions);
             }
 
             @Override
             public void onRevision(String key, int version, JSONObject object) {
-                // build the object, set the read only ghost and call the callback
                 callbacks.onRevision(key, version, object);
             }
 
@@ -1062,6 +1059,4 @@ public class Bucket<T extends Syncable> {
 
         });
     }
-
-
 }

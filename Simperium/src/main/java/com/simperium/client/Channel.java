@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
+import java.util.TreeMap;
 import java.util.concurrent.Executor;
 
 import android.util.Log;
@@ -343,8 +344,6 @@ public class Channel implements Bucket.Channel {
         change.incrementRetryCount();
         change.setSendFullObject(true);
         mChangeProcessor.addChange(change);
-
-
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -419,10 +418,9 @@ public class Channel implements Bucket.Channel {
             // versionData will be: key.version\n{"data":ENTITY}
             ObjectVersionData objectVersion = ObjectVersionData.parseString(versionData);
 
-            if (mIndexProcessor == null)
-                throw new ObjectVersionUnexpectedException(objectVersion);
-
-            mIndexProcessor.addObjectData(objectVersion);
+            if (mIndexProcessor != null) {
+                mIndexProcessor.addObjectData(objectVersion);
+            }
 
             // if we have any revision requests pending, we want to collect the objects
             Iterator<RevisionsCollector> collectors = revisionCollectors.iterator();
@@ -569,8 +567,12 @@ public class Channel implements Bucket.Channel {
 
     @Override
     public Bucket.RevisionsRequest getRevisions(String key, int sinceVersion, Bucket.RevisionsRequestCallbacks callbacks) {
-        // todo get the revisions :)
-        return null;
+        // for the key and version iterate down requesting the each version for the object
+        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, callbacks);
+        revisionCollectors.add(collector);
+        collector.send();
+        // collect the responses back
+        return collector;
     }
 
     public void log(int level, CharSequence message) {
@@ -910,7 +912,6 @@ public class Channel implements Bucket.Channel {
             super();
             this.versionData = versionData;
         }
-
     }
 
     // Collects revisions for a Simperium object
@@ -921,7 +922,8 @@ public class Channel implements Bucket.Channel {
         final private Bucket.RevisionsRequestCallbacks callbacks;
         private boolean completed = true;
         private boolean sent = false;
-        private List<Integer> versions = Collections.synchronizedList(new ArrayList<Integer>());
+
+        private Map<Integer, Syncable> versionsMap = Collections.synchronizedSortedMap(new TreeMap<Integer, Syncable>());
 
         RevisionsCollector(String key, int sinceVersion, Bucket.RevisionsRequestCallbacks callbacks) {
             this.key = key;
@@ -941,16 +943,17 @@ public class Channel implements Bucket.Channel {
 
         public void addObjectData(ObjectVersionData objectVersionData) {
             int version = objectVersionData.getVersion();
-            if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versions.indexOf(version) == -1) {
-                versions.add(version);
+            if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versionsMap.get(version) == null) {
+
+                versionsMap.put(version, mBucket.buildObject(this.key, objectVersionData.getData()));
 
                 JSONObject data = objectVersionData.getData();
                 callbacks.onRevision(key, version, data);
 
-                if (versions.size() == sinceVersion - 1) {
+                if (versionsMap.size() == sinceVersion - 1) {
                     revisionCollectors.remove(this);
                     completed = true;
-                    callbacks.onComplete();
+                    callbacks.onComplete(versionsMap);
                 }
             }
         }
