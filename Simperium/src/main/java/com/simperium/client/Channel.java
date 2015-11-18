@@ -566,9 +566,9 @@ public class Channel implements Bucket.Channel {
     }
 
     @Override
-    public Bucket.RevisionsRequest getRevisions(String key, int sinceVersion, Bucket.RevisionsRequestCallbacks callbacks) {
+    public Bucket.RevisionsRequest getRevisions(String key, int sinceVersion, int max, Bucket.RevisionsRequestCallbacks callbacks) {
         // for the key and version iterate down requesting the each version for the object
-        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, callbacks);
+        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, max, callbacks);
         revisionCollectors.add(collector);
         collector.send();
         // collect the responses back
@@ -919,15 +919,17 @@ public class Channel implements Bucket.Channel {
 
         final private String key;
         final private int sinceVersion;
+        final private int maxRevisions;
         final private Bucket.RevisionsRequestCallbacks callbacks;
         private boolean completed = true;
         private boolean sent = false;
 
         private Map<Integer, Syncable> versionsMap = Collections.synchronizedSortedMap(new TreeMap<Integer, Syncable>());
 
-        RevisionsCollector(String key, int sinceVersion, Bucket.RevisionsRequestCallbacks callbacks) {
+        RevisionsCollector(String key, int sinceVersion, int maxRevisions, Bucket.RevisionsRequestCallbacks callbacks) {
             this.key = key;
             this.sinceVersion = sinceVersion;
+            this.maxRevisions = maxRevisions;
             this.callbacks = callbacks;
         }
 
@@ -950,7 +952,7 @@ public class Channel implements Bucket.Channel {
                 JSONObject data = objectVersionData.getData();
                 callbacks.onRevision(key, version, data);
 
-                if (versionsMap.size() == sinceVersion - 1) {
+                if (versionsMap.size() == sinceVersion - 1 || (maxRevisions > 0 && versionsMap.size() == maxRevisions)) {
                     revisionCollectors.remove(this);
                     completed = true;
                     callbacks.onComplete(versionsMap);
@@ -1030,7 +1032,6 @@ public class Channel implements Bucket.Channel {
                     if (mComplete && mReceivedCount == mIndexedCount) {
                         notifyDone();
                     }
-
                 }
 
             });

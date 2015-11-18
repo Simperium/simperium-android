@@ -49,7 +49,7 @@ public class Bucket<T extends Syncable> {
         void stop();
         void reset();
         boolean isIdle();
-        RevisionsRequest getRevisions(String key, int sinceVersion, RevisionsRequestCallbacks callbacks);
+        RevisionsRequest getRevisions(String key, int sinceVersion, int maxVersion, RevisionsRequestCallbacks callbacks);
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -1021,8 +1021,12 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    public RevisionsRequest getRevisions(T object, RevisionsRequestCallbacks<T> callbacks){
-        return getRevisions(object.getSimperiumKey(), object.getVersion(), callbacks);
+    public RevisionsRequest getRevisions(T object, int max, RevisionsRequestCallbacks<T> callbacks) {
+        return getRevisions(object.getSimperiumKey(), object.getVersion(), max, callbacks);
+    }
+
+    public RevisionsRequest getRevisions(T object, RevisionsRequestCallbacks<T> callbacks) {
+        return getRevisions(object.getSimperiumKey(), object.getVersion(), 0, callbacks);
     }
 
     /**
@@ -1036,11 +1040,22 @@ public class Bucket<T extends Syncable> {
             callbacks.onError(e);
             throw e;
         }
-        return getRevisions(key, version, callbacks);
+        return getRevisions(key, version, 0, callbacks);
     }
 
-    public RevisionsRequest getRevisions(String key, int version, final RevisionsRequestCallbacks<T> callbacks){
-        return mChannel.getRevisions(key, version, new RevisionsRequestCallbacks() {
+    public RevisionsRequest getRevisions(String key, int max, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
+        int version;
+        try {
+            version = mGhostStore.getGhostVersion(this, key);
+        } catch (GhostMissingException e) {
+            callbacks.onError(e);
+            throw e;
+        }
+        return getRevisions(key, version, max, callbacks);
+    }
+
+    public RevisionsRequest getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks){
+        return mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
 
             @Override
             public void onComplete(Map revisions) {
