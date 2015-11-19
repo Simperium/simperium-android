@@ -422,13 +422,14 @@ public class Channel implements Bucket.Channel {
             }
 
             // if we have any revision requests pending, we want to collect the objects
-            Iterator<RevisionsCollector> collectors = revisionCollectors.iterator();
-            while(collectors.hasNext()){
-                RevisionsCollector collector = collectors.next();
+            for (RevisionsCollector collector : revisionCollectors) {
                 collector.addObjectData(objectVersion);
             }
 
         } catch (ObjectVersionUnexpectedException e) {
+            if (abortRevisionsCollection(e)) {
+                return;
+            }
 
             ObjectVersionData data = e.versionData;
 
@@ -438,12 +439,30 @@ public class Channel implements Bucket.Channel {
             mBucket.updateGhost(ghost, null);
 
         } catch (ObjectVersionUnknownException e) {
+            abortRevisionsCollection(e);
             log(LOG_DEBUG, String.format(Locale.US, "Object version does not exist %s", e.version));
         } catch (ObjectVersionDataInvalidException e) {
+            abortRevisionsCollection(e);
             log(LOG_DEBUG, String.format(Locale.US, "Object version JSON data malformed %s", e.version));
         } catch (ObjectVersionParseException e) {
+            abortRevisionsCollection(e);
             log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
+    }
+
+    private boolean abortRevisionsCollection(Exception e) {
+        if (revisionCollectors.size() > 0) {
+            for (RevisionsCollector collector : revisionCollectors) {
+                if (collector.getCallbacks() != null) {
+                    collector.getCallbacks().onError(e);
+                }
+            }
+
+            revisionCollectors.clear();
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -517,7 +536,6 @@ public class Channel implements Bucket.Channel {
                 } catch (JSONException e) {
                     Logger.log(TAG, "Unable to add extra info", e);
                 }
-
 
                 sendMessage(String.format("%s:%s", COMMAND_INDEX_STATE, index));
             }
@@ -922,11 +940,19 @@ public class Channel implements Bucket.Channel {
         RevisionsCollector(String key, int sinceVersion, int maxRevisions, Bucket.RevisionsRequestCallbacks callbacks) {
             this.key = key;
             this.sinceVersion = sinceVersion;
-            this.maxRevisions = maxRevisions;
+            this.maxRevisions = Math.max(maxRevisions, 1);
             this.callbacks = callbacks;
         }
 
         private void send() {
+            if (!mConnected) {
+                if (callbacks != null) {
+                    abortRevisionsCollection(new Exception("Can't retrieve revisions: No connection."));
+                }
+
+                return;
+            }
+
             if (!sent) {
                 sent = true;
                 int minVersion = (sinceVersion - maxRevisions > 0) ? sinceVersion - maxRevisions : 1;
@@ -941,7 +967,6 @@ public class Channel implements Bucket.Channel {
         public void addObjectData(ObjectVersionData objectVersionData) {
             int version = objectVersionData.getVersion();
             if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versionsMap.get(version) == null) {
-
                 versionsMap.put(version, mBucket.buildObject(this.key, objectVersionData.getData()));
 
                 JSONObject data = objectVersionData.getData();
@@ -953,6 +978,10 @@ public class Channel implements Bucket.Channel {
                     callbacks.onComplete(versionsMap);
                 }
             }
+        }
+
+        public Bucket.RevisionsRequestCallbacks getCallbacks() {
+            return callbacks;
         }
 
         @Override
