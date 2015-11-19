@@ -1021,6 +1021,29 @@ public class Bucket<T extends Syncable> {
         }
     }
 
+    /**
+     * Request revision history for an object. Called by all of the public getRevision() methods.
+     */
+    private void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks) {
+        mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
+
+            @Override
+            public void onComplete(Map revisions) {
+                callbacks.onComplete(revisions);
+            }
+
+            @Override
+            public void onRevision(String key, int version, JSONObject object) {
+                callbacks.onRevision(key, version, object);
+            }
+
+            @Override
+            public void onError(Throwable exception) {
+                callbacks.onError(exception);
+            }
+        });
+    }
+
     public void getRevisions(final T object, final int max, final RevisionsRequestCallbacks<T> callbacks) {
         mExecutor.execute(new Runnable() {
             @Override
@@ -1039,9 +1062,6 @@ public class Bucket<T extends Syncable> {
         });
     }
 
-    /**
-     * Request revision history for object with the given key
-     */
     public void getRevisions(final String key, final RevisionsRequestCallbacks<T> callbacks) {
         mExecutor.execute(new Runnable() {
             @Override
@@ -1068,26 +1088,6 @@ public class Bucket<T extends Syncable> {
                 } catch (GhostMissingException e) {
                     callbacks.onError(e);
                 }
-            }
-        });
-    }
-
-    private void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks){
-        mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
-
-            @Override
-            public void onComplete(Map revisions) {
-                callbacks.onComplete(revisions);
-            }
-
-            @Override
-            public void onRevision(String key, int version, JSONObject object) {
-                callbacks.onRevision(key, version, object);
-            }
-
-            @Override
-            public void onError(Throwable exception) {
-                callbacks.onError(exception);
             }
         });
     }
