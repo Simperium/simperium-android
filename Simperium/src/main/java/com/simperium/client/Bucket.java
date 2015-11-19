@@ -49,7 +49,7 @@ public class Bucket<T extends Syncable> {
         void stop();
         void reset();
         boolean isIdle();
-        void getRevisions(String key, int sinceVersion, int maxVersion, RevisionsRequestCallbacks callbacks);
+        void getRevisions(String key, int sinceVersion, int maxVersionCount, RevisionsRequestCallbacks callbacks);
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {

@@ -578,9 +578,10 @@ public class Channel implements Bucket.Channel {
     }
 
     @Override
-    public void getRevisions(final String key, final int sinceVersion, final int max, final Bucket.RevisionsRequestCallbacks callbacks) {
+    public void getRevisions(final String key, final int sinceVersion, final int maxVersionCount,
+                             final Bucket.RevisionsRequestCallbacks callbacks) {
         // for the key and version iterate down requesting the each version for the object
-        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, max, callbacks);
+        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, maxVersionCount, callbacks);
         revisionCollectors.add(collector);
         collector.send();
     }
@@ -929,7 +930,7 @@ public class Channel implements Bucket.Channel {
 
         final private String key;
         final private int sinceVersion;
-        final private int maxRevisions;
+        final private int maxVersionCount;
         final private Bucket.RevisionsRequestCallbacks callbacks;
         private boolean completed = true;
         private boolean sent = false;
@@ -937,10 +938,10 @@ public class Channel implements Bucket.Channel {
 
         private Map<Integer, Syncable> versionsMap = Collections.synchronizedSortedMap(new TreeMap<Integer, Syncable>());
 
-        RevisionsCollector(String key, int sinceVersion, int maxRevisions, Bucket.RevisionsRequestCallbacks callbacks) {
+        RevisionsCollector(String key, int sinceVersion, int maxVersions, Bucket.RevisionsRequestCallbacks callbacks) {
             this.key = key;
             this.sinceVersion = sinceVersion;
-            this.maxRevisions = Math.max(maxRevisions, 1);
+            this.maxVersionCount = Math.max(maxVersions, 1);
             this.callbacks = callbacks;
         }
 
@@ -955,7 +956,7 @@ public class Channel implements Bucket.Channel {
 
             if (!sent) {
                 sent = true;
-                int minVersion = (sinceVersion - maxRevisions > 0) ? sinceVersion - maxRevisions : 1;
+                int minVersion = (sinceVersion - maxVersionCount > 0) ? sinceVersion - maxVersionCount : 1;
                 mTotalRevisions = sinceVersion - minVersion;
                 // for each version send an e: request
                 for (int i = minVersion; i < sinceVersion; i++) {
