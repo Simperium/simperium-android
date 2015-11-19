@@ -10,6 +10,8 @@ import com.simperium.client.RemoteChange;
 import com.simperium.client.RemoteChangeInvalidException;
 import com.simperium.client.Syncable;
 import com.simperium.util.Uuid;
+import com.simperium.client.Bucket.RevisionsRequest;
+import com.simperium.client.Bucket.RevisionsRequestCallbacks;
 
 import android.util.Log;
 
@@ -73,6 +75,11 @@ public class MockChannel implements Bucket.Channel {
 
     @Override
     public void stop(){}
+
+    @Override
+    public RevisionsRequest getRevisions(String key, int version, int max, final RevisionsRequestCallbacks callbacks) {
+        return null;
+    }
 
     /**
      * Simulate an acknowledged change

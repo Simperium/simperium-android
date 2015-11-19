@@ -152,7 +152,6 @@ public class GhostStore implements GhostStorageProvider {
         return version;
     }
 
-
     @Override
     public boolean hasGhost(Bucket bucket, String key) {
         try {

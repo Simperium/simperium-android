@@ -49,7 +49,7 @@ public class Bucket<T extends Syncable> {
         void stop();
         void reset();
         boolean isIdle();
-        RevisionsRequest getRevisions(String key, int sinceVersion, int maxVersion, RevisionsRequestCallbacks callbacks);
+        void getRevisions(String key, int sinceVersion, int maxVersion, RevisionsRequestCallbacks callbacks);
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -1021,18 +1021,18 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    public RevisionsRequest getRevisions(T object, int max, RevisionsRequestCallbacks<T> callbacks) {
-        return getRevisions(object.getSimperiumKey(), object.getVersion(), max, callbacks);
+    public void getRevisions(T object, int max, RevisionsRequestCallbacks<T> callbacks) {
+        getRevisions(object.getSimperiumKey(), object.getVersion(), max, callbacks);
     }
 
-    public RevisionsRequest getRevisions(T object, RevisionsRequestCallbacks<T> callbacks) {
-        return getRevisions(object.getSimperiumKey(), object.getVersion(), 0, callbacks);
+    public void getRevisions(T object, RevisionsRequestCallbacks<T> callbacks) {
+        getRevisions(object.getSimperiumKey(), object.getVersion(), 0, callbacks);
     }
 
     /**
      * Request revision history for object with the given key
      */
-    public RevisionsRequest getRevisions(String key, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
+    public void getRevisions(String key, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
         int version;
         try {
             version = mGhostStore.getGhostVersion(this, key);
@@ -1040,10 +1040,11 @@ public class Bucket<T extends Syncable> {
             callbacks.onError(e);
             throw e;
         }
-        return getRevisions(key, version, 0, callbacks);
+
+        getRevisions(key, version, 0, callbacks);
     }
 
-    public RevisionsRequest getRevisions(String key, int max, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
+    public void getRevisions(String key, int max, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
         int version;
         try {
             version = mGhostStore.getGhostVersion(this, key);
@@ -1051,11 +1052,12 @@ public class Bucket<T extends Syncable> {
             callbacks.onError(e);
             throw e;
         }
-        return getRevisions(key, version, max, callbacks);
+
+        getRevisions(key, version, max, callbacks);
     }
 
-    public RevisionsRequest getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks){
-        return mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
+    public void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks){
+        mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
 
             @Override
             public void onComplete(Map revisions) {
@@ -1071,7 +1073,6 @@ public class Bucket<T extends Syncable> {
             public void onError(Throwable exception) {
                 callbacks.onError(exception);
             }
-
         });
     }
 }

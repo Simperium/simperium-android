@@ -383,7 +383,6 @@ public class Channel implements Bucket.Channel {
             // received an index page for a different change version
             // TODO: reconcile the out of band index cv
         }
-
     }
 
     private IndexProcessorListener mIndexProcessorListener = new IndexProcessorListener() {
@@ -445,18 +444,14 @@ public class Channel implements Bucket.Channel {
         } catch (ObjectVersionParseException e) {
             log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
-
-
     }
 
     /**
      * Stop sending changes and download a new index
      */
     private void stopChangesAndRequestIndex() {
-
         // get the latest index
         getLatestVersions();
-
     }
 
     /**
@@ -525,7 +520,6 @@ public class Channel implements Bucket.Channel {
 
 
                 sendMessage(String.format("%s:%s", COMMAND_INDEX_STATE, index));
-
             }
 
         });
@@ -566,13 +560,11 @@ public class Channel implements Bucket.Channel {
     }
 
     @Override
-    public Bucket.RevisionsRequest getRevisions(String key, int sinceVersion, int max, Bucket.RevisionsRequestCallbacks callbacks) {
+    public void getRevisions(final String key, final int sinceVersion, final int max, final Bucket.RevisionsRequestCallbacks callbacks) {
         // for the key and version iterate down requesting the each version for the object
         RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, max, callbacks);
         revisionCollectors.add(collector);
         collector.send();
-        // collect the responses back
-        return collector;
     }
 
     public void log(int level, CharSequence message) {
