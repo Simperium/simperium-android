@@ -915,6 +915,7 @@ public class Channel implements Bucket.Channel {
         final private Bucket.RevisionsRequestCallbacks callbacks;
         private boolean completed = true;
         private boolean sent = false;
+        private int mTotalRevisions;
 
         private Map<Integer, Syncable> versionsMap = Collections.synchronizedSortedMap(new TreeMap<Integer, Syncable>());
 
@@ -928,8 +929,10 @@ public class Channel implements Bucket.Channel {
         private void send() {
             if (!sent) {
                 sent = true;
+                int minVersion = (sinceVersion - maxRevisions > 0) ? sinceVersion - maxRevisions : 1;
+                mTotalRevisions = sinceVersion - minVersion;
                 // for each version send an e: request
-                for (int i = 1; i < sinceVersion; i++) {
+                for (int i = minVersion; i < sinceVersion; i++) {
                     sendObjectVersionRequest(key, i);
                 }
             }
@@ -944,7 +947,7 @@ public class Channel implements Bucket.Channel {
                 JSONObject data = objectVersionData.getData();
                 callbacks.onRevision(key, version, data);
 
-                if (versionsMap.size() == sinceVersion - 1 || (maxRevisions > 0 && versionsMap.size() == maxRevisions)) {
+                if (versionsMap.size() == mTotalRevisions) {
                     revisionCollectors.remove(this);
                     completed = true;
                     callbacks.onComplete(versionsMap);

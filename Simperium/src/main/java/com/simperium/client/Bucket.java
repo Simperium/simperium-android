@@ -1021,42 +1021,58 @@ public class Bucket<T extends Syncable> {
         }
     }
 
-    public void getRevisions(T object, int max, RevisionsRequestCallbacks<T> callbacks) {
-        getRevisions(object.getSimperiumKey(), object.getVersion(), max, callbacks);
+    public void getRevisions(final T object, final int max, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                getRevisions(object.getSimperiumKey(), object.getVersion(), max, callbacks);
+            }
+        });
     }
 
-    public void getRevisions(T object, RevisionsRequestCallbacks<T> callbacks) {
-        getRevisions(object.getSimperiumKey(), object.getVersion(), 0, callbacks);
+    public void getRevisions(final T object, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                getRevisions(object.getSimperiumKey(), object.getVersion(), 0, callbacks);
+            }
+        });
     }
 
     /**
      * Request revision history for object with the given key
      */
-    public void getRevisions(String key, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
-        int version;
-        try {
-            version = mGhostStore.getGhostVersion(this, key);
-        } catch (GhostMissingException e) {
-            callbacks.onError(e);
-            throw e;
-        }
-
-        getRevisions(key, version, 0, callbacks);
+    public void getRevisions(final String key, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                int version;
+                try {
+                    version = mGhostStore.getGhostVersion(Bucket.this, key);
+                    getRevisions(key, version, 0, callbacks);
+                } catch (GhostMissingException e) {
+                    callbacks.onError(e);
+                }
+            }
+        });
     }
 
-    public void getRevisions(String key, int max, RevisionsRequestCallbacks<T> callbacks) throws GhostMissingException {
-        int version;
-        try {
-            version = mGhostStore.getGhostVersion(this, key);
-        } catch (GhostMissingException e) {
-            callbacks.onError(e);
-            throw e;
-        }
-
-        getRevisions(key, version, max, callbacks);
+    public void getRevisions(final String key, final int max, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                int version;
+                try {
+                    version = mGhostStore.getGhostVersion(Bucket.this, key);
+                    getRevisions(key, version, max, callbacks);
+                } catch (GhostMissingException e) {
+                    callbacks.onError(e);
+                }
+            }
+        });
     }
 
-    public void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks){
+    private void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks){
         mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
 
             @Override
