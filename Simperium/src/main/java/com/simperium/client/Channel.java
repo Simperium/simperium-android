@@ -427,7 +427,7 @@ public class Channel implements Bucket.Channel {
             }
 
         } catch (ObjectVersionUnexpectedException e) {
-            if (abortRevisionsCollection(e)) {
+            if (reportRevisionsError()) {
                 return;
             }
 
@@ -439,18 +439,31 @@ public class Channel implements Bucket.Channel {
             mBucket.updateGhost(ghost, null);
 
         } catch (ObjectVersionUnknownException e) {
-            abortRevisionsCollection(e);
+            reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Object version does not exist %s", e.version));
         } catch (ObjectVersionDataInvalidException e) {
-            abortRevisionsCollection(e);
+            reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Object version JSON data malformed %s", e.version));
         } catch (ObjectVersionParseException e) {
-            abortRevisionsCollection(e);
+            reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
     }
 
-    private boolean abortRevisionsCollection(Exception e) {
+    private boolean reportRevisionsError() {
+        if (revisionCollectors.size() > 0) {
+            for (RevisionsCollector collector : revisionCollectors) {
+                // Decrease the expected amount of revisions if we encountered an error
+                collector.decreaseRevisionsCount();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void abortRevisionsCollection(Exception e) {
         if (revisionCollectors.size() > 0) {
             for (RevisionsCollector collector : revisionCollectors) {
                 if (collector.getCallbacks() != null) {
@@ -459,10 +472,7 @@ public class Channel implements Bucket.Channel {
             }
 
             revisionCollectors.clear();
-            return true;
         }
-
-        return false;
     }
 
     /**
@@ -938,10 +948,10 @@ public class Channel implements Bucket.Channel {
 
         private Map<Integer, Syncable> versionsMap = Collections.synchronizedSortedMap(new TreeMap<Integer, Syncable>());
 
-        RevisionsCollector(String key, int sinceVersion, int maxVersions, Bucket.RevisionsRequestCallbacks callbacks) {
+        RevisionsCollector(String key, int sinceVersion, int maxVersionCount, Bucket.RevisionsRequestCallbacks callbacks) {
             this.key = key;
             this.sinceVersion = sinceVersion;
-            this.maxVersionCount = Math.max(maxVersions, 1);
+            this.maxVersionCount = maxVersionCount;
             this.callbacks = callbacks;
         }
 
@@ -956,7 +966,12 @@ public class Channel implements Bucket.Channel {
 
             if (!sent) {
                 sent = true;
-                int minVersion = (sinceVersion - maxVersionCount > 0) ? sinceVersion - maxVersionCount : 1;
+                int minVersion;
+                if (maxVersionCount > 0) {
+                    minVersion = (sinceVersion - maxVersionCount > 0) ? sinceVersion - maxVersionCount : 1;
+                } else {
+                    minVersion = 1;
+                }
                 mTotalRevisions = sinceVersion - minVersion;
                 // for each version send an e: request
                 for (int i = minVersion; i < sinceVersion; i++) {
@@ -988,6 +1003,10 @@ public class Channel implements Bucket.Channel {
         @Override
         public boolean isComplete() {
             return completed;
+        }
+
+        public void decreaseRevisionsCount() {
+            mTotalRevisions--;
         }
     }
 
