@@ -77,8 +77,8 @@ public class MockChannel implements Bucket.Channel {
     public void stop(){}
 
     @Override
-    public RevisionsRequest getRevisions(String key, int version, int max, final RevisionsRequestCallbacks callbacks) {
-        return null;
+    public void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks callbacks) {
+        throw new RuntimeException("Not implemented");
     }
 
     /**
