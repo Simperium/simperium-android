@@ -422,21 +422,20 @@ public class Channel implements Bucket.Channel {
             }
 
             // if we have any revision requests pending, we want to collect the objects
+            boolean collected = false;
             for (RevisionsCollector collector : revisionCollectors) {
-                collector.addObjectData(objectVersion);
+                collected = collector.addObjectData(objectVersion);
+            }
+
+            if (!collected) {
+                updateBucketWithObjectVersion(objectVersion);
             }
 
         } catch (ObjectVersionUnexpectedException e) {
             if (reportRevisionsError()) {
                 return;
             }
-
-            ObjectVersionData data = e.versionData;
-
-            Ghost ghost = new Ghost(data.getKey(), data.getVersion(),
-                data.getData());
-
-            mBucket.updateGhost(ghost, null);
+            updateBucketWithObjectVersion(e.versionData);
 
         } catch (ObjectVersionUnknownException e) {
             reportRevisionsError();
@@ -448,6 +447,12 @@ public class Channel implements Bucket.Channel {
             reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
+    }
+
+    private void updateBucketWithObjectVersion(ObjectVersionData objectVersion) {
+        Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(),
+            objectVersion.getData());
+        mBucket.updateGhost(ghost, null);
     }
 
     private boolean reportRevisionsError() {
@@ -980,7 +985,7 @@ public class Channel implements Bucket.Channel {
             }
         }
 
-        public void addObjectData(ObjectVersionData objectVersionData) {
+        public boolean addObjectData(ObjectVersionData objectVersionData) {
             int version = objectVersionData.getVersion();
             if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versionsMap.get(version) == null) {
                 versionsMap.put(version, mBucket.buildObject(this.key, objectVersionData.getData()));
@@ -993,7 +998,9 @@ public class Channel implements Bucket.Channel {
                     completed = true;
                     callbacks.onComplete(versionsMap);
                 }
+                return true;
             }
+            return false;
         }
 
         public Bucket.RevisionsRequestCallbacks getCallbacks() {
