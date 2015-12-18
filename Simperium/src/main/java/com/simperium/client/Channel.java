@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
+import java.util.TreeMap;
 import java.util.concurrent.Executor;
 
 import android.util.Log;
@@ -343,8 +344,6 @@ public class Channel implements Bucket.Channel {
         change.incrementRetryCount();
         change.setSendFullObject(true);
         mChangeProcessor.addChange(change);
-
-
     }
 
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
@@ -384,7 +383,6 @@ public class Channel implements Bucket.Channel {
             // received an index page for a different change version
             // TODO: reconcile the out of band index cv
         }
-
     }
 
     private IndexProcessorListener mIndexProcessorListener = new IndexProcessorListener() {
@@ -419,39 +417,75 @@ public class Channel implements Bucket.Channel {
             // versionData will be: key.version\n{"data":ENTITY}
             ObjectVersionData objectVersion = ObjectVersionData.parseString(versionData);
 
-            if (mIndexProcessor == null)
-                throw new ObjectVersionUnexpectedException(objectVersion);
+            if (mIndexProcessor != null) {
+                mIndexProcessor.addObjectData(objectVersion);
+            }
 
-            mIndexProcessor.addObjectData(objectVersion);
+            // if we have any revision requests pending, we want to collect the objects
+            boolean collected = false;
+            for (RevisionsCollector collector : revisionCollectors) {
+                collected = collector.addObjectData(objectVersion);
+            }
+
+            if (!collected) {
+                updateBucketWithObjectVersion(objectVersion);
+            }
 
         } catch (ObjectVersionUnexpectedException e) {
-
-            ObjectVersionData data = e.versionData;
-
-            Ghost ghost = new Ghost(data.getKey(), data.getVersion(),
-                data.getData());
-
-            mBucket.updateGhost(ghost, null);
+            if (reportRevisionsError()) {
+                return;
+            }
+            updateBucketWithObjectVersion(e.versionData);
 
         } catch (ObjectVersionUnknownException e) {
+            reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Object version does not exist %s", e.version));
         } catch (ObjectVersionDataInvalidException e) {
+            reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Object version JSON data malformed %s", e.version));
         } catch (ObjectVersionParseException e) {
+            reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Received invalid object version: %s", e.versionString));
         }
+    }
 
+    private void updateBucketWithObjectVersion(ObjectVersionData objectVersion) {
+        Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(),
+            objectVersion.getData());
+        mBucket.updateGhost(ghost, null);
+    }
 
+    private boolean reportRevisionsError() {
+        if (revisionCollectors.size() > 0) {
+            for (RevisionsCollector collector : revisionCollectors) {
+                // Decrease the expected amount of revisions if we encountered an error
+                collector.decreaseRevisionsCount();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void abortRevisionsCollection(Exception e) {
+        if (revisionCollectors.size() > 0) {
+            for (RevisionsCollector collector : revisionCollectors) {
+                if (collector.getCallbacks() != null) {
+                    collector.getCallbacks().onError(e);
+                }
+            }
+
+            revisionCollectors.clear();
+        }
     }
 
     /**
      * Stop sending changes and download a new index
      */
     private void stopChangesAndRequestIndex() {
-
         // get the latest index
         getLatestVersions();
-
     }
 
     /**
@@ -518,9 +552,7 @@ public class Channel implements Bucket.Channel {
                     Logger.log(TAG, "Unable to add extra info", e);
                 }
 
-
                 sendMessage(String.format("%s:%s", COMMAND_INDEX_STATE, index));
-
             }
 
         });
@@ -560,11 +592,19 @@ public class Channel implements Bucket.Channel {
         return mIdle;
     }
 
+    @Override
+    public void getRevisions(final String key, final int sinceVersion, final int maxVersionCount,
+                             final Bucket.RevisionsRequestCallbacks callbacks) {
+        // for the key and version iterate down requesting the each version for the object
+        RevisionsCollector collector = new RevisionsCollector(key, sinceVersion, maxVersionCount, callbacks);
+        revisionCollectors.add(collector);
+        collector.send();
+    }
+
     public void log(int level, CharSequence message) {
         if (this.mListener != null) {
             this.mListener.onLog(this, level, message);
         }
-
     }
 
     /**
@@ -898,8 +938,90 @@ public class Channel implements Bucket.Channel {
             super();
             this.versionData = versionData;
         }
-
     }
+
+    // Collects revisions for a Simperium object
+    private class RevisionsCollector implements Bucket.RevisionsRequest {
+
+        final private String key;
+        final private int sinceVersion;
+        final private int maxVersionCount;
+        final private Bucket.RevisionsRequestCallbacks callbacks;
+        private boolean completed = true;
+        private boolean sent = false;
+        private int mTotalRevisions;
+
+        private Map<Integer, Syncable> versionsMap = Collections.synchronizedSortedMap(new TreeMap<Integer, Syncable>());
+
+        RevisionsCollector(String key, int sinceVersion, int maxVersionCount, Bucket.RevisionsRequestCallbacks callbacks) {
+            this.key = key;
+            this.sinceVersion = sinceVersion;
+            this.maxVersionCount = maxVersionCount;
+            this.callbacks = callbacks;
+        }
+
+        private void send() {
+            if (!mConnected) {
+                if (callbacks != null) {
+                    abortRevisionsCollection(new Exception("Can't retrieve revisions: No connection."));
+                }
+
+                return;
+            }
+
+            if (!sent) {
+                sent = true;
+                int minVersion;
+                if (maxVersionCount > 0) {
+                    minVersion = (sinceVersion - maxVersionCount > 0) ? sinceVersion - maxVersionCount : 1;
+                } else {
+                    minVersion = 1;
+                }
+                mTotalRevisions = sinceVersion - minVersion;
+                // for each version send an e: request
+                for (int i = minVersion; i < sinceVersion; i++) {
+                    sendObjectVersionRequest(key, i);
+                }
+            }
+        }
+
+        public boolean addObjectData(ObjectVersionData objectVersionData) {
+            int version = objectVersionData.getVersion();
+            if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versionsMap.get(version) == null) {
+                versionsMap.put(version, mBucket.buildObject(this.key, objectVersionData.getData()));
+
+                JSONObject data = objectVersionData.getData();
+                callbacks.onRevision(key, version, data);
+
+                if (versionsMap.size() == mTotalRevisions) {
+                    revisionCollectors.remove(this);
+                    completed = true;
+                    callbacks.onComplete(versionsMap);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public Bucket.RevisionsRequestCallbacks getCallbacks() {
+            return callbacks;
+        }
+
+        @Override
+        public boolean isComplete() {
+            return completed;
+        }
+
+        public void decreaseRevisionsCount() {
+            mTotalRevisions--;
+        }
+    }
+
+    private void sendObjectVersionRequest(String key, int version){
+        sendMessage(String.format("%s:%s.%d", COMMAND_ENTITY, key, version));
+    }
+
+    private List<RevisionsCollector> revisionCollectors = Collections.synchronizedList(new ArrayList<RevisionsCollector>());
 
     private interface IndexProcessorListener {
         
@@ -961,7 +1083,6 @@ public class Channel implements Bucket.Channel {
                     if (mComplete && mReceivedCount == mIndexedCount) {
                         notifyDone();
                     }
-
                 }
 
             });

@@ -49,6 +49,7 @@ public class Bucket<T extends Syncable> {
         void stop();
         void reset();
         boolean isIdle();
+        void getRevisions(String key, int sinceVersion, int maxVersionCount, RevisionsRequestCallbacks callbacks);
     }
 
     public interface OnBeforeUpdateObjectListener<T extends Syncable> {
@@ -71,6 +72,16 @@ public class Bucket<T extends Syncable> {
         OnSaveObjectListener<T>, OnDeleteObjectListener<T>,
         OnNetworkChangeListener<T>, OnBeforeUpdateObjectListener<T> {
             // implements all listener methods
+    }
+
+    public interface RevisionsRequestCallbacks<T extends Syncable> {
+        void onComplete(Map<Integer, T> revisions);
+        void onRevision(String key, int version, JSONObject object);
+        void onError(Throwable exception);
+    }
+
+    public interface RevisionsRequest {
+        boolean isComplete();
     }
 
     /**
@@ -587,7 +598,6 @@ public class Bucket<T extends Syncable> {
         });
     }
 
-
     /**
      * Update the ghost data
      */
@@ -688,7 +698,7 @@ public class Bucket<T extends Syncable> {
         if (object.getGhost() == null) {
             object.setGhost(new Ghost(object.getSimperiumKey()));
         }
-        
+
         object.setBucket(this);
         JSONObject objectJSON = object.getDiffableValue();
         mStorage.save(object, object.getSimperiumKey(), objectJSON.toString(), mSchema.indexesFor(object));
@@ -1011,4 +1021,74 @@ public class Bucket<T extends Syncable> {
         }
     }
 
+    /**
+     * Request revision history for an object. Called by all of the public getRevision() methods.
+     */
+    private void getRevisions(String key, int version, int max, final RevisionsRequestCallbacks<T> callbacks) {
+        mChannel.getRevisions(key, version, max, new RevisionsRequestCallbacks() {
+
+            @Override
+            public void onComplete(Map revisions) {
+                callbacks.onComplete(revisions);
+            }
+
+            @Override
+            public void onRevision(String key, int version, JSONObject object) {
+                callbacks.onRevision(key, version, object);
+            }
+
+            @Override
+            public void onError(Throwable exception) {
+                callbacks.onError(exception);
+            }
+        });
+    }
+
+    public void getRevisions(final T object, final int max, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                getRevisions(object.getSimperiumKey(), object.getVersion(), max, callbacks);
+            }
+        });
+    }
+
+    public void getRevisions(final T object, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                getRevisions(object.getSimperiumKey(), object.getVersion(), 0, callbacks);
+            }
+        });
+    }
+
+    public void getRevisions(final String key, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                int version;
+                try {
+                    version = mGhostStore.getGhostVersion(Bucket.this, key);
+                    getRevisions(key, version, 0, callbacks);
+                } catch (GhostMissingException e) {
+                    callbacks.onError(e);
+                }
+            }
+        });
+    }
+
+    public void getRevisions(final String key, final int max, final RevisionsRequestCallbacks<T> callbacks) {
+        mExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                int version;
+                try {
+                    version = mGhostStore.getGhostVersion(Bucket.this, key);
+                    getRevisions(key, version, max, callbacks);
+                } catch (GhostMissingException e) {
+                    callbacks.onError(e);
+                }
+            }
+        });
+    }
 }

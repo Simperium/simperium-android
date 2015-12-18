@@ -65,6 +65,16 @@ public class MockGhostStore implements GhostStorageProvider {
         return ghost;
     }
 
+    @Override
+    public int getGhostVersion(Bucket bucket, String key) throws GhostMissingException {
+        Map<String,Ghost> ghosts = ghostsForBucket(bucket);
+        Ghost ghost = ghosts.get(key);
+        if (ghost == null) {
+            throw(new GhostMissingException());
+        }
+        return ghost.getVersion();
+    }
+
     /**
      * Saves the provided ghost to the bucket
      */
