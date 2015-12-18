@@ -780,7 +780,7 @@ public class ChannelTest extends BaseSimperiumTest {
 
         // 3) Local data should still exist and should sync
         waitFor(200);
-        assertEquals(1, mChannelSerializer.queue.queued.size());
+        assertEquals(1, mChannelSerializer.queue.pending.size());
     }
 
     /**
