@@ -424,8 +424,8 @@ public class Channel implements Bucket.Channel {
             // if we have any revision requests pending, we want to collect the objects
             boolean collected = false;
             for (RevisionsCollector collector : revisionCollectors) {
-                if (!collected) {
-                    collected = collector.addObjectData(objectVersion);
+                if (collector.addObjectData(objectVersion)) {
+                    collected = true;
                 }
             }
 
