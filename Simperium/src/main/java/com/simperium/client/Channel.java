@@ -424,19 +424,14 @@ public class Channel implements Bucket.Channel {
             // if we have any revision requests pending, we want to collect the objects
             boolean collected = false;
             for (RevisionsCollector collector : revisionCollectors) {
-                collected = collector.addObjectData(objectVersion);
+                if (collector.addObjectData(objectVersion)) {
+                    collected = true;
+                }
             }
 
             if (!collected) {
                 updateBucketWithObjectVersion(objectVersion);
             }
-
-        } catch (ObjectVersionUnexpectedException e) {
-            if (reportRevisionsError()) {
-                return;
-            }
-            updateBucketWithObjectVersion(e.versionData);
-
         } catch (ObjectVersionUnknownException e) {
             reportRevisionsError();
             log(LOG_DEBUG, String.format(Locale.US, "Object version does not exist %s", e.version));
@@ -931,15 +926,6 @@ public class Channel implements Bucket.Channel {
 
     }
 
-    public static class ObjectVersionUnexpectedException extends SimperiumException {
-        public final ObjectVersionData versionData;
-
-        public ObjectVersionUnexpectedException(ObjectVersionData versionData) {
-            super();
-            this.versionData = versionData;
-        }
-    }
-
     // Collects revisions for a Simperium object
     private class RevisionsCollector implements Bucket.RevisionsRequest {
 
@@ -1062,11 +1048,10 @@ public class Channel implements Bucket.Channel {
          * Receive an object's version data and store it. Send the request for the
          * next object.
          */
-        public void addObjectData(ObjectVersionData objectVersion)
-        throws ObjectVersionUnexpectedException {
-
-            if (!mQueue.remove(objectVersion.toString()))
-                throw new ObjectVersionUnexpectedException(objectVersion);
+        public boolean addObjectData(ObjectVersionData objectVersion) {
+            if (!mQueue.remove(objectVersion.toString())) {
+                return false;
+            }
 
             // build the ghost and update
             Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), objectVersion.getData());
@@ -1088,6 +1073,8 @@ public class Channel implements Bucket.Channel {
             });
 
             next();
+
+            return true;
         }
 
         public void start(JSONObject indexPage) {
