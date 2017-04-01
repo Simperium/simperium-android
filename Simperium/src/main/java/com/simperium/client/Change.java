@@ -44,7 +44,6 @@ public class Change {
     private OnCompleteListener completeListener;
     private OnAcknowledgedListener acknowledgedListener;
     private Change compressed;
-    private JSONDiff jsondiff = new JSONDiff();
     private boolean sendFullObject = false;
     private TimerTask retryTimer;
     private Integer retryCount = 0;
@@ -154,7 +153,7 @@ public class Change {
         this.sendFullObject = sendFullObject;
     }
 
-    public JSONObject toJSONObject(JSONObject target, Ghost ghost)
+    public JSONObject toJSONObject(JSONObject encryptedTarget, Ghost ghost)
     throws ChangeEmptyException, ChangeInvalidException {
         try {
             JSONObject json = new JSONObject();
@@ -166,7 +165,8 @@ public class Change {
                 json.put(SOURCE_VERSION_KEY, ghost.getVersion());
             }
 
-            JSONObject diff = getDiff(target, ghost);
+            // note: sends a diff between encrypted-before & encrypted-after
+            JSONObject diff = getDiff(encryptedTarget, ghost);
             boolean requiresDiff = requiresDiff();
 
             if (requiresDiff && diff.length() == 0) {
@@ -178,7 +178,8 @@ public class Change {
             }
 
             if (sendFullObject) {
-                json.put(OBJECT_DATA_KEY, target);
+                // note: sends the encrypted version here
+                json.put(OBJECT_DATA_KEY, encryptedTarget);
             }
 
             return json;
@@ -247,9 +248,9 @@ public class Change {
         return operation.equals(OPERATION_MODIFY);
     }
 
-    public JSONObject getDiff(JSONObject target, Ghost ghost){
+    public JSONObject getDiff(JSONObject encryptedTarget, Ghost ghost){
         try {
-            return jsondiff.diff(ghost.getDiffableValue(), target);
+            return JSONDiff.diff(ghost.getEncryptedValue(), encryptedTarget);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

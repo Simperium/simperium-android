@@ -127,7 +127,7 @@ public class GhostStore implements GhostStorageProvider {
         Ghost ghost = null;
         if (cursor.getCount() > 0) {
             cursor.moveToFirst();
-            ghost = new Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)));
+            ghost = new Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)) /* note: the encrypted version of data */);
         }
         cursor.close();
         if (ghost == null) {
@@ -170,7 +170,7 @@ public class GhostStore implements GhostStorageProvider {
     }
 
     private String serializeGhostData(Ghost ghost) {
-        JSONObject json = ghost.getDiffableValue();
+        JSONObject json = ghost.getEncryptedValue(); // note: store the encrypted version
         if (json != null) {
             return json.toString();
         }

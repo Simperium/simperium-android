@@ -61,7 +61,6 @@ public class RemoteChange {
     private Integer errorCode;
     private boolean applied = false;
     private Change change;
-    private JSONDiff jsondiff = new JSONDiff();
 
     /**
      * All remote changes include clientid, key and ccids then these differences:
@@ -115,8 +114,8 @@ public class RemoteChange {
         }
 
         try {
-            JSONObject properties = jsondiff.apply(ghost.getDiffableValue(), getPatch());
-            return new Ghost(getKey(), getObjectVersion(), properties);
+            JSONObject properties = JSONDiff.apply(ghost.getEncryptedValue(), getPatch()); // note: merging encrypted versions
+            return new Ghost(getKey(), getObjectVersion(), properties /* note: Encrypted data */);
         } catch (JSONException e) {
             throw new RemoteChangeInvalidException(this, String.format("Unable to apply patch: %s", getPatch()), e);
         } catch (IllegalArgumentException e) {

@@ -443,7 +443,7 @@ public class Bucket<T extends Syncable> {
     }
 
     protected T buildObject(Ghost ghost) {
-        T object = mSchema.buildWithDefaults(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue()));
+        T object = mSchema.buildWithDefaults(ghost.getSimperiumKey(), JSONDiff.deepCopy(ghost.getDiffableValue())); // note: builds the object with the unencrypted version of the data
         object.setGhost(ghost);
         object.setBucket(this);
         return object;
@@ -949,7 +949,7 @@ public class Bucket<T extends Syncable> {
                 }
 
                 // updates the ghost and sets it on the object
-                updatedGhost = change.apply(ghost);
+                updatedGhost = change.apply(ghost); // note: handles encryption issues
                 JSONObject updatedProperties = JSONDiff.deepCopy(updatedGhost.getDiffableValue());
 
                 // persist the ghost to storage
@@ -965,7 +965,8 @@ public class Bucket<T extends Syncable> {
 
                     if (localModifications != null && localModifications.length() > 0) {
                         try {
-                            JSONObject incomingDiff = change.getPatch();
+                            JSONObject encryptedPatch = change.getPatch(); // note: only encrypted data in this method
+                            JSONObject incomingDiff = unencryptPatch(encryptedPatch, ghost);
                             JSONObject localDiff = localModifications.getJSONObject(JSONDiff.DIFF_VALUE_KEY);
 
                             JSONObject transformedDiff = JSONDiff.transform(localDiff, incomingDiff, currentProperties);
@@ -1001,6 +1002,14 @@ public class Bucket<T extends Syncable> {
 
         notifyOnNetworkChangeListeners(type, change.getKey());
         return updatedGhost;
+    }
+
+    private JSONObject unencryptPatch(JSONObject encryptedPatch, Ghost ghost) throws SimperiumException, JSONException {
+        JSONObject patchedGhostData = JSONDiff.apply(ghost.getEncryptedValue(), encryptedPatch);
+        Ghost patchedGhost = new Ghost(null, -1, patchedGhostData);
+        // todo note: this gives error in integration tests:
+        // return JSONDiff.diff(ghost.getDiffableValue(), patchedGhost.getDiffableValue());
+        return JSONDiff.diff(ghost.getDiffableValue(), patchedGhost.getDiffableValue()).getJSONObject(JSONDiff.DIFF_VALUE_KEY); // note: returns unencrypted
     }
 
     static public final String BUCKET_OBJECT_NAME_REGEX = "^[a-zA-Z0-9_\\.\\-%@]{1,256}$";

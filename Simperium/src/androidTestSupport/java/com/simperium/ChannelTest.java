@@ -669,7 +669,7 @@ public class ChannelTest extends BaseSimperiumTest {
         JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
         JSONObject data = change.getJSONObject("d");
 
-        assertEquals(note.getDiffableValue().toString(), data.toString());
+        assertEquals(note.getEncryptedValue().toString(), data.toString());
 
     }
 
@@ -695,7 +695,7 @@ public class ChannelTest extends BaseSimperiumTest {
         JSONObject change = ChannelUtil.parseChangeData(mListener.lastMessage);
         JSONObject data = change.getJSONObject("d");
 
-        assertEquals(note.getDiffableValue().toString(), data.toString());
+        assertEquals(note.getEncryptedValue().toString(), data.toString());
     }
 
     public void testRequeueChangeWithFullObjectRetryLimit()

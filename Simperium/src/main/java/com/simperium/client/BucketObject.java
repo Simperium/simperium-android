@@ -97,6 +97,11 @@ public class BucketObject extends Syncable {
         return mProperties;
     }
 
+    public JSONObject getEncryptedValue() {
+        JSONObject diffableValue = getDiffableValue();
+        return CryptographyAgent.isEnabled() ? CryptographyAgent.getInstance().encryptJson(diffableValue) : diffableValue;
+    }
+
     public boolean equals(Object o) {
         if (o == null) {
             return false;

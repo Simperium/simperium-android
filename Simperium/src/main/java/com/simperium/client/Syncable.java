@@ -64,7 +64,7 @@ public abstract class Syncable implements Diffable {
      * Returns the object as it should appear on the server
      */
     public JSONObject getUnmodifiedValue() {
-        return getGhost().getDiffableValue();
+        return getGhost().getEncryptedValue();
     }
 
     /**

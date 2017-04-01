@@ -11,4 +11,5 @@ public interface Diffable {
     // void setVersion(Integer version);
     Integer getVersion();
     JSONObject getDiffableValue();
+    JSONObject getEncryptedValue();
 }

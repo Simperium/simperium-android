@@ -10,8 +10,23 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.simperium.client.CryptographyAgent;
+
 public class Note extends BucketObject {
-    
+
+    static {
+        // pass-through encryption for testing
+        CryptographyAgent.setInstance(new CryptographyAgent() {
+            public String encryptText(String rawText) {
+                return rawText;
+            }
+
+            public String decryptText(String cipherText) {
+                return cipherText;
+            }
+        });
+    }
+
     public static class Schema extends BucketSchema<Note> {
         public static final String BUCKET_NAME="notes";
 

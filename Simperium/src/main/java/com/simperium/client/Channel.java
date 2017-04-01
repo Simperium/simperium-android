@@ -4,8 +4,8 @@
  *
  * A Channel is provided with a Simperium App ID, a Bucket to operate on, a User
  * who owns the bucket and a Channel.Listener that receives messages from the
- * Channel. 
- * 
+ * Channel.
+ *
  * To get messages into a Channel, Channel.receiveMessage receives a Simperium
  * websocket API message stripped of the channel ID prefix.
  *
@@ -111,7 +111,7 @@ public class Channel implements Bucket.Channel {
     // for sending and receiving changes
     final private ChangeProcessor mChangeProcessor;
     private IndexProcessor mIndexProcessor;
-    
+
     public interface Serializer {
         // public <T extends Syncable> void save(Bucket<T> mBucket, SerializedQueue<T> data);
         SerializedQueue restore(Bucket mBucket);
@@ -446,7 +446,7 @@ public class Channel implements Bucket.Channel {
 
     private void updateBucketWithObjectVersion(ObjectVersionData objectVersion) {
         Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(),
-            objectVersion.getData());
+            objectVersion.getData() /* note: encrypted data */);
         mBucket.updateGhost(ghost, null);
     }
 
@@ -974,7 +974,7 @@ public class Channel implements Bucket.Channel {
         public boolean addObjectData(ObjectVersionData objectVersionData) {
             int version = objectVersionData.getVersion();
             if (objectVersionData.getKey().equals(this.key) && version < sinceVersion && versionsMap.get(version) == null) {
-                versionsMap.put(version, mBucket.buildObject(this.key, objectVersionData.getData()));
+                versionsMap.put(version, mBucket.buildObject(this.key, objectVersionData.getData() /* note: the encrypted data */ ));
 
                 JSONObject data = objectVersionData.getData();
                 callbacks.onRevision(key, version, data);
@@ -1010,7 +1010,7 @@ public class Channel implements Bucket.Channel {
     private List<RevisionsCollector> revisionCollectors = Collections.synchronizedList(new ArrayList<RevisionsCollector>());
 
     private interface IndexProcessorListener {
-        
+
         void onComplete(String cv);
     }
 
@@ -1054,7 +1054,7 @@ public class Channel implements Bucket.Channel {
             }
 
             // build the ghost and update
-            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), objectVersion.getData());
+            Ghost ghost = new Ghost(objectVersion.getKey(), objectVersion.getVersion(), objectVersion.getData() /* note: the encrypted data */);
             mBucket.addObjectWithGhost(ghost, new Runnable() {
                 @Override
                 public void run() {
@@ -1221,14 +1221,14 @@ public class Channel implements Bucket.Channel {
     }
 
     /**
-     * ChangeProcessor should perform operations on a seperate thread as to not block the websocket
+     * ChangeProcessor should perform operations on a separate thread as to not block the websocket
      * ideally it will be a FIFO queue processor so as changes are brought in they can be appended.
      * We also need a way to pause and clear the queue when we download a new index.
      */
     private class ChangeProcessor implements Runnable, Change.OnRetryListener {
 
         // wait 5 seconds for retries
-        public static final long RETRY_DELAY_MS = 5000; 
+        public static final long RETRY_DELAY_MS = 5000;
         private List<JSONObject> mRemoteQueue = Collections.synchronizedList(new ArrayList<JSONObject>(10));
         private List<Change> mLocalQueue = Collections.synchronizedList(new ArrayList<Change>());
         private Map<String,Change> mPendingChanges = Collections.synchronizedMap(new HashMap<String,Change>());
@@ -1548,7 +1548,7 @@ public class Channel implements Bucket.Channel {
                 log(LOG_DEBUG, String.format("Sending change for id: %s op: %s ccid: %s", change.getKey(), change.getOperation(), change.getChangeId()));
                 Syncable target = mBucket.getObjectOrBackup(change.getKey());
                 Ghost ghost = mBucket.getGhost(change.getKey());
-                sendMessage(String.format("c:%s", change.toJSONObject(target.getDiffableValue(), ghost)));
+                sendMessage(String.format("c:%s", change.toJSONObject(target.getEncryptedValue(), ghost)));
                 mSerializer.onSendChange(change);
                 change.setSent();
             } catch (BucketObjectMissingException e) {
