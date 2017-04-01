@@ -17,12 +17,12 @@ public class Note extends BucketObject {
     static {
         // pass-through encryption for testing
         CryptographyAgent.setInstance(new CryptographyAgent() {
-            public String encryptText(String rawText) {
-                return rawText;
-            }
+            public JSONObject encryptJson(JSONObject rawObject) {
+                return rawObject;
+            };
 
-            public String decryptText(String cipherText) {
-                return cipherText;
+            public JSONObject decryptJson(JSONObject encryptedObject) {
+                return encryptedObject;
             }
         });
     }
