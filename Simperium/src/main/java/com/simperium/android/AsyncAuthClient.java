@@ -22,7 +22,7 @@ import android.util.Log;
 
 public class AsyncAuthClient implements AuthProvider {
 
-    public static final String TAG = "Simperium.AsyncAuthClient";
+    public static final String TAG = "AsyncAuthClient";
 
     private static final String AUTH_URL = "https://auth.simperium.com/1";
     private static final String CREATE_PATH = "create/";

@@ -71,7 +71,9 @@ public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginA
 
     public static void assertTableExists(SQLiteDatabase database, String tableName) {
         Cursor cursor = database.query("sqlite_master", new String[]{"name"}, "type=? AND name=?", new String[]{"table", tableName}, "name", null, null, null);
-        assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, cursor.getCount());
+        int count = cursor.getCount();
+        cursor.close();
+        assertEquals(String.format("Table %s does not exist in %s", tableName, database), 1, count);
     }
 
 }
