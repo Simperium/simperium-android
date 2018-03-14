@@ -11,6 +11,7 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
@@ -149,6 +150,33 @@ public class LoginActivity extends Activity {
                 Uri uriUrl = Uri.parse("https://simperium.com/tos/");
                 Intent launchBrowser = new Intent(Intent.ACTION_VIEW, uriUrl);
                 startActivity(launchBrowser);
+            }
+        });
+
+        passwordTextField.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent keyEvent) {
+                if (passwordTextField2.getVisibility() == View.GONE &&
+                        keyEvent.getAction() == KeyEvent.ACTION_DOWN &&
+                        keyCode == KeyEvent.KEYCODE_ENTER) {
+                    signIn();
+                    return true;
+                }
+
+                return false;
+            }
+        });
+
+        passwordTextField2.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent keyEvent) {
+                if (keyEvent.getAction() == KeyEvent.ACTION_DOWN &&
+                        keyCode == KeyEvent.KEYCODE_ENTER) {
+                    signUp();
+                    return true;
+                }
+
+                return false;
             }
         });
 
