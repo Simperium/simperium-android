@@ -1,6 +1,7 @@
 
 buildscript {
     repositories {
+        jcenter()
         mavenCentral()
     }
     dependencies { classpath 'com.android.tools.build:gradle:3.0.1' }
@@ -15,8 +16,10 @@ version gitVersion()
 group "com.simperium"
 
 repositories {
+    jcenter()
     mavenCentral()
     maven { url "http://simperium.github.io/simperium-android" }
+    maven { url "https://maven.google.com" }
 }
 
 android {
