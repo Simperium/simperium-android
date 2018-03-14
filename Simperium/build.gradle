@@ -3,7 +3,7 @@ buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies { classpath 'com.android.tools.build:gradle:1.0.0' }
+    dependencies { classpath 'com.android.tools.build:gradle:2.1.3' }
 }
 
 apply plugin: 'com.android.library'
@@ -41,11 +41,17 @@ android {
         buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
     }
 
+    flavorDimensions "client", "support"
+
     productFlavors {
         // client is the main production build
-        client
+        client {
+            dimension "client"
+        }
         // support build is for running tests and includes mock code
-        support
+        support {
+            dimension "support"
+        }
     }
 
 }
