@@ -45,16 +45,16 @@ android {
         buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
     }
 
-    flavorDimensions "client", "support"
+    flavorDimensions "main"
 
     productFlavors {
         // client is the main production build
         client {
-            dimension "client"
+            dimension "main"
         }
         // support build is for running tests and includes mock code
         support {
-            dimension "support"
+            dimension "main"
         }
     }
 
