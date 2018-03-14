@@ -6,7 +6,6 @@ env:
     - ANDROID_TARGET=android-21  ANDROID_ABI=armeabi-v7a
 android:
   components:
-    - platform-tools
     - build-tools-21.1.2
     - android-21
     - sys-img-armeabi-v7a-android-21
