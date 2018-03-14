@@ -6,6 +6,8 @@ env:
     - ANDROID_TARGET=android-21  ANDROID_ABI=armeabi-v7a
 android:
   components:
+    - platform-tools
+    - tools
     - build-tools-21.1.2
     - android-21
   licenses:
