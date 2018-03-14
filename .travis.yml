@@ -6,6 +6,9 @@ env:
     - ANDROID_TARGET=android-26  ANDROID_ABI=armeabi-v7a
 android:
   components:
+    - tools
+    - platform-tools
+    - tools
     - build-tools-26.0.2
     - android-26
     - sys-img-armeabi-v7a-android-26
