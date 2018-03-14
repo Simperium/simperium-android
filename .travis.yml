@@ -7,9 +7,9 @@ env:
 android:
   components:
     - platform-tools
-    - tools
     - build-tools-21.1.2
     - android-21
+    - sys-img-armeabi-v7a-android-21
   licenses:
     - android-sdk-license-5be876d5
 
