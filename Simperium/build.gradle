@@ -28,12 +28,12 @@ android {
         compile 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
     }
 
-    compileSdkVersion 21
-    buildToolsVersion "21.1.2"
+    compileSdkVersion 26
+    buildToolsVersion "26.0.2"
 
     defaultConfig {
         minSdkVersion 8
-        targetSdkVersion 21
+        targetSdkVersion 26
         versionName project.version
 
         // Calculating PIN for certificate: OU=Domain Control Validated, CN=*.simperium.com
