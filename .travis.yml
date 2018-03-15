@@ -3,15 +3,15 @@ jdk: oraclejdk8
 sudo: false
 env:
   matrix:
-    - ANDROID_TARGET=android-26  ANDROID_ABI=armeabi-v7a
+    - ANDROID_TARGET=android-25  ANDROID_ABI=armeabi-v7a
 android:
   components:
     - tools
     - platform-tools
     - tools
-    - build-tools-26.0.2
-    - android-26
-    - sys-img-armeabi-v7a-android-26
+    - build-tools-25.0.2
+    - android-25
+    - sys-img-armeabi-v7a-android-25
 
 before_script:
   # compile the code so gradle and dependencies are all downloaded
