@@ -13,7 +13,7 @@
             android:paddingTop="16dp"
             android:paddingBottom="16dp"
             android:gravity="center"
-            android:layout_gravity="center|top">
+            android:layout_gravity="center">
 
         <ImageView
                 android:id="@+id/logo_login"
