@@ -362,12 +362,17 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         note.setContent("lorem ipsum dolor whatever");
         note.addTags("literature");
 
+        note = mBucket.newObject("ftsearch4");
+        note.setContent("Бабушка means Grandmother.");
+        note.save();
+
         assertEquals(1, mBucket.query().where(new Query.FullTextMatch("town hall")).count());
 
         assertEquals(2, mBucket.query().where(new Query.FullTextMatch("two")).count());
 
         assertEquals(1, mBucket.query().where(new Query.FullTextMatch("tags:two")).count());
 
+        assertEquals(1, mBucket.query().where(new Query.FullTextMatch("бабушка")).count());
     }
 
     public void testFullTextSnippet()

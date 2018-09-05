@@ -275,6 +275,10 @@ public class PersistentStore implements StorageProvider {
                 if (rebuild) {
                     mDatabase.execSQL(String.format(Locale.US, "DROP TABLE IF EXISTS `%s`", tableName));
                     StringBuilder fields = new StringBuilder();
+                    if (supportsUnicodeFullText()) {
+                        // Add unicode case-insensitive search support
+                        fields.append("tokenize=unicode61, ");
+                    }
                     for (String key : keys) {
                         fields.append("`");
                         fields.append(key);
@@ -630,7 +634,7 @@ public class PersistentStore implements StorageProvider {
     }
 
     // See issue #150, Android < 15 can't use distinct in full text queries
-    public static boolean supportsDistinct(boolean fullTextQuery) {
+    static boolean supportsDistinct(boolean fullTextQuery) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             return true;
@@ -638,7 +642,11 @@ public class PersistentStore implements StorageProvider {
 
         // Otherwise only use distinct if it's not a full text query
         return !fullTextQuery;
+    }
 
+    // Android < 21 can't use `unicode61` SQLite tokenizer
+    static boolean supportsUnicodeFullText() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
     }
 
 
