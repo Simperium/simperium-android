@@ -34,16 +34,16 @@ public class JSONDiff {
 
     private static diff_match_patch dmp = new diff_match_patch();
 
-    public static JSONObject transform(String o_diff, String diff, String source)
+    public static JSONObject transform(String localDiff, String diff, String source)
     throws JSONException {
 
         JSONObject transformed = new JSONObject();
 
-        LinkedList<Patch> o_patches = dmp.patch_make(source, dmp.diff_fromDelta(source, o_diff));
+        LinkedList<Patch> localPatches = dmp.patch_make(source, dmp.diff_fromDelta(source, localDiff));
         LinkedList<Patch> patches = dmp.patch_make(source, dmp.diff_fromDelta(source, diff));
 
         String text = (String) dmp.patch_apply(patches, source)[0];
-        String combined = (String) dmp.patch_apply(o_patches, text)[0];
+        String combined = (String) dmp.patch_apply(localPatches, text)[0];
 
         if (text.equals(combined)) {
             // text is the same, return empty diff
@@ -68,67 +68,67 @@ public class JSONDiff {
     }
 
     /**
-     * Given two object diffs (o_diff and diff) and a source object, calculate
-     * the transformed o_diff that merges the changes of source + diff and
-     * source + o_diff
+     * Given two object diffs (localDiff and diff) and a source object, calculate
+     * the transformed localDiff that merges the changes of source + diff and
+     * source + localDiff
      * 
      * For reference:
      * https://github.com/Simperium/jsondiff/blob/eb61ad1e4554450cc14af1938847f18513db946b/src/jsondiff.coffee#L458-L503
      */
-    public static JSONObject transform(JSONObject o_diff, JSONObject diff, JSONObject source)
+    public static JSONObject transform(JSONObject local, JSONObject remote, JSONObject source)
     throws JSONException {
 
-        JSONObject transformed_diff = deepCopy(o_diff);
+        JSONObject transformed_diff = deepCopy(local);
 
-        // iterate the keys of o_diff
-        Iterator<String> keys = o_diff.keys();
+        // iterate the keys of localDiff
+        Iterator<String> keys = local.keys();
         while(keys.hasNext()) {
             String key = keys.next();
 
-            if (!diff.has(key)) {
+            if (!remote.has(key)) {
                 continue;
             }
 
-            JSONObject o_operation = o_diff.getJSONObject(key);
-            JSONObject operation = diff.getJSONObject(key);
+            JSONObject localOperation = local.getJSONObject(key);
+            JSONObject operation = remote.getJSONObject(key);
 
-            String o_type = o_operation.getString(DIFF_OPERATION_KEY);
+            String localType = localOperation.getString(DIFF_OPERATION_KEY);
             String type = operation.getString(DIFF_OPERATION_KEY);
 
-            Object o_value = o_operation.opt(DIFF_VALUE_KEY);
+            Object localValue = localOperation.opt(DIFF_VALUE_KEY);
             Object value = operation.opt(DIFF_VALUE_KEY);
 
             // both are inserts
-            if (o_type.equals(OPERATION_INSERT) && type.equals(OPERATION_INSERT)) {
+            if (localType.equals(OPERATION_INSERT) && type.equals(OPERATION_INSERT)) {
                 // both are inserting the same value
-                if (o_value.equals(value)) {
+                if (localValue.equals(value)) {
                     // don't duplicate what diff is doing
                     transformed_diff.remove(key);
                 } else {
-                    transformed_diff.put(key, diff(value, o_value));
+                    transformed_diff.put(key, diff(value, localValue));
                 }
-            } else if (o_type.equals(OPERATION_REMOVE) && type.equals(OPERATION_REMOVE)) {
+            } else if (localType.equals(OPERATION_REMOVE) && type.equals(OPERATION_REMOVE)) {
                 // we're both removing the same key
                 transformed_diff.remove(key);
-            } else if (type.equals(OPERATION_REMOVE) && !o_type.equals(OPERATION_REMOVE)) {
+            } else if (type.equals(OPERATION_REMOVE) && !localType.equals(OPERATION_REMOVE)) {
 
                 // they removed a key that we're replacing, insert the key
                 JSONObject restore_op = new JSONObject();
                 restore_op.put(DIFF_OPERATION_KEY, OPERATION_INSERT);
 
-                if (o_type.equals(OPERATION_REPLACE)) {
-                    restore_op.put(DIFF_VALUE_KEY, o_value);
+                if (localType.equals(OPERATION_REPLACE)) {
+                    restore_op.put(DIFF_VALUE_KEY, localValue);
                 } else {
                     // apply the patch for the value to insert
-                    restore_op.put(DIFF_VALUE_KEY, apply(source.get(key), o_operation));
+                    restore_op.put(DIFF_VALUE_KEY, apply(source.get(key), localOperation));
                 }
 
                 transformed_diff.put(key, restore_op);
 
-            } else if (o_type.equals(OPERATION_OBJECT) && type.equals(OPERATION_OBJECT)) {
-                operation.put(DIFF_VALUE_KEY, transform((JSONObject)o_value, (JSONObject)value, source.getJSONObject(key)));
-            } else if (o_type.equals(OPERATION_DIFF) && type.equals(OPERATION_DIFF)) {
-                JSONObject diff_operation = transform((String)o_value, (String)value, source.getString(key));
+            } else if (localType.equals(OPERATION_OBJECT) && type.equals(OPERATION_OBJECT)) {
+                operation.put(DIFF_VALUE_KEY, transform((JSONObject)localValue, (JSONObject)value, source.getJSONObject(key)));
+            } else if (localType.equals(OPERATION_DIFF) && type.equals(OPERATION_DIFF)) {
+                JSONObject diff_operation = transform((String)localValue, (String)value, source.getString(key));
                 if (diff_operation.length() == 0) {
                     transformed_diff.remove(key);
                 } else {
