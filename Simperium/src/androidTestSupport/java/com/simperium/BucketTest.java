@@ -191,6 +191,34 @@ public class BucketTest extends TestCase {
         assertEquals("Line 1\nLine 2\nLine 3\n", note.getContent());
     }
 
+    // https://github.com/Automattic/simplenote-android/issues/560
+    public void testMergeLocalChangesWithRemoteTextDelete()
+            throws Exception {
+
+        Note note = mBucket.newObject();
+
+        // Write a note and let it sync with the server
+        note.setContent("Line 1\nLine 2\nThis line will be deleted by the remote change\n");
+        note.save();
+
+        note.setContent("Line 1\nLine 2\nLine A\nThis line will be deleted by the remote change\nLine B");
+
+        // Delete the last paragraph on PC, put a short sentence INSTEAD at its place
+        JSONObject external = new JSONObject(note.getDiffableValue().toString());
+        external.put("content", "Line 1\nLine 2\nLine C\n");
+
+        // build remote change based on 3rd party modification
+        RemoteChange change = RemoteChangesUtil.buildRemoteChange(note, external);
+
+        Ghost ghost = change.apply(note.getGhost());
+
+        mBucket.updateGhost(ghost, null);
+
+        // This is an approximation of the expected outcome, not confident yet in what it's
+        // supposed to be
+        assertEquals("Line 1\nLine 2\nLine C\nLine A\nLine B\n", note.getContent());
+    }
+
     /**
      * If two different notes are both saved and then both deleted, they should both be missing from persistent store
      * but present in the backup store.
