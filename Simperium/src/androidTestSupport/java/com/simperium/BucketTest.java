@@ -214,7 +214,9 @@ public class BucketTest extends TestCase {
 
         mBucket.updateGhost(ghost, null);
 
-        assertEquals("", note.getContent());
+        // This is an approximation of the expected outcome, not confident yet in what it's
+        // supposed to be
+        assertEquals("Line 1\nLine 2\nLine C\nLine A\nLine B\n", note.getContent());
     }
 
     /**
