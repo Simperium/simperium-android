@@ -648,8 +648,10 @@ public class Bucket<T extends Syncable> {
                             object.setGhost(ghost);
                             updateObject(object);
                         } catch (JSONException | IllegalArgumentException e) {
-                            // Could not apply patch, update from the ghost
-                            updateObjectWithGhost(ghost);
+                            // Could not apply patch, queue the local client to sync the object
+                            // with the local client's modifications
+                            // https://github.com/Simperium/simperium-android/pull/202
+                            mChannel.queueLocalChange(ghost.getSimperiumKey());
                         }
                     } else {
                         // Apply the new ghost to the unmodified local object
