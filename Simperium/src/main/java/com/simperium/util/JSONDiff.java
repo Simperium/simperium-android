@@ -43,8 +43,16 @@ public class JSONDiff {
         LinkedList<Patch> patches = dmp.patch_make(source, dmp.diff_fromDelta(source, diff));
 
         String text = (String) dmp.patch_apply(patches, source)[0];
-        String combined = (String) dmp.patch_apply(o_patches, text)[0];
 
+        Object[] appliedPatch = dmp.patch_apply(o_patches, text);
+        boolean[] results = (boolean[]) appliedPatch[1];
+        for (boolean result : results) {
+            if (!result) {
+                throw new JSONException("Could not cleanly transform patch.");
+            }
+        }
+
+        String combined = (String)appliedPatch[0];
         if (text.equals(combined)) {
             // text is the same, return empty diff
             return transformed;

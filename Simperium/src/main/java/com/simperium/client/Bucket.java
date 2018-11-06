@@ -975,8 +975,8 @@ public class Bucket<T extends Syncable> {
                             updatedProperties = JSONDiff.apply(updatedProperties, transformedDiff);
 
                         } catch (JSONException | IllegalArgumentException e) {
-                            // could not transform properties
-                            // continue with updated properties
+                            // TODO: Handle failed merge by sending local changes to Simperium
+                            // TODO: Why does sync completely die if this is reached?
                         }
                     }
 
