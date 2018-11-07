@@ -929,6 +929,7 @@ public class Bucket<T extends Syncable> {
             try {
                 T object;
                 Boolean isNew;
+                Boolean shouldUpdateObject = true;
 
                 if (change.isAddOperation()) {
                     object = newObject(change.getKey());
@@ -964,7 +965,6 @@ public class Bucket<T extends Syncable> {
                     mSchema.updateWithDefaults(object, updatedProperties);
                     addObject(object);
                 } else {
-
                     if (localModifications != null && localModifications.length() > 0) {
                         try {
                             JSONObject incomingDiff = change.getPatch();
@@ -973,15 +973,17 @@ public class Bucket<T extends Syncable> {
                             JSONObject transformedDiff = JSONDiff.transform(localDiff, incomingDiff, currentProperties);
 
                             updatedProperties = JSONDiff.apply(updatedProperties, transformedDiff);
-
                         } catch (JSONException | IllegalArgumentException e) {
-                            // TODO: Handle failed merge by sending local changes to Simperium
-                            // TODO: Why does sync completely die if this is reached?
+                            // We couldn't merge the local and remote changes.
+                            // Hold off on updating the object so that the local change can sync
+                            shouldUpdateObject = false;
                         }
                     }
 
-                    mSchema.update(object, updatedProperties);
-                    updateObject(object);
+                    if (shouldUpdateObject) {
+                        mSchema.update(object, updatedProperties);
+                        updateObject(object);
+                    }
                 }
 
             } catch(SimperiumException e) {
