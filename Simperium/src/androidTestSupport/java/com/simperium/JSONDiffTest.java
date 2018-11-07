@@ -338,6 +338,24 @@ public class JSONDiffTest extends TestCase {
 
     }
 
+    public void testInvalidStringTransformThrowsException()
+            throws Exception {
+        String origin = "Line 1\nLine 2\nReplace me";
+        try
+        {
+            JSONObject transformed = JSONDiff.transform(
+                    "=14\t+Before%0A\t=10\t+%0AAfter",
+                    "=14\t-10\t+BYE",
+                    origin
+            );
+            fail("Patch transform should have failed.");
+        }
+        catch(Exception e)
+        {
+            // Test passed
+        }
+    }
+
     public void testTransformObjectDiffChangeRemovedKey()
     throws Exception {
 
