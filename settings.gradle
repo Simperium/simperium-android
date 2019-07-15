@@ -1,1 +1,1 @@
-include ':Simperium'
+include ':Simperium', ':SimperiumIntegrationTests'
