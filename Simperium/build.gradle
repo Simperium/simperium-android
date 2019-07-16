@@ -2,7 +2,6 @@
 buildscript {
     repositories {
         jcenter()
-        mavenCentral()
     }
     dependencies { classpath 'com.android.tools.build:gradle:2.0.0' }
 }
@@ -17,13 +16,9 @@ group "com.simperium"
 
 repositories {
     jcenter()
-    mavenCentral()
-    maven { url "http://simperium.github.io/simperium-android" }
-    maven { url "https://maven.google.com" }
 }
 
 android {
-  
     defaultPublishConfig 'clientRelease'
 
     dependencies {
@@ -56,7 +51,6 @@ android {
             dimension "main"
         }
     }
-
 }
 
 task versionConfig(group: "build", description: "Generate version class") {
