@@ -12,7 +12,7 @@ import android.util.Log;
 
 public class MockConnection implements Connection {
 
-    public static final String TAG = "Simperium.MockConnection";
+    public static final String TAG = "Simperium.Mocks";
 
     public ConnectionListener listener = new NullListener();
     public Boolean closed = false;
@@ -45,7 +45,7 @@ public class MockConnection implements Connection {
             public void connect(ConnectionListener connectionListener) {
                 MockConnection.this.listener = connectionListener;
                 connectionListener.onConnect(MockConnection.this);
-            }            
+            }
         };
     }
 

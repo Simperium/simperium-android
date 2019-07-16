@@ -1,10 +1,12 @@
 package com.simperium.android;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.util.Log;
 
-import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
+import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
 import com.koushikdutta.async.http.AsyncHttpPost;
 import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.koushikdutta.async.http.body.JSONObjectBody;
@@ -15,14 +17,12 @@ import com.simperium.client.AuthProvider;
 import com.simperium.client.AuthResponseHandler;
 import com.simperium.client.User;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.net.Uri;
-import android.util.Log;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class AsyncAuthClient implements AuthProvider {
 
-    public static final String TAG = "Simperium.AsyncAuthClient";
+    public static final String TAG = "Simperium.AsyncAuth";
 
     private static final String AUTH_URL = "https://auth.simperium.com/1";
     private static final String CREATE_PATH = "create/";
@@ -54,7 +54,7 @@ public class AsyncAuthClient implements AuthProvider {
     @Override
     public void createUser(JSONObject userDetails, AuthResponseHandler handler) {
         try {
-            if (mAuthProvider != null) userDetails.put(PROVIDER_KEY, mAuthProvider);            
+            if (mAuthProvider != null) userDetails.put(PROVIDER_KEY, mAuthProvider);
         } catch (JSONException e) {
             if (BuildConfig.DEBUG) {
                 Log.d(TAG, "Unable to add auth provider");
@@ -104,11 +104,11 @@ public class AsyncAuthClient implements AuthProvider {
         AsyncHttpPost request = new AsyncHttpPost(uri);
         request.setBody(new JSONObjectBody(body));
         request.setHeader(API_KEY_HEADER_NAME, mSecret);
-        return request;        
+        return request;
     }
 
     private void sendRequest(String path, JSONObject body, final AuthResponseHandler handler) {
-        
+
         mClient.execute(buildRequest(path, body), new JSONObjectParser(), new JSONObjectCallback() {
             @Override
             public void onCompleted(Exception e, AsyncHttpResponse source, JSONObject result) {

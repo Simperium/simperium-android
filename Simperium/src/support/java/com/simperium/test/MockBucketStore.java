@@ -19,7 +19,7 @@ import org.json.JSONObject;
 
 public class MockBucketStore<T extends Syncable> implements StorageProvider.BucketStore<T> {
 
-    static public final String TAG = "Simperium.MockBucketStore";
+    static public final String TAG = "Simperium.Mocks";
 
     private Map<String, T> objects = Collections.synchronizedMap(new HashMap<String, T>(32));
 
