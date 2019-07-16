@@ -105,4 +105,5 @@ publish {
     website = 'https://github.com/Simperium/simperium-android'
     dryRun = 'false'
     autoPublish = 'true'
+    publications = ['clientRelease']
 }
