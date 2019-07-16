@@ -31,6 +31,14 @@ Please provide unit tests for your contributions. Run tests with gradle:
 Unit tests use a mock networking and storage stack so that different components can be tested in isolation. The unit tests should not connect to any external services.
 
 
+## Publish the library to maven central
+
+Replace `CHANGEME` by a valid bintray user/key and run the following command line:
+
+```
+./gradlew assemble publishToMavenLocal bintrayUpload -PbintrayUser=CHANGEME -PbintrayKey=CHANGEME -PdryRun=false
+```
+
 [Android Studio]: http://developer.android.com/sdk/installing/studio.html
 [Gradle]: http://www.gradleware.com
 [Simperium.com]: http://simperium.com
