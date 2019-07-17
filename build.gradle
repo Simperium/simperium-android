@@ -1,3 +1,10 @@
+allprojects {
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+        options.addStringOption('encoding', 'UTF-8')
+    }
+}
+
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 def gitHash() {
     try {
@@ -30,3 +37,4 @@ def gitDescribe() {
 def gitVersion() {
     (gitDescribe() =~ /^v/).replaceFirst('')
 }
+

@@ -2,14 +2,16 @@
 buildscript {
     repositories {
         jcenter()
-        mavenCentral()
     }
-    dependencies { classpath 'com.android.tools.build:gradle:2.0.0' }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.0.0'
+        classpath 'com.novoda:bintray-release:0.4.0'
+    }
 }
 
 apply plugin: 'com.android.library'
 apply plugin: 'maven'
-apply plugin: 'signing'
+apply plugin: 'com.novoda.bintray-release' // must be applied after your artifact generating plugin (eg. java / com.android.library)
 
 version gitVersion()
 
@@ -17,13 +19,9 @@ group "com.simperium"
 
 repositories {
     jcenter()
-    mavenCentral()
-    maven { url "http://simperium.github.io/simperium-android" }
-    maven { url "https://maven.google.com" }
 }
 
 android {
-  
     defaultPublishConfig 'clientRelease'
 
     dependencies {
@@ -56,7 +54,6 @@ android {
             dimension "main"
         }
     }
-
 }
 
 task versionConfig(group: "build", description: "Generate version class") {
@@ -97,69 +94,16 @@ public final class Version {
 
 tasks.preBuild.dependsOn versionConfig
 
-afterEvaluate {
-
-    configurations {
-        archives {
-            extendsFrom configurations.default
-        }
-    }
-
-    signing {
-        sign configurations.archives
-    }
-
-    uploadArchives {
-        configuration = configurations.archives
-        repositories {
-            mavenDeployer {
-                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-                if (project.hasProperty("ossrhUsername") && project.hasProperty("ossrhPassword")) {
-                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                      authentication(userName: ossrhUsername, password: ossrhPassword)
-                    }
-
-                    snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                      authentication(userName: ossrhUsername, password: ossrhPassword)
-                    }
-                }
-
-
-                pom.project {
-                    name "Simperium Android Library"
-
-                    groupId 'com.simperium.android'
-                    artifactId 'simperium'
-
-                    packaging 'aar'
-                    description 'Android Library for building applications using Simperium'
-
-                    url 'https://github.com/simperium/simperium-android'
-                    scm {
-                        connection 'scm:git:https://github.com/simperium/simperium-android.git'
-                        developerConnection 'scm:git:https://github.com/simperium/simperium-android.git'
-                        url 'https://github.com/simperium/simperium-android.git'
-                    }
-
-                    licenses {
-                        license {
-                            name 'The MIT License (MIT)'
-                            url 'http://opensource.org/licenses/MIT'
-                        }
-                    }
-
-                    developers {
-
-                        developer {
-                            id 'beaucollins'
-                            name 'Robert Collins'
-                            email 'robert@automattic.com'
-                        }
-
-                    }
-                }
-            }
-        }
-    }
+publish {
+    artifactId = 'simperium'
+    userOrg = 'simperium'
+    groupId = 'com.simperium.android'
+    uploadName = 'simperium'
+    description = 'Android Library for building applications using Simperium'
+    publishVersion = "0.7.2"
+    licences = ['MIT']
+    website = 'https://github.com/Simperium/simperium-android'
+    dryRun = 'false'
+    autoPublish = 'true'
+    publications = ['clientRelease']
 }
