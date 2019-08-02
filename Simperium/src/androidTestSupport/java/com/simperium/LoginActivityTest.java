@@ -128,7 +128,6 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
         assertEquals(View.GONE, mHaveAccountButton.getVisibility());
         assertEquals(View.VISIBLE, mCreateAccountButton.getVisibility());
         assertEquals(View.VISIBLE, mForgotPasswordButton.getVisibility());
-        assertEquals(mActivity.getString(R.string.no_account), mHaveAccountTextView.getText());
     }
 
     protected void assertShowsSignUpForm(){
@@ -141,7 +140,6 @@ public class LoginActivityTest extends ActivityInstrumentationTestCase2<LoginAct
         assertEquals(View.VISIBLE, mHaveAccountButton.getVisibility());
         assertEquals(View.GONE, mCreateAccountButton.getVisibility());
         assertEquals(View.GONE, mForgotPasswordButton.getVisibility());
-        assertEquals(mActivity.getString(R.string.have_account), mHaveAccountTextView.getText());
     }
 
 }
