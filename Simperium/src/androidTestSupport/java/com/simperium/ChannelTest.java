@@ -383,8 +383,8 @@ public class ChannelTest extends BaseSimperiumTest {
     public void testInitMessageWithNoChangeVersion() throws Exception {
 
         String json = String.format(Locale.US,
-            "{\"library\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
-            "android", mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID);
+            "{\"clientid\":\"%s\",\"library\":\"%s\",\"name\":\"%s\",\"api\":\"1.1\",\"cmd\":\"i::::50\",\"app_id\":\"%s\",\"version\":%d,\"token\":\"%s\"}",
+            SESSION_ID, "android", mBucket.getRemoteName(), APP_ID, 0, mBucket.getUser().getAccessToken());
 
         JSONObject initMessage = new JSONObject(json);
 
@@ -404,8 +404,8 @@ public class ChannelTest extends BaseSimperiumTest {
         String cv = "fake-cv";
 
         String json = String.format(Locale.US,
-                        "{\"library\":\"%s\",\"cmd\":\"cv:%s\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
-                        "android", cv, mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID);
+            "{\"clientid\":\"%s\",\"library\":\"%s\",\"name\":\"%s\",\"api\":\"1.1\",\"cmd\":\"cv:%s\",\"app_id\":\"%s\",\"version\":%d,\"token\":\"%s\"}",
+            SESSION_ID, "android", mBucket.getRemoteName(), cv, APP_ID, 0, mBucket.getUser().getAccessToken());
 
         JSONObject initMessage = new JSONObject(json);
         mBucket.setChangeVersion(cv);
