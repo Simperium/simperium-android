@@ -43,7 +43,7 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(1));
         assertEquals(key, cursor.getString(2));
-        assertEquals("{\"deleted\":false,\"tags\":[],\"title\":\"Hola Mundo!\"}", cursor.getString(3));
+        assertEquals("{\"tags\":[],\"deleted\":false,\"title\":\"Hola Mundo!\"}", cursor.getString(3));
         cursor.close();
     }
   

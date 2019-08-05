@@ -39,7 +39,7 @@ public class ChangeTest extends TestCase {
 
         JSONObject diff = change.toJSONObject(object, ghost).getJSONObject("v");
 
-        JSONObject expected = new JSONObject("{\"deleted\":{\"o\":\"+\",\"v\":false},\"tags\":{\"o\":\"+\",\"v\":[]},\"title\":{\"o\":\"+\",\"v\":\"Hello world\"}}");
+        JSONObject expected = new JSONObject("{\"tags\":{\"o\":\"+\",\"v\":[]},\"deleted\":{\"o\":\"+\",\"v\":false},\"title\":{\"o\":\"+\",\"v\":\"Hello world\"}}");
         assertEquals(expected.toString(), diff.toString());
 
     }
