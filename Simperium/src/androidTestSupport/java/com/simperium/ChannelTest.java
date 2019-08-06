@@ -1,5 +1,7 @@
 package com.simperium;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.simperium.client.Bucket;
 import com.simperium.client.Change;
 import com.simperium.client.Channel;
@@ -381,7 +383,6 @@ public class ChannelTest extends BaseSimperiumTest {
      * `i` message.
      */
     public void testInitMessageWithNoChangeVersion() throws Exception {
-
         String json = String.format(Locale.US,
             "{\"library\":\"%s\",\"cmd\":\"i::::50\",\"token\":\"%s\",\"version\":%d,\"api\":\"1.1\",\"name\":\"%s\",\"app_id\":\"%s\",\"clientid\":\"%s\"}",
             "android", mBucket.getUser().getAccessToken(), 0, mBucket.getRemoteName(), APP_ID, SESSION_ID);
@@ -391,8 +392,12 @@ public class ChannelTest extends BaseSimperiumTest {
         start();
 
         assertNotNull(mListener.lastMessage);
-        assertEquals("init:" + initMessage.toString(), mListener.lastMessage.toString());
         assertEquals("1.1", mListener.api);
+
+        JsonParser parser = new JsonParser();
+        JsonElement elementActual = parser.parse(mListener.lastMessage.toString().replace("init:", ""));
+        JsonElement elementExpected = parser.parse(initMessage.toString());
+        assertEquals(elementExpected, elementActual);
     }
 
     /**
@@ -412,8 +417,10 @@ public class ChannelTest extends BaseSimperiumTest {
 
         start();
 
-        assertEquals("init:" + initMessage.toString(), mListener.lastMessage.toString());
-
+        JsonParser parser = new JsonParser();
+        JsonElement elementActual = parser.parse(mListener.lastMessage.toString().replace("init:", ""));
+        JsonElement elementExpected = parser.parse(initMessage.toString());
+        assertEquals(elementExpected, elementActual);
     }
 
     /**

@@ -4,6 +4,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.simperium.client.Bucket;
 import com.simperium.client.Query;
 import com.simperium.models.Note;
@@ -43,7 +45,11 @@ public class PersistentStoreTest extends PersistentStoreBaseTest {
         cursor.moveToFirst();
         assertEquals(bucketName, cursor.getString(1));
         assertEquals(key, cursor.getString(2));
-        assertEquals("{\"tags\":[],\"deleted\":false,\"title\":\"Hola Mundo!\"}", cursor.getString(3));
+
+        JsonParser parser = new JsonParser();
+        JsonElement elementActual = parser.parse(cursor.getString(3));
+        JsonElement elementExpected = parser.parse("{\"tags\":[],\"deleted\":false,\"title\":\"Hola Mundo!\"}");
+        assertEquals(elementExpected, elementActual);
         cursor.close();
     }
   
