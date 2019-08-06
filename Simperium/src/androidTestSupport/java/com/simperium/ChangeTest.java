@@ -1,5 +1,7 @@
 package com.simperium;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.simperium.client.Change;
 import com.simperium.client.Bucket;
 import com.simperium.client.Syncable;
@@ -36,12 +38,13 @@ public class ChangeTest extends TestCase {
         assertTrue(change.isModifyOperation());
         assertValidChangeObject(mNote, ghost, change);
 
-
         JSONObject diff = change.toJSONObject(object, ghost).getJSONObject("v");
-
         JSONObject expected = new JSONObject("{\"tags\":{\"o\":\"+\",\"v\":[]},\"deleted\":{\"o\":\"+\",\"v\":false},\"title\":{\"o\":\"+\",\"v\":\"Hello world\"}}");
-        assertEquals(expected.toString(), diff.toString());
 
+        JsonParser parser = new JsonParser();
+        JsonElement elementDiff = parser.parse(diff.toString());
+        JsonElement elementExpected = parser.parse(expected.toString());
+        assertEquals(elementExpected, elementDiff);
     }
 
     public void testDeletePayload()

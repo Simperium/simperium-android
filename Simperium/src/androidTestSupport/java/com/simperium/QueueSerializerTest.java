@@ -4,7 +4,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.test.ActivityInstrumentationTestCase2;
 
-import com.simperium.android.LoginActivity;
+import com.simperium.android.AuthenticationActivity;
 import com.simperium.android.QueueSerializer;
 import com.simperium.client.Bucket;
 import com.simperium.client.BucketObject;
@@ -12,7 +12,7 @@ import com.simperium.client.Change;
 import com.simperium.client.Channel.SerializedQueue;
 import com.simperium.test.MockBucket;
 
-public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginActivity> {
+public class QueueSerializerTest extends ActivityInstrumentationTestCase2<AuthenticationActivity> {
 
     protected QueueSerializer mSerializer;
     protected SQLiteDatabase mDatabase;
@@ -20,7 +20,7 @@ public class QueueSerializerTest extends ActivityInstrumentationTestCase2<LoginA
     protected Bucket<BucketObject> mBucket;
 
     public QueueSerializerTest() {
-        super(LoginActivity.class);
+        super(AuthenticationActivity.class);
     }
 
     protected void setUp() throws Exception {

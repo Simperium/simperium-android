@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@android:color/white"
+    android:clipToPadding="false"
+    android:layout_gravity="center_horizontal"
+    android:layout_height="match_parent"
+    android:layout_width="@dimen/width_layout"
+    android:padding="@dimen/margin_default"
+    tools:layout_width="match_parent">
+
+    <ImageView
+        android:id="@+id/image_logo"
+        android:contentDescription="@string/app_name"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@id/text_title"
+        android:layout_height="@dimen/width_logo"
+        android:layout_width="@dimen/width_logo"
+        android:layout_marginBottom="@dimen/margin_default_half"
+        android:layout_marginTop="@dimen/margin_default_half"
+        android:src="@drawable/ic_simperium_login_24dp">
+    </ImageView>
+
+    <TextView
+        android:id="@+id/text_title"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:layout_centerVertical="true"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_default_half"
+        android:layout_marginLeft="@dimen/margin_default"
+        android:layout_marginRight="@dimen/margin_default"
+        android:layout_width="fill_parent"
+        android:text="@string/simperium_title"
+        android:textColor="@color/text_title"
+        android:textSize="@dimen/text_title">
+    </TextView>
+
+    <TextView
+        android:id="@+id/text_subtitle"
+        android:gravity="center"
+        android:layout_below="@id/text_title"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_default_half"
+        android:layout_marginLeft="@dimen/margin_default"
+        android:layout_marginRight="@dimen/margin_default"
+        android:layout_width="fill_parent"
+        android:text="@string/simperium_subtitle"
+        android:textColor="@color/text_subtitle"
+        android:textSize="@dimen/text_subtitle">
+    </TextView>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/button_signup"
+        android:backgroundTint="@color/button_primary_disabled_selector"
+        android:layout_above="@id/button_login"
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:minHeight="@dimen/height_button"
+        android:text="@string/simperium_button_signup"
+        android:textAllCaps="true"
+        android:textColor="@color/text_button_primary"
+        style="@style/Widget.AppCompat.Button">
+    </androidx.appcompat.widget.AppCompatButton>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/button_login"
+        android:layout_alignParentBottom="true"
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:minHeight="@dimen/height_button"
+        android:text="@string/simperium_button_login"
+        android:textAllCaps="true"
+        android:textColor="@color/button_tertiary_disabled_selector"
+        style="@style/Widget.AppCompat.Button.Borderless">
+    </androidx.appcompat.widget.AppCompatButton>
+
+</RelativeLayout>

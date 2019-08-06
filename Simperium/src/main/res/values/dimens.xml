@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <resources>
-    <dimen name="login_width">-1px</dimen>
+
+    <!-- MARGIN/PADDING -->
+    <dimen name="margin_default">16dp</dimen>
+    <dimen name="margin_default_half">8dp</dimen>
+    <dimen name="margin_default_quarter">4dp</dimen>
+
+    <!-- SIZE -->
+    <dimen name="height_button">48dp</dimen>
+    <dimen name="height_footer">48dp</dimen>
+    <dimen name="text_footer">14sp</dimen>
+    <dimen name="text_subtitle">20sp</dimen>
+    <dimen name="text_title">34sp</dimen>
+    <dimen name="width_layout">-1px</dimen>
+    <dimen name="width_logo">96dp</dimen>
+
 </resources>

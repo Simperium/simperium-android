@@ -1,14 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.simperium">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application>
+
         <activity
-          android:name="com.simperium.android.LoginActivity"
-          android:configChanges="orientation|keyboardHidden|screenSize" />
+            android:name="com.simperium.android.AuthenticationActivity">
+        </activity>
+
+        <activity
+            android:name="com.simperium.android.CredentialsActivity">
+        </activity>
+
+        <uses-library
+            android:name="android.test.runner"
+            android:required="false">
+        </uses-library>
+
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false">
+        </uses-library>
+
     </application>
 
 </manifest>

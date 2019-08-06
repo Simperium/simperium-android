@@ -1,35 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <resources>
 
-    <!-- String to be replaced by application -->
     <string name="app_name">Simperium</string>
 
-    <!-- account setup -->
-    <string name="required_fields">Required Fields</string>
-    <string name="username_password_required">Please fill in all of the fields before submitting.</string>
-    <string name="invalid_email_title">Invalid email</string>
-    <string name="invalid_email_message">Your email address is not valid.</string>
-    <string name="invalid_password_title">Invalid password</string>
-    <string name="invalid_password_message">Password must contain at least 4 characters.</string>
-    <string name="passwords_do_not_match_message">Passwords don\'t match.</string>
-    <string name="email_hint">Email Address</string>
-    <string name="password_hint">Password</string>
-    <string name="confirm_password_hint">Confirm password</string>
-    <string name="signup_label">Sign Up</string>
-    <string name="signin_label">Sign In</string>
-    <string name="no_network_title">No network available</string>
-    <string name="no_network_message">There is no network available. Please connect to a network and try again.</string>
-    <string name="signing_up">Signing up…</string>
-    <string name="signing_in">Signing in…</string>
-    <string name="agree_terms_of_service">By signing up, you agree to our <u>Terms of Service.</u></string>
-    <string name="login_failed_message">Could not login with the provided email address and password.</string>
-    <string name="login_failed_account_exists">An account with this email already exists.</string>
-    <string name="forgot_password">Forgot your password?</string>
-    
-    <!-- errors -->
-    <string name="error">Error</string>
-    <string name="ok">OK</string>
-    <string name="no_account">Don’t have an account yet?</string>
-    <string name="have_account">Already have an account?</string>
+    <string name="simperium_button_login">Log In</string>
+    <string name="simperium_button_login_email">Log In with Email</string>
+    <string name="simperium_button_login_other">Log In with Other</string>
+    <string name="simperium_button_signup">Sign Up</string>
+    <string name="simperium_dialog_message_login">Could not log in with the provided email address and password.</string>
+    <string name="simperium_dialog_message_network">There is no network available.  Please, connect to a network and try again.</string>
+    <string name="simperium_dialog_message_password">Passwords must be a minimum of four characters excluding new lines, spaces, and tabs.</string>
+    <string name="simperium_dialog_message_signup">Could not sign up with the provided email address and password.</string>
+    <string name="simperium_dialog_message_signup_existing">The email address you entered is already associated with a Simperium account.</string>
+    <string name="simperium_dialog_progress_logging_in">Logging in&#8230;</string>
+    <string name="simperium_dialog_progress_signing_up">Signing up&#8230;</string>
+    <string name="simperium_dialog_title_error">Error</string>
+    <string name="simperium_error_email">Invalid email</string>
+    <string name="simperium_error_password">Invalid password</string>
+    <string name="simperium_footer_login">%1$s%2$s%3$sForgot password?%4$s</string>
+    <string name="simperium_footer_login_url">https://simperium.com/account/forgot_password?email=%1$s</string>
+    <string name="simperium_footer_signup">By creating an account, you agree to our %1$s%2$s%3$sTerms and Conditions%4$s</string>
+    <string name="simperium_footer_signup_url">https://simperium.com/tos/</string>
+    <string name="simperium_hint_email">Email</string>
+    <string name="simperium_hint_password">Password</string>
+    <string name="simperium_subtitle">App data, everywhere it\'s needed.</string>
+    <string name="simperium_title">@string/app_name</string>
 
 </resources>
