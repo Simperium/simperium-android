@@ -34,7 +34,6 @@ def gitDescribe() {
     }
 }
 
-def gitVersion() {
-    (gitDescribe() =~ /^v/).replaceFirst('')
+def static gitVersion() {
+    '0.8.0'
 }
-

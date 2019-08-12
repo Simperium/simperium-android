@@ -113,7 +113,7 @@ publish {
     groupId = 'com.simperium.android'
     uploadName = 'simperium'
     desc = 'Android library for building applications using Simperium'
-    publishVersion = '0.8.0'
+    publishVersion = android.defaultConfig.versionName
     licences = ['MIT']
     website = 'https://github.com/Simperium/simperium-android'
     dryRun = 'false'
