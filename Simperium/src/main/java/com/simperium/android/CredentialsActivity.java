@@ -18,7 +18,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
@@ -74,11 +73,11 @@ public class CredentialsActivity extends AppCompatActivity {
                                 break;
                             case INVALID_ACCOUNT:
                             default:
-                                showDialogError(
+                                showDialogError(getString(
                                     mIsLogin ?
                                         R.string.simperium_dialog_message_login :
                                         R.string.simperium_dialog_message_signup
-                                );
+                                ));
                         }
 
                         Logger.log(error.getMessage(), error);
@@ -232,7 +231,7 @@ public class CredentialsActivity extends AppCompatActivity {
                             startSignup();
                         }
                     } else {
-                        showDialogError(R.string.simperium_dialog_message_network);
+                        showDialogError(getString(R.string.simperium_dialog_message_network));
                     }
                 }
             }
@@ -346,7 +345,7 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
-    private void showDialogError(@StringRes int message) {
+    private void showDialogError(String message) {
         hideDialogProgress();
         Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -390,7 +389,7 @@ public class CredentialsActivity extends AppCompatActivity {
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.authorizeUser(email, password, mAuthListener);
         } else {
-            showDialogError(R.string.simperium_dialog_message_password);
+            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_LOGIN));
         }
     }
 
@@ -404,7 +403,7 @@ public class CredentialsActivity extends AppCompatActivity {
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.createUser(email, password, mAuthListener);
         } else {
-            showDialogError(R.string.simperium_dialog_message_password);
+            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_SIGNUP));
         }
     }
 }
