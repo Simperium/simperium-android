@@ -41,7 +41,11 @@ import java.util.regex.Pattern;
 import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 
 public class CredentialsActivity extends AppCompatActivity {
-    private static final Pattern PATTERN_PASSWORD = Pattern.compile("^(.){4,}$", Pattern.DOTALL);
+    private static final int PASSWORD_LENGTH_LOGIN = 4;
+    private static final int PASSWORD_LENGTH_SIGNUP = 6;
+
+    private static final Pattern PATTERN_PASSWORD_LOGIN = Pattern.compile("^(.){" + PASSWORD_LENGTH_LOGIN + ",}$", Pattern.DOTALL);
+    private static final Pattern PATTERN_PASSWORD_SIGNUP = Pattern.compile("^(.){" + PASSWORD_LENGTH_SIGNUP + ",}$", Pattern.DOTALL);
     private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
@@ -202,10 +206,10 @@ public class CredentialsActivity extends AppCompatActivity {
                 new View.OnFocusChangeListener() {
                     @Override
                     public void onFocusChange(View view, boolean hasFocus) {
-                        if (!hasFocus && !isValid(PATTERN_PASSWORD, mInputPassword.getEditText().getText().toString())) {
-                            mInputPassword.setError(getString(R.string.simperium_error_password));
-                        } else {
+                        if (hasFocus) {
                             mInputPassword.setError("");
+                        } else if (!isValidPasswordLength()) {
+                            mInputPassword.setError(getString(R.string.simperium_error_password));
                         }
                     }
                 }
@@ -314,9 +318,17 @@ public class CredentialsActivity extends AppCompatActivity {
     private boolean isValid(Pattern pattern, String text) {
         return pattern.matcher(text).matches();
     }
-    
+
     private boolean isValidPassword(String password) {
-        return password.length() >= 4 && !PATTERN_WHITESPACE.matcher(password).find();
+        return isValidPasswordLength() && !PATTERN_WHITESPACE.matcher(password).find();
+    }
+
+    private boolean isValidPasswordLength() {
+        return mInputPassword.getEditText() != null &&
+            (mIsLogin ?
+                isValid(PATTERN_PASSWORD_LOGIN, mInputPassword.getEditText().getText().toString()) :
+                isValid(PATTERN_PASSWORD_SIGNUP, mInputPassword.getEditText().getText().toString())
+            );
     }
 
     private void setButtonState() {
@@ -324,7 +336,7 @@ public class CredentialsActivity extends AppCompatActivity {
             mInputEmail.getEditText() != null &&
             mInputPassword.getEditText() != null &&
             isValid(Patterns.EMAIL_ADDRESS, mInputEmail.getEditText().getText().toString()) &&
-            isValid(PATTERN_PASSWORD, mInputPassword.getEditText().getText().toString())
+            isValidPasswordLength()
         );
     }
 
