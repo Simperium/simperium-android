@@ -165,7 +165,7 @@ public class CredentialsActivity extends AppCompatActivity {
                 new View.OnFocusChangeListener() {
                     @Override
                     public void onFocusChange(View view, boolean hasFocus) {
-                        if (!hasFocus && !isValid(Patterns.EMAIL_ADDRESS, mInputEmail.getEditText().getText().toString())) {
+                        if (!hasFocus && !isValidEmail(mInputEmail.getEditText().getText().toString())) {
                             mInputEmail.setError(getString(R.string.simperium_error_email));
                         } else {
                             mInputEmail.setError("");
@@ -311,8 +311,8 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
-    private boolean isValid(Pattern pattern, String text) {
-        return pattern.matcher(text).matches();
+    private boolean isValidEmail(String text) {
+        return Patterns.EMAIL_ADDRESS.matcher(text).matches();
     }
 
     private boolean isValidPassword(String password) {
@@ -331,7 +331,7 @@ public class CredentialsActivity extends AppCompatActivity {
         mButton.setEnabled(
             mInputEmail.getEditText() != null &&
             mInputPassword.getEditText() != null &&
-            isValid(Patterns.EMAIL_ADDRESS, mInputEmail.getEditText().getText().toString()) &&
+            isValidEmail(mInputEmail.getEditText().getText().toString()) &&
             isValidPasswordLength()
         );
     }
