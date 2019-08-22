@@ -40,17 +40,14 @@ import java.util.regex.Pattern;
 import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 
 public class CredentialsActivity extends AppCompatActivity {
-    private static final int PASSWORD_LENGTH_LOGIN = 4;
-    private static final int PASSWORD_LENGTH_SIGNUP = 6;
-
-    private static final Pattern PATTERN_PASSWORD_LOGIN = Pattern.compile("^(.){" + PASSWORD_LENGTH_LOGIN + ",}$", Pattern.DOTALL);
-    private static final Pattern PATTERN_PASSWORD_SIGNUP = Pattern.compile("^(.){" + PASSWORD_LENGTH_SIGNUP + ",}$", Pattern.DOTALL);
     private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
     private static final String STATE_EMAIL = "STATE_EMAIL";
     private static final String STATE_PASSWORD = "STATE_PASSWORD";
     private static final int DELAY_AUTOMATE_LOGIN = 600;
+    private static final int PASSWORD_LENGTH_LOGIN = 4;
+    private static final int PASSWORD_LENGTH_SIGNUP = 6;
 
     protected ProgressDialogFragment mProgressDialogFragment;
 
@@ -325,8 +322,8 @@ public class CredentialsActivity extends AppCompatActivity {
     private boolean isValidPasswordLength() {
         return mInputPassword.getEditText() != null &&
             (mIsLogin ?
-                isValid(PATTERN_PASSWORD_LOGIN, mInputPassword.getEditText().getText().toString()) :
-                isValid(PATTERN_PASSWORD_SIGNUP, mInputPassword.getEditText().getText().toString())
+                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_LOGIN :
+                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_SIGNUP
             );
     }
 
