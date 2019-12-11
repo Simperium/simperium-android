@@ -351,6 +351,12 @@ public class Bucket<T extends Syncable> {
                         return;
                     }
 
+                    // Put object in backup store if not already there so that queued local deletion
+                    // will send change event and remove object from server and all other platforms.
+                    if (mBackupStore.get(object.getSimperiumKey()) == null) {
+                        mBackupStore.put(object.getSimperiumKey(), object);
+                    }
+
                     mChannel.queueLocalDeletion(object);
                 }
 
