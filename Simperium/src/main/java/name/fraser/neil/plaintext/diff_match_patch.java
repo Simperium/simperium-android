@@ -1432,17 +1432,20 @@ public class diff_match_patch {
     char lastEnd = 0;
     boolean isFirst = true;
     for (Diff aDiff : diffs) {
+      if (aDiff.text.isEmpty()) {
+        continue;
+      }
       char thisTop = aDiff.text.charAt(0);
       char thisEnd = aDiff.text.charAt(aDiff.text.length() - 1);
       if (Character.isHighSurrogate(thisEnd)) {
+        lastEnd = thisEnd;
         aDiff.text = aDiff.text.substring(0, aDiff.text.length() - 1);
       }
-      if (! isFirst && Character.isHighSurrogate(lastEnd) && Character.isLowSurrogate(thisTop)) {
+      if (!isFirst && Character.isHighSurrogate(lastEnd) && Character.isLowSurrogate(thisTop)) {
         aDiff.text = lastEnd + aDiff.text;
       }
       isFirst = false;
-      lastEnd = thisEnd;
-      if ( aDiff.text.isEmpty() ) {
+      if (aDiff.text.isEmpty()) {
         continue;
       }
       switch (aDiff.operation) {
@@ -1472,6 +1475,92 @@ public class diff_match_patch {
     return delta;
   }
 
+  private int digit16(char c) throws IllegalArgumentException {
+    switch (c) {
+      case '0': return 0;
+      case '1': return 1;
+      case '2': return 2;
+      case '3': return 3;
+      case '4': return 4;
+      case '5': return 5;
+      case '6': return 6;
+      case '7': return 7;
+      case '8': return 8;
+      case '9': return 9;
+      case 'A': case 'a': return 10;
+      case 'B': case 'b': return 11;
+      case 'C': case 'c': return 12;
+      case 'D': case 'd': return 13;
+      case 'E': case 'e': return 14;
+      case 'F': case 'f': return 15;
+      default: throw new IllegalArgumentException();
+    }
+  }
+
+  private String decodeURI(String text) throws IllegalArgumentException {
+    int i = 0;
+    StringBuilder decoded = new StringBuilder(text.length());
+    while (i < text.length()) {
+      if (text.charAt(i) != '%') {
+        decoded.append(text.charAt(i++));
+        continue;
+      }
+      // start a percent-sequence
+      int byte1 = (digit16(text.charAt(i + 1)) << 4) + digit16(text.charAt(i + 2));
+      if ((byte1 & 0x80) == 0) {
+        decoded.append(Character.toChars(byte1));
+        i += 3;
+        continue;
+      }
+      if (text.charAt(i + 3) != '%') {
+        throw new IllegalArgumentException();
+      }
+      int byte2 = (digit16(text.charAt(i + 4)) << 4) + digit16(text.charAt(i + 5));
+      if ((byte2 & 0xC0) != 0x80) {
+        throw new IllegalArgumentException();
+      }
+      byte2 = byte2 & 0x3F;
+      if ((byte1 & 0xE0) == 0xC0) {
+        decoded.append(Character.toChars(((byte1 & 0x1F) << 6) | byte2));
+        i += 6;
+        continue;
+      }
+      if (text.charAt(i + 6) != '%') {
+        throw new IllegalArgumentException();
+      }
+      int byte3 = (digit16(text.charAt(i + 7)) << 4) + digit16(text.charAt(i + 8));
+      if ((byte3 & 0xC0) != 0x80) {
+        throw new IllegalArgumentException();
+      }
+      byte3 = byte3 & 0x3F;
+      if ((byte1 & 0xF0) == 0xE0) {
+        // unpaired surrogate are fine here
+        decoded.append(Character.toChars(((byte1 & 0x0F) << 12) | (byte2 << 6) | byte3));
+        i += 9;
+        continue;
+      }
+      if (text.charAt(i + 9) != '%') {
+        throw new IllegalArgumentException();
+      }
+      int byte4 = (digit16(text.charAt(i + 10)) << 4) + digit16(text.charAt(i + 11));
+      if ((byte4 & 0xC0) != 0x80) {
+        throw new IllegalArgumentException();
+      }
+      byte4 = byte4 & 0x3F;
+      if ((byte1 & 0xF8) == 0xF0) {
+        int codePoint = ((byte1 & 0x07) << 0x12) | (byte2 << 0x0C) | (byte3 << 0x06) | byte4;
+        if (codePoint >= 0x010000 && codePoint <= 0x10FFFF) {
+          decoded.append(Character.toChars((codePoint & 0xFFFF) >>> 10 & 0x3FF | 0xD800));
+          decoded.append(Character.toChars(0xDC00 | (codePoint & 0xFFFF) & 0x3FF));
+          i += 12;
+          continue;
+        }
+      }
+      throw new IllegalArgumentException();
+    }
+    return decoded.toString();
+  }
+
   /**
    * Given the original text1, and an encoded string which describes the
    * operations required to transform text1 into text2, compute the full diff.
@@ -1485,7 +1574,8 @@ public class diff_match_patch {
     LinkedList<Diff> diffs = new LinkedList<Diff>();
     int pointer = 0;  // Cursor in text1
     String[] tokens = delta.split("\t");
-    for (String token : tokens) {
+    for (int x = 0; x < tokens.length; x++) {
+      String token = tokens[x];
       if (token.length() == 0) {
         // Blank tokens are ok (from a trailing \t).
         continue;
@@ -1498,10 +1588,7 @@ public class diff_match_patch {
         // decode would change all "+" to " "
         param = param.replace("+", "%2B");
         try {
-          param = URLDecoder.decode(param, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          // Not likely on modern system.
-          throw new Error("This system does not support UTF-8.", e);
+          param = this.decodeURI(param);
         } catch (IllegalArgumentException e) {
           // Malformed URI sequence.
           throw new IllegalArgumentException(
@@ -1524,6 +1611,27 @@ public class diff_match_patch {
               "Negative number in diff_fromDelta: " + param);
         }
         String text;
+        // some objective-c versions of the library produced patches with
+        // (null) in the place where surrogates were split across diff
+        // boundaries. if we leave those in we'll be stuck with a
+        // high-surrogate (null) low-surrogate pattern that will break
+        // deeper in the library or consuming application. we'll "fix"
+        // these by dropping the (null) and re-joining the surrogate halves
+        if (x + 2 < tokens.length &&
+            Character.isHighSurrogate(text1.charAt(pointer + n - 1)) &&
+            tokens[x + 1].substring(1).equals("(null)") &&
+            Character.isLowSurrogate(text1.charAt(pointer + n))) {
+          n -= 1;
+          tokens[x + 1] = "+";
+          int m;
+          try {
+            m = Integer.parseInt(tokens[x + 2].substring(1));
+          } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Invalid number in diff_fromDelta: " + tokens[x + 2].substring(1), e);
+          }
+          tokens[x + 2] = tokens[x + 2].charAt(0) + String.valueOf(m + 1);
+        }
         try {
           text = text1.substring(pointer, pointer += n);
         } catch (StringIndexOutOfBoundsException e) {
@@ -2284,10 +2392,7 @@ public class diff_match_patch {
         line = text.getFirst().substring(1);
         line = line.replace("+", "%2B");  // decode would change all "+" to " "
         try {
-          line = URLDecoder.decode(line, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          // Not likely on modern system.
-          throw new Error("This system does not support UTF-8.", e);
+          line = this.decodeURI(line);
         } catch (IllegalArgumentException e) {
           // Malformed URI sequence.
           throw new IllegalArgumentException(
