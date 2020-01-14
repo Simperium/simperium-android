@@ -11,6 +11,7 @@ import com.simperium.client.GhostMissingException;
 import com.simperium.client.GhostStorageProvider;
 import com.simperium.util.Logger;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class GhostStore implements GhostStorageProvider {
@@ -127,7 +128,12 @@ public class GhostStore implements GhostStorageProvider {
         Ghost ghost = null;
         if (cursor.getCount() > 0) {
             cursor.moveToFirst();
-            ghost = new Ghost(cursor.getString(1), cursor.getInt(2), deserializeGhostData(cursor.getString(3)));
+            try {
+                JSONObject ghostData = new JSONObject(cursor.getString(3));
+                ghost = new Ghost(cursor.getString(1), cursor.getInt(2), ghostData);
+            } catch (org.json.JSONException e){
+                ghost = null;
+            }
         }
         cursor.close();
         if (ghost == null) {
