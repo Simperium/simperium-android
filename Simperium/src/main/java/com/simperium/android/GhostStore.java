@@ -120,26 +120,21 @@ public class GhostStore implements GhostStorageProvider {
 
     @Override
     public Ghost getGhost(Bucket bucket, String key) throws GhostMissingException {
-        // public Cursor query (String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy)
         String[] columns = { BUCKET_NAME_FIELD, OBJECT_KEY_FIELD, VERSION_FIELD, PAYLOAD_FIELD };
         String where = "bucketName=? AND simperiumKey=?";
         String[] args = { bucket.getName(), key };
-        Cursor cursor = database.query(GHOSTS_TABLE_NAME, columns, where, args, null, null, null);
-        Ghost ghost = null;
-        if (cursor.getCount() > 0) {
-            cursor.moveToFirst();
-            try {
+
+        try (Cursor cursor = database.query(GHOSTS_TABLE_NAME, columns, where, args, null, null, null)) {
+            if (cursor.moveToFirst()) {
                 JSONObject ghostData = new JSONObject(cursor.getString(3));
-                ghost = new Ghost(cursor.getString(1), cursor.getInt(2), ghostData);
-            } catch (org.json.JSONException e){
-                ghost = null;
+                return new Ghost(cursor.getString(1), cursor.getInt(2), ghostData);
             }
+        } catch (org.json.JSONException e){
+            // a corrupted ghost is effectively equal to a missing ghost
+            // so pass through here and let the library request a new copy
         }
-        cursor.close();
-        if (ghost == null) {
-            throw(new GhostMissingException(String.format("Ghost %s does not exist for bucket %s", bucket.getName(), key)));
-        }
-        return ghost;
+
+        throw(new GhostMissingException(String.format("Ghost %s does not exist for bucket %s", bucket.getName(), key)));
     }
 
     @Override
