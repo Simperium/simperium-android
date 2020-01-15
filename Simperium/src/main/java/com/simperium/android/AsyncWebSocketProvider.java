@@ -12,7 +12,6 @@ import com.koushikdutta.async.http.WebSocket;
 import java.io.IOException;
 
 class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
-
     public static final String TAG = "Simperium.AsyncWebSocketProvider";
 
     private final AsyncHttpClient mAsyncClient;
@@ -27,15 +26,12 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
 
     @Override
     public void connect(final WebSocketManager.ConnectionListener listener) {
-
         Uri uri = Uri.parse(String.format(AndroidClient.WEBSOCKET_URL, mAppId));
-
         AsyncHttpRequest request = new AsyncHttpGet(uri);
         request.setHeader(AndroidClient.USER_AGENT_HEADER, mSessionId);
 
         // Protocol is null
         mAsyncClient.websocket(request, null, new WebSocketConnectCallback() {
-
             @Override
             public void onCompleted(Exception ex, final WebSocket webSocket) {
                 if (ex != null) {
@@ -49,7 +45,6 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
                 }
 
                 final WebSocketManager.Connection connection = new WebSocketManager.Connection() {
-
                     @Override
                     public void close() {
                         webSocket.close();
@@ -62,21 +57,17 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
                 };
 
                 webSocket.setStringCallback(new WebSocket.StringCallback() {
-
                    @Override
                    public void onStringAvailable(String s) {
                        listener.onMessage(s);
                    }
-
                 });
 
                 webSocket.setEndCallback(new CompletedCallback() {
-
                     @Override
                     public void onCompleted(Exception ex) {
                         listener.onDisconnect(ex);
                     }
-
                 });
 
                 webSocket.setClosedCallback(new CompletedCallback() {
@@ -87,10 +78,7 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
                 });
 
                 listener.onConnect(connection);
-
             }
-
         });
     }
-
 }
