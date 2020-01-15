@@ -15,9 +15,9 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
 
     public static final String TAG = "Simperium.AsyncWebSocketProvider";
 
-    protected final AsyncHttpClient mAsyncClient;
-    protected final String mAppId;
-    protected final String mSessionId;
+    private final AsyncHttpClient mAsyncClient;
+    private final String mAppId;
+    private final String mSessionId;
 
     AsyncWebSocketProvider(String appId, String sessionId, AsyncHttpClient asyncClient) {
         mAppId = appId;
