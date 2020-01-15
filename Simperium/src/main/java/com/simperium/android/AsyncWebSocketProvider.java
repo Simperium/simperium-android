@@ -1,15 +1,13 @@
 package com.simperium.android;
 
+import android.net.Uri;
+
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.AsyncHttpRequest;
-import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
+import com.koushikdutta.async.http.AsyncHttpGet;
+import com.koushikdutta.async.http.AsyncHttpRequest;
 import com.koushikdutta.async.http.WebSocket;
-
-import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 
 import java.io.IOException;
 
@@ -17,16 +15,14 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
 
     public static final String TAG = "Simperium.AsyncWebSocketProvider";
 
+    protected final AsyncHttpClient mAsyncClient;
     protected final String mAppId;
     protected final String mSessionId;
-    protected final AsyncHttpClient mAsyncClient;
-    protected final Handler mHandler;
 
     AsyncWebSocketProvider(String appId, String sessionId, AsyncHttpClient asyncClient) {
         mAppId = appId;
         mAsyncClient = asyncClient;
         mSessionId = sessionId;
-        mHandler = new Handler(Looper.getMainLooper());
     }
 
     @Override
@@ -56,28 +52,13 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
 
                     @Override
                     public void close() {
-                        mHandler.post(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                webSocket.close();
-                            }
-
-                        });
+                        webSocket.close();
                     }
 
                     @Override
                     public void send(final String message) {
-                        mHandler.post(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                webSocket.send(message);
-                            }
-
-                        });
+                        webSocket.send(message);
                     }
-
                 };
 
                 webSocket.setStringCallback(new WebSocket.StringCallback() {
