@@ -5,12 +5,14 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatButton;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.simperium.R;
 
 public class LoginBottomSheetDialogFragment extends SimperiumBottomSheetDialogFragment {
@@ -56,17 +58,21 @@ public class LoginBottomSheetDialogFragment extends SimperiumBottomSheetDialogFr
         if (getDialog() != null) {
             getDialog().setContentView(layout);
 
-            // Set peek height to full height of view to avoid buttons being off screen when
-            // bottom sheet is shown with small screen height (e.g. landscape orientation).
-            final BottomSheetBehavior behavior = BottomSheetBehavior.from((View) layout.getParent());
-            getDialog().setOnShowListener(
-                new DialogInterface.OnShowListener() {
-                    @Override
-                    public void onShow(DialogInterface dialog) {
-                        behavior.setPeekHeight(layout.getHeight());
+            // Set peek height to full height of view (i.e. set STATE_EXPANDED) to avoid buttons
+            // being off screen when bottom sheet is shown.
+            getDialog().setOnShowListener(new DialogInterface.OnShowListener() {
+                @Override
+                public void onShow(DialogInterface dialogInterface) {
+                    BottomSheetDialog bottomSheetDialog = (BottomSheetDialog) dialogInterface;
+                    FrameLayout bottomSheet = bottomSheetDialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+
+                    if (bottomSheet != null) {
+                        BottomSheetBehavior behavior = BottomSheetBehavior.from(bottomSheet);
+                        behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                        behavior.setSkipCollapsed(true);
                     }
                 }
-            );
+            });
         }
 
         return super.onCreateView(inflater, container, savedInstanceState);
