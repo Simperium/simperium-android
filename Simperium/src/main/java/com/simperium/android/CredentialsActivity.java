@@ -204,7 +204,7 @@ public class CredentialsActivity extends AppCompatActivity {
                     public void onFocusChange(View view, boolean hasFocus) {
                         if (hasFocus) {
                             mInputPassword.setError("");
-                        } else if (!isValidPasswordLength()) {
+                        } else if (!isValidPasswordLength(mIsLogin)) {
                             mInputPassword.setError(getString(R.string.simperium_error_password));
                         }
                     }
@@ -316,12 +316,12 @@ public class CredentialsActivity extends AppCompatActivity {
     }
 
     private boolean isValidPassword(String password) {
-        return isValidPasswordLength() && PATTERN_EXCLUDE_NEWLINES_TABS.matcher(password).find();
+        return isValidPasswordLength(mIsLogin) && PATTERN_EXCLUDE_NEWLINES_TABS.matcher(password).find();
     }
 
-    private boolean isValidPasswordLength() {
+    private boolean isValidPasswordLength(boolean isLogin) {
         return mInputPassword.getEditText() != null &&
-            (mIsLogin ?
+            (isLogin ?
                 mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_LOGIN :
                 mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_MINIMUM
             );
@@ -332,7 +332,7 @@ public class CredentialsActivity extends AppCompatActivity {
             mInputEmail.getEditText() != null &&
             mInputPassword.getEditText() != null &&
             isValidEmail(mInputEmail.getEditText().getText().toString()) &&
-            isValidPasswordLength()
+            isValidPasswordLength(mIsLogin)
         );
     }
 
@@ -400,7 +400,8 @@ public class CredentialsActivity extends AppCompatActivity {
         final String email = getEditTextString(mInputEmail).trim();
         final String password = getEditTextString(mInputPassword).trim();
 
-        if (!isValidPasswordLength()) {
+        // Use false in isValidPasswordLength() to check if password meets new minimum length requirement.
+        if (!isValidPasswordLength(false)) {
             showDialogErrorLoginReset();
         } else if (isValidPassword(password)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
