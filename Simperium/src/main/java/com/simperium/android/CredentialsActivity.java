@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 
 public class CredentialsActivity extends AppCompatActivity {
-    private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
+    private static final Pattern PATTERN_EXCLUDE_NEWLINES_TABS = Pattern.compile("[^\n\t]+");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
     private static final String STATE_EMAIL = "STATE_EMAIL";
@@ -316,7 +316,7 @@ public class CredentialsActivity extends AppCompatActivity {
     }
 
     private boolean isValidPassword(String password) {
-        return isValidPasswordLength() && !PATTERN_WHITESPACE.matcher(password).find();
+        return isValidPasswordLength() && PATTERN_EXCLUDE_NEWLINES_TABS.matcher(password).find();
     }
 
     private boolean isValidPasswordLength() {
