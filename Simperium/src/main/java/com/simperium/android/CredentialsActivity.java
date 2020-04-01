@@ -311,6 +311,11 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
+    private boolean isEmailPasswordMatch() {
+        return mInputEmail.getEditText() != null && mInputPassword.getEditText() != null &&
+            mInputEmail.getEditText().getText().toString().contentEquals(mInputPassword.getEditText().getText().toString());
+    }
+
     private boolean isValidEmail(String text) {
         return Patterns.EMAIL_ADDRESS.matcher(text).matches();
     }
@@ -401,7 +406,7 @@ public class CredentialsActivity extends AppCompatActivity {
         final String password = getEditTextString(mInputPassword).trim();
 
         // Use false in isValidPasswordLength() to check if password meets new minimum length requirement.
-        if (!isValidPasswordLength(false)) {
+        if (!isValidPasswordLength(false) || isEmailPasswordMatch()) {
             showDialogErrorLoginReset();
         } else if (isValidPassword(password)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
@@ -417,7 +422,7 @@ public class CredentialsActivity extends AppCompatActivity {
         final String email = getEditTextString(mInputEmail).trim();
         final String password = getEditTextString(mInputPassword).trim();
 
-        if (isValidPassword(password)) {
+        if (isValidPassword(password) && !isEmailPasswordMatch()) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_signing_up));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
