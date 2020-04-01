@@ -376,11 +376,33 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
+    private void showDialogErrorLoginReset() {
+        hideDialogProgress();
+        Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+        new AlertDialog.Builder(context)
+            .setTitle(R.string.simperium_dialog_title_error)
+            .setMessage(getString(R.string.simperium_dialog_message_login_reset, PASSWORD_LENGTH_MINIMUM))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.simperium_button_login_reset,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Uri uri = Uri.parse(getString(R.string.simperium_dialog_button_reset_url, getEditTextString(mInputEmail)));
+                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                        startActivity(intent);
+                    }
+                }
+            )
+            .show();
+    }
+
     private void startLogin() {
         final String email = getEditTextString(mInputEmail).trim();
         final String password = getEditTextString(mInputPassword).trim();
 
-        if (isValidPassword(password)) {
+        if (!isValidPasswordLength()) {
+            showDialogErrorLoginReset();
+        } else if (isValidPassword(password)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
