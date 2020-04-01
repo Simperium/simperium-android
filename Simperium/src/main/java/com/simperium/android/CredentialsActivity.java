@@ -47,7 +47,7 @@ public class CredentialsActivity extends AppCompatActivity {
     private static final String STATE_PASSWORD = "STATE_PASSWORD";
     private static final int DELAY_AUTOMATE_LOGIN = 600;
     private static final int PASSWORD_LENGTH_LOGIN = 4;
-    private static final int PASSWORD_LENGTH_SIGNUP = 6;
+    private static final int PASSWORD_LENGTH_MINIMUM = 8;
 
     protected ProgressDialogFragment mProgressDialogFragment;
 
@@ -323,7 +323,7 @@ public class CredentialsActivity extends AppCompatActivity {
         return mInputPassword.getEditText() != null &&
             (mIsLogin ?
                 mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_LOGIN :
-                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_SIGNUP
+                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_MINIMUM
             );
     }
 
@@ -386,7 +386,7 @@ public class CredentialsActivity extends AppCompatActivity {
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.authorizeUser(email, password, mAuthListener);
         } else {
-            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_LOGIN));
+            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_MINIMUM));
         }
     }
 
@@ -400,7 +400,7 @@ public class CredentialsActivity extends AppCompatActivity {
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.createUser(email, password, mAuthListener);
         } else {
-            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_SIGNUP));
+            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_MINIMUM));
         }
     }
 }
