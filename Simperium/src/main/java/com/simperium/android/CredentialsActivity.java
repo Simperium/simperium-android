@@ -402,8 +402,8 @@ public class CredentialsActivity extends AppCompatActivity {
     }
 
     private void startLogin() {
-        final String email = getEditTextString(mInputEmail).trim();
-        final String password = getEditTextString(mInputPassword).trim();
+        final String email = getEditTextString(mInputEmail);
+        final String password = getEditTextString(mInputPassword);
 
         // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
         if (isValidPassword(password) && !isEmailPasswordMatch() && isValidPasswordLength(false)) {
@@ -417,8 +417,8 @@ public class CredentialsActivity extends AppCompatActivity {
     }
 
     private void startSignup() {
-        final String email = getEditTextString(mInputEmail).trim();
-        final String password = getEditTextString(mInputPassword).trim();
+        final String email = getEditTextString(mInputEmail);
+        final String password = getEditTextString(mInputPassword);
 
         if (isValidPassword(password) && !isEmailPasswordMatch()) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_signing_up));
