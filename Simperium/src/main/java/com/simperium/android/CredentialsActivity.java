@@ -40,14 +40,14 @@ import java.util.regex.Pattern;
 import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 
 public class CredentialsActivity extends AppCompatActivity {
-    private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
+    private static final Pattern PATTERN_NEWLINES_TABS = Pattern.compile("[\n\t]");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
     private static final String STATE_EMAIL = "STATE_EMAIL";
     private static final String STATE_PASSWORD = "STATE_PASSWORD";
     private static final int DELAY_AUTOMATE_LOGIN = 600;
     private static final int PASSWORD_LENGTH_LOGIN = 4;
-    private static final int PASSWORD_LENGTH_SIGNUP = 6;
+    private static final int PASSWORD_LENGTH_MINIMUM = 8;
 
     protected ProgressDialogFragment mProgressDialogFragment;
 
@@ -165,7 +165,7 @@ public class CredentialsActivity extends AppCompatActivity {
                 new View.OnFocusChangeListener() {
                     @Override
                     public void onFocusChange(View view, boolean hasFocus) {
-                        if (!hasFocus && !isValidEmail(mInputEmail.getEditText().getText().toString())) {
+                        if (!hasFocus && !isValidEmail(getEditTextString(mInputEmail))) {
                             mInputEmail.setError(getString(R.string.simperium_error_email));
                         } else {
                             mInputEmail.setError("");
@@ -204,7 +204,7 @@ public class CredentialsActivity extends AppCompatActivity {
                     public void onFocusChange(View view, boolean hasFocus) {
                         if (hasFocus) {
                             mInputPassword.setError("");
-                        } else if (!isValidPasswordLength()) {
+                        } else if (!isValidPasswordLength(mIsLogin)) {
                             mInputPassword.setError(getString(R.string.simperium_error_password));
                         }
                     }
@@ -315,15 +315,19 @@ public class CredentialsActivity extends AppCompatActivity {
         return Patterns.EMAIL_ADDRESS.matcher(text).matches();
     }
 
-    private boolean isValidPassword(String password) {
-        return isValidPasswordLength() && !PATTERN_WHITESPACE.matcher(password).find();
+    // Password is valid if:
+    // - Meets minimum length requirement based on login (PASSWORD_LENGTH_LOGIN) and signup (PASSWORD_LENGTH_MINIMUM)
+    // - Does not have new lines or tabs (PATTERN_NEWLINES_TABS)
+    // - Does not match email address
+    private boolean isValidPassword(String email, String password) {
+        return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_TABS.matcher(password).find() && !email.contentEquals(password);
     }
 
-    private boolean isValidPasswordLength() {
+    private boolean isValidPasswordLength(boolean isLogin) {
         return mInputPassword.getEditText() != null &&
-            (mIsLogin ?
-                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_LOGIN :
-                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_SIGNUP
+            (isLogin ?
+                getEditTextString(mInputPassword).length() >= PASSWORD_LENGTH_LOGIN :
+                getEditTextString(mInputPassword).length() >= PASSWORD_LENGTH_MINIMUM
             );
     }
 
@@ -331,8 +335,8 @@ public class CredentialsActivity extends AppCompatActivity {
         mButton.setEnabled(
             mInputEmail.getEditText() != null &&
             mInputPassword.getEditText() != null &&
-            isValidEmail(mInputEmail.getEditText().getText().toString()) &&
-            isValidPasswordLength()
+            isValidEmail(getEditTextString(mInputEmail)) &&
+            isValidPasswordLength(mIsLogin)
         );
     }
 
@@ -376,31 +380,52 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void startLogin() {
-        final String email = getEditTextString(mInputEmail).trim();
-        final String password = getEditTextString(mInputPassword).trim();
+    private void showDialogErrorLoginReset() {
+        hideDialogProgress();
+        Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+        new AlertDialog.Builder(context)
+            .setTitle(R.string.simperium_dialog_title_error)
+            .setMessage(getString(R.string.simperium_dialog_message_login_reset, PASSWORD_LENGTH_MINIMUM))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.simperium_button_login_reset,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Uri uri = Uri.parse(getString(R.string.simperium_dialog_button_reset_url, getEditTextString(mInputEmail)));
+                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                        startActivity(intent);
+                    }
+                }
+            )
+            .show();
+    }
 
-        if (isValidPassword(password)) {
+    private void startLogin() {
+        final String email = getEditTextString(mInputEmail);
+        final String password = getEditTextString(mInputPassword);
+
+        // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
+        if (isValidPassword(email, password) && isValidPasswordLength(false)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.authorizeUser(email, password, mAuthListener);
         } else {
-            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_LOGIN));
+            showDialogErrorLoginReset();
         }
     }
 
     private void startSignup() {
-        final String email = getEditTextString(mInputEmail).trim();
-        final String password = getEditTextString(mInputPassword).trim();
+        final String email = getEditTextString(mInputEmail);
+        final String password = getEditTextString(mInputPassword);
 
-        if (isValidPassword(password)) {
+        if (isValidPassword(email, password)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_signing_up));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.createUser(email, password, mAuthListener);
         } else {
-            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_SIGNUP));
+            showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_MINIMUM));
         }
     }
 }
