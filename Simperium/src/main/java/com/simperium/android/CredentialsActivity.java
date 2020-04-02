@@ -165,7 +165,7 @@ public class CredentialsActivity extends AppCompatActivity {
                 new View.OnFocusChangeListener() {
                     @Override
                     public void onFocusChange(View view, boolean hasFocus) {
-                        if (!hasFocus && !isValidEmail(mInputEmail.getEditText().getText().toString())) {
+                        if (!hasFocus && !isValidEmail(getEditTextString(mInputEmail))) {
                             mInputEmail.setError(getString(R.string.simperium_error_email));
                         } else {
                             mInputEmail.setError("");
@@ -321,15 +321,14 @@ public class CredentialsActivity extends AppCompatActivity {
     // - Does not match email address
     private boolean isValidPassword(String password) {
         return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_TABS.matcher(password).find() &&
-            (mInputEmail.getEditText() != null && mInputPassword.getEditText() != null &&
-            !mInputEmail.getEditText().getText().toString().contentEquals(mInputPassword.getEditText().getText().toString()));
+            !getEditTextString(mInputEmail).contentEquals(getEditTextString(mInputPassword));
     }
 
     private boolean isValidPasswordLength(boolean isLogin) {
         return mInputPassword.getEditText() != null &&
             (isLogin ?
-                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_LOGIN :
-                mInputPassword.getEditText().getText().toString().length() >= PASSWORD_LENGTH_MINIMUM
+                getEditTextString(mInputPassword).length() >= PASSWORD_LENGTH_LOGIN :
+                getEditTextString(mInputPassword).length() >= PASSWORD_LENGTH_MINIMUM
             );
     }
 
@@ -337,7 +336,7 @@ public class CredentialsActivity extends AppCompatActivity {
         mButton.setEnabled(
             mInputEmail.getEditText() != null &&
             mInputPassword.getEditText() != null &&
-            isValidEmail(mInputEmail.getEditText().getText().toString()) &&
+            isValidEmail(getEditTextString(mInputEmail)) &&
             isValidPasswordLength(mIsLogin)
         );
     }
