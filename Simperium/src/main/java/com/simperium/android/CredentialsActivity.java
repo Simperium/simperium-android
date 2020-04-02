@@ -319,9 +319,8 @@ public class CredentialsActivity extends AppCompatActivity {
     // - Meets minimum length requirement based on login (PASSWORD_LENGTH_LOGIN) and signup (PASSWORD_LENGTH_MINIMUM)
     // - Does not have new lines or tabs (PATTERN_NEWLINES_TABS)
     // - Does not match email address
-    private boolean isValidPassword(String password) {
-        return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_TABS.matcher(password).find() &&
-            !getEditTextString(mInputEmail).contentEquals(getEditTextString(mInputPassword));
+    private boolean isValidPassword(String email, String password) {
+        return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_TABS.matcher(password).find() && !email.contentEquals(password);
     }
 
     private boolean isValidPasswordLength(boolean isLogin) {
@@ -406,7 +405,7 @@ public class CredentialsActivity extends AppCompatActivity {
         final String password = getEditTextString(mInputPassword);
 
         // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
-        if (isValidPassword(password) && isValidPasswordLength(false)) {
+        if (isValidPassword(email, password) && isValidPasswordLength(false)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
@@ -420,7 +419,7 @@ public class CredentialsActivity extends AppCompatActivity {
         final String email = getEditTextString(mInputEmail);
         final String password = getEditTextString(mInputPassword);
 
-        if (isValidPassword(password)) {
+        if (isValidPassword(email, password)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_signing_up));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
