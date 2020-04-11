@@ -84,7 +84,7 @@ public class CredentialsActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSuccess(final User user) {
+        public void onSuccess(final User user, final String userId, final String token) {
             runOnUiThread(
                 new Runnable() {
                     @Override

@@ -26,7 +26,7 @@ public class AuthResponseHandler {
         }
 
         mUser.setStatus(User.Status.AUTHORIZED);
-        mListener.onSuccess(mUser);
+        mListener.onSuccess(mUser, mUser.getUserId(), mUser.getAccessToken());
     }
 
     public void onError(AuthException error){
