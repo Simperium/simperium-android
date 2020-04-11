@@ -41,6 +41,7 @@ import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 
 public class CredentialsActivity extends AppCompatActivity {
     private static final Pattern PATTERN_NEWLINES_TABS = Pattern.compile("[\n\t]");
+    private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
     private static final String STATE_EMAIL = "STATE_EMAIL";
@@ -331,6 +332,10 @@ public class CredentialsActivity extends AppCompatActivity {
             );
     }
 
+    private boolean isValidPasswordLogin(String password) {
+        return isValidPasswordLength(mIsLogin) && !PATTERN_WHITESPACE.matcher(password).find();
+    }
+
     private void setButtonState() {
         mButton.setEnabled(
             mInputEmail.getEditText() != null &&
@@ -404,14 +409,13 @@ public class CredentialsActivity extends AppCompatActivity {
         final String email = getEditTextString(mInputEmail);
         final String password = getEditTextString(mInputPassword);
 
-        // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
-        if (isValidPassword(email, password) && isValidPasswordLength(false)) {
+        if (isValidPasswordLogin(password)) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
             mSimperium.authorizeUser(email, password, mAuthListener);
         } else {
-            showDialogErrorLoginReset();
+            showDialogError(getString(R.string.simperium_dialog_message_password_login, PASSWORD_LENGTH_LOGIN));
         }
     }
 
