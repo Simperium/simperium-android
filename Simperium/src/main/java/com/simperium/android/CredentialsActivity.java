@@ -97,8 +97,19 @@ public class CredentialsActivity extends AppCompatActivity {
                             inputMethodManager.hideSoftInputFromWindow(mButton.getWindowToken(), 0);
                         }
 
-                        setResult(RESULT_OK);
-                        finish();
+                        // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
+                        if (isValidPassword(user.getEmail(), user.getPassword()) && isValidPasswordLength(false)) {
+                            user.setStatus(User.Status.AUTHORIZED);
+                            user.setAccessToken(token);
+                            user.setUserId(userId);
+                            setResult(RESULT_OK);
+                            finish();
+                        } else {
+                            user.setStatus(User.Status.NOT_AUTHORIZED);
+                            user.setAccessToken("");
+                            user.setUserId("");
+                            showDialogErrorLoginReset();
+                        }
                     }
                 }
             );

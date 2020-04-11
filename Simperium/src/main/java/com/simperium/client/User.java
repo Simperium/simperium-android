@@ -115,7 +115,7 @@ public class User {
         return userId;
     }
 
-    protected void setUserId(String userId){
+    public void setUserId(String userId){
         this.userId = userId;
     }
 
