@@ -35,9 +35,12 @@ import com.simperium.client.User;
 import com.simperium.util.Logger;
 import com.simperium.util.NetworkUtil;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.regex.Pattern;
 
 import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
+import static org.apache.http.protocol.HTTP.UTF_8;
 
 public class CredentialsActivity extends AppCompatActivity {
     private static final Pattern PATTERN_NEWLINES_TABS = Pattern.compile("[\n\t]");
@@ -407,9 +410,13 @@ public class CredentialsActivity extends AppCompatActivity {
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Uri uri = Uri.parse(getString(R.string.simperium_dialog_button_reset_url, getEditTextString(mInputEmail)));
-                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                        startActivity(intent);
+                        try {
+                            Uri uri = Uri.parse(getString(R.string.simperium_dialog_button_reset_url, URLEncoder.encode(getEditTextString(mInputEmail), UTF_8)));
+                            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                            startActivity(intent);
+                        } catch (UnsupportedEncodingException e) {
+                            throw new RuntimeException("Unable to parse URL", e);
+                        }
                     }
                 }
             )
