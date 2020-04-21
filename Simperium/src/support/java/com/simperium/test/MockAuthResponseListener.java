@@ -5,14 +5,12 @@ import com.simperium.client.AuthResponseListener;
 import com.simperium.client.User;
 
 public class MockAuthResponseListener implements AuthResponseListener {
-
+    public AuthException exception;
+    public User user;
     public boolean success = false, failure = false;
 
-    public User user;
-    public AuthException exception;
-
     @Override
-    public void onSuccess(User user){
+    public void onSuccess(User user, String userId, String token){
         success = true;
         this.user = user;
     }
@@ -23,5 +21,4 @@ public class MockAuthResponseListener implements AuthResponseListener {
         this.user = user;
         this.exception = exception;
     }
-
 }
