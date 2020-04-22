@@ -1,6 +1,8 @@
 package com.simperium.android;
 
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.koushikdutta.async.callback.CompletedCallback;
 import com.koushikdutta.async.http.AsyncHttpClient;
@@ -15,6 +17,7 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
     public static final String TAG = "Simperium.AsyncWebSocketProvider";
 
     private final AsyncHttpClient mAsyncClient;
+    private final Handler mHandler;
     private final String mAppId;
     private final String mSessionId;
 
@@ -22,6 +25,7 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
         mAppId = appId;
         mAsyncClient = asyncClient;
         mSessionId = sessionId;
+        mHandler = new Handler(Looper.getMainLooper());
     }
 
     @Override
@@ -47,12 +51,22 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
                 final WebSocketManager.Connection connection = new WebSocketManager.Connection() {
                     @Override
                     public void close() {
-                        webSocket.close();
+                        mHandler.post(new Runnable() {
+                                @Override
+                            public void run() {
+                                webSocket.close();
+                            }
+                        });
                     }
 
                     @Override
                     public void send(final String message) {
-                        webSocket.send(message);
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                webSocket.send(message);
+                            }
+                        });
                     }
                 };
 
