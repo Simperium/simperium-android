@@ -178,14 +178,14 @@ public class Simperium implements User.StatusChangeListener {
                 notifyOnUserCreatedListener(user);
             }
         };
-        mAuthProvider.createUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper));
+        mAuthProvider.createUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper, mAuthProvider));
         return user;
     }
 
     public User authorizeUser(String email, String password, AuthResponseListener listener){
         user.setCredentials(email, password);
         AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener);
-        mAuthProvider.authorizeUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper));
+        mAuthProvider.authorizeUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper, mAuthProvider));
         return user;
     }
 

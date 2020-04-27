@@ -5,12 +5,14 @@ import com.simperium.util.AuthUtil;
 import org.json.JSONObject;
 
 public class AuthResponseHandler {
+    private AuthProvider mProvider;
     private AuthResponseListener mListener;
     private User mUser;
 
-    public AuthResponseHandler(User user, AuthResponseListener listener) {
+    public AuthResponseHandler(User user, AuthResponseListener listener, AuthProvider provider) {
         mUser = user;
         mListener = listener;
+        mProvider = provider;
     }
 
     public void onResponse(JSONObject response){
