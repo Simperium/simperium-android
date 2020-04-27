@@ -17,7 +17,7 @@ public class AuthResponseHandler {
 
     public void onResponse(JSONObject response){
         if (!response.optString(AuthUtil.USERID_KEY).isEmpty() && !response.optString(AuthUtil.ACCESS_TOKEN_KEY).isEmpty()) {
-            mListener.onSuccess(mUser, response.optString(AuthUtil.USERID_KEY), response.optString(AuthUtil.ACCESS_TOKEN_KEY));
+            mListener.onSuccess(mUser, response.optString(AuthUtil.USERID_KEY), response.optString(AuthUtil.ACCESS_TOKEN_KEY), mProvider);
         } else {
             mListener.onFailure(mUser, AuthException.defaultException());
         }

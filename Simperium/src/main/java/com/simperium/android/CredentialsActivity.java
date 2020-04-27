@@ -30,6 +30,7 @@ import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
 import com.simperium.client.AuthException;
+import com.simperium.client.AuthProvider;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.User;
 import com.simperium.util.Logger;
@@ -88,7 +89,7 @@ public class CredentialsActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSuccess(final User user, final String userId, final String token) {
+        public void onSuccess(final User user, final String userId, final String token, final AuthProvider provider) {
             runOnUiThread(
                 new Runnable() {
                     @Override

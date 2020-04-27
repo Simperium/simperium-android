@@ -173,8 +173,8 @@ public class Simperium implements User.StatusChangeListener {
         user.setCredentials(email, password);
         AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener){
             @Override
-            public void onSuccess(User user, String userId, String token){
-                super.onSuccess(user, userId, token);
+            public void onSuccess(User user, String userId, String token, AuthProvider provider){
+                super.onSuccess(user, userId, token, provider);
                 notifyOnUserCreatedListener(user);
             }
         };
@@ -233,9 +233,8 @@ public class Simperium implements User.StatusChangeListener {
         }
 
         @Override
-        public void onSuccess(User user, String userId, String token) {
-            mAuthProvider.saveUser(user);
-            mListener.onSuccess(user, userId, token);
+        public void onSuccess(User user, String userId, String token, AuthProvider provider) {
+            mListener.onSuccess(user, userId, token, provider);
         }
 
         @Override
