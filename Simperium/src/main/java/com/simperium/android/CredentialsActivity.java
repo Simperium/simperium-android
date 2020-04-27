@@ -106,12 +106,14 @@ public class CredentialsActivity extends AppCompatActivity {
                             user.setStatus(User.Status.AUTHORIZED);
                             user.setAccessToken(token);
                             user.setUserId(userId);
+                            provider.saveUser(user);
                             setResult(RESULT_OK);
                             finish();
                         } else {
                             user.setStatus(User.Status.NOT_AUTHORIZED);
                             user.setAccessToken("");
                             user.setUserId("");
+                            provider.saveUser(user);
                             showDialogErrorLoginReset();
                         }
                     }
