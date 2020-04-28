@@ -1,6 +1,7 @@
 package com.simperium.test;
 
 import com.simperium.client.AuthException;
+import com.simperium.client.AuthProvider;
 import com.simperium.client.AuthResponseListener;
 import com.simperium.client.User;
 
@@ -10,7 +11,7 @@ public class MockAuthResponseListener implements AuthResponseListener {
     public boolean success = false, failure = false;
 
     @Override
-    public void onSuccess(User user, String userId, String token){
+    public void onSuccess(User user, String userId, String token, AuthProvider provider){
         success = true;
         this.user = user;
     }

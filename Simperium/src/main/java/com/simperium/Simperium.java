@@ -173,19 +173,19 @@ public class Simperium implements User.StatusChangeListener {
         user.setCredentials(email, password);
         AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener){
             @Override
-            public void onSuccess(User user, String userId, String token){
-                super.onSuccess(user, userId, token);
+            public void onSuccess(User user, String userId, String token, AuthProvider provider){
+                super.onSuccess(user, userId, token, provider);
                 notifyOnUserCreatedListener(user);
             }
         };
-        mAuthProvider.createUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper));
+        mAuthProvider.createUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper, mAuthProvider));
         return user;
     }
 
     public User authorizeUser(String email, String password, AuthResponseListener listener){
         user.setCredentials(email, password);
         AuthResponseListener wrapper = new AuthResponseListenerWrapper(listener);
-        mAuthProvider.authorizeUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper));
+        mAuthProvider.authorizeUser(AuthUtil.makeAuthRequestBody(user), new AuthResponseHandler(user, wrapper, mAuthProvider));
         return user;
     }
 
@@ -233,9 +233,8 @@ public class Simperium implements User.StatusChangeListener {
         }
 
         @Override
-        public void onSuccess(User user, String userId, String token) {
-            mAuthProvider.saveUser(user);
-            mListener.onSuccess(user, userId, token);
+        public void onSuccess(User user, String userId, String token, AuthProvider provider) {
+            mListener.onSuccess(user, userId, token, provider);
         }
 
         @Override
