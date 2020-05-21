@@ -35,5 +35,5 @@ def gitDescribe() {
 }
 
 def static gitVersion() {
-    '0.9.10'
+    '0.9.11'
 }
