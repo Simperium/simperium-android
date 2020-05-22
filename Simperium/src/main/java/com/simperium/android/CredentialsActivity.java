@@ -44,7 +44,7 @@ import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 import static org.apache.http.protocol.HTTP.UTF_8;
 
 public class CredentialsActivity extends AppCompatActivity {
-    private static final Pattern PATTERN_NEWLINES_TABS = Pattern.compile("[\n\t]");
+    private static final Pattern PATTERN_NEWLINES_RETURNS_TABS = Pattern.compile("[\n\r\t]");
     private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
@@ -338,7 +338,7 @@ public class CredentialsActivity extends AppCompatActivity {
     // - Does not have new lines or tabs (PATTERN_NEWLINES_TABS)
     // - Does not match email address
     private boolean isValidPassword(String email, String password) {
-        return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_TABS.matcher(password).find() && !email.contentEquals(password);
+        return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_RETURNS_TABS.matcher(password).find() && !email.contentEquals(password);
     }
 
     private boolean isValidPasswordLength(boolean isLogin) {
