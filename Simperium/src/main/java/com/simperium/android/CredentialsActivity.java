@@ -318,6 +318,12 @@ public class CredentialsActivity extends AppCompatActivity {
         outState.putString(STATE_PASSWORD, getEditTextString(mInputPassword));
     }
 
+    private void clearPassword() {
+        if (mInputPassword.getEditText() != null) {
+            mInputPassword.getEditText().getText().clear();
+        }
+    }
+
     private String getEditTextString(@NonNull TextInputLayout inputLayout) {
         return inputLayout.getEditText() != null ? inputLayout.getEditText().getText().toString() : "";
     }
@@ -417,6 +423,7 @@ public class CredentialsActivity extends AppCompatActivity {
                             Uri uri = Uri.parse(getString(R.string.simperium_dialog_button_reset_url, URLEncoder.encode(getEditTextString(mInputEmail), UTF_8)));
                             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
                             startActivity(intent);
+                            clearPassword();
                         } catch (UnsupportedEncodingException e) {
                             throw new RuntimeException("Unable to parse URL", e);
                         }
