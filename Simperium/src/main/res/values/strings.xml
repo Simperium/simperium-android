@@ -20,6 +20,8 @@
     <string name="simperium_dialog_progress_logging_in">Logging in&#8230;</string>
     <string name="simperium_dialog_progress_signing_up">Signing up&#8230;</string>
     <string name="simperium_dialog_title_error">Error</string>
+    <string name="simperium_dialog_title_error_browser">No Browser Detected</string>
+    <string name="simperium_error_browser">Please, verify a browser is installed and enabled.</string>
     <string name="simperium_error_email">Invalid email</string>
     <string name="simperium_error_password">Invalid password</string>
     <string name="simperium_footer_login">%1$s%2$s%3$sForgot password?%4$s</string>
@@ -30,5 +32,6 @@
     <string name="simperium_hint_password">Password</string>
     <string name="simperium_subtitle">App data, everywhere it\'s needed.</string>
     <string name="simperium_title">@string/app_name</string>
+    <string name="simperium_url">https://simperium.com/</string>
 
 </resources>
