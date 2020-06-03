@@ -330,6 +330,23 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
+    private void copyToClipboard(String url) {
+        Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+
+        try {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText(getString(R.string.app_name), url);
+
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+            }
+
+            Toast.makeText(context, R.string.simperium_error_browser_copy_success, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(context, R.string.simperium_error_browser_copy_failure, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private String getEditTextString(@NonNull TextInputLayout inputLayout) {
         return inputLayout.getEditText() != null ? inputLayout.getEditText().getText().toString() : "";
     }
@@ -453,6 +470,14 @@ public class CredentialsActivity extends AppCompatActivity {
         new AlertDialog.Builder(context)
             .setTitle(R.string.simperium_dialog_title_error_browser)
             .setMessage(R.string.simperium_error_browser)
+            .setNeutralButton(R.string.simperium_dialog_button_copy_url,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        copyToClipboard(url);
+                    }
+                }
+            )
             .setPositiveButton(android.R.string.ok, null)
             .show();
     }
