@@ -339,9 +339,10 @@ public class CredentialsActivity extends AppCompatActivity {
 
             if (clipboard != null) {
                 clipboard.setPrimaryClip(clip);
+                Toast.makeText(context, R.string.simperium_error_browser_copy_success, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(context, R.string.simperium_error_browser_copy_failure, Toast.LENGTH_SHORT).show();
             }
-
-            Toast.makeText(context, R.string.simperium_error_browser_copy_success, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(context, R.string.simperium_error_browser_copy_failure, Toast.LENGTH_SHORT).show();
         }
