@@ -1,5 +1,7 @@
 package com.simperium.android;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -15,6 +17,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -271,12 +274,15 @@ public class CredentialsActivity extends AppCompatActivity {
             new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Uri uri = Uri.parse(mIsLogin ?
+                    String url = mIsLogin ?
                         getString(R.string.simperium_footer_login_url, getEditTextString(mInputEmail)) :
-                        getString(R.string.simperium_footer_signup_url)
-                    );
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
+                        getString(R.string.simperium_footer_signup_url);
+
+                    if (isBrowserInstalled()) {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    } else {
+                        showDialogErrorBrowser(url);
+                    }
                 }
             }
         );
@@ -324,6 +330,24 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
+    private void copyToClipboard(String url) {
+        Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+
+        try {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText(getString(R.string.app_name), url);
+
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(context, R.string.simperium_error_browser_copy_success, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(context, R.string.simperium_error_browser_copy_failure, Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(context, R.string.simperium_error_browser_copy_failure, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private String getEditTextString(@NonNull TextInputLayout inputLayout) {
         return inputLayout.getEditText() != null ? inputLayout.getEditText().getText().toString() : "";
     }
@@ -333,6 +357,11 @@ public class CredentialsActivity extends AppCompatActivity {
             mProgressDialogFragment.dismiss();
             mProgressDialogFragment = null;
         }
+    }
+
+    private boolean isBrowserInstalled() {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.simperium_url)));
+        return (intent.resolveActivity(getPackageManager()) != null);
     }
 
     private boolean isValidEmail(String text) {
@@ -410,7 +439,7 @@ public class CredentialsActivity extends AppCompatActivity {
 
     private void showDialogErrorLoginReset() {
         hideDialogProgress();
-        Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+        final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
             .setTitle(R.string.simperium_dialog_title_error)
             .setMessage(getString(R.string.simperium_dialog_message_login_reset, PASSWORD_LENGTH_MINIMUM))
@@ -420,16 +449,37 @@ public class CredentialsActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         try {
-                            Uri uri = Uri.parse(getString(R.string.simperium_dialog_button_reset_url, URLEncoder.encode(getEditTextString(mInputEmail), UTF_8)));
-                            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                            startActivity(intent);
-                            clearPassword();
+                            String url = getString(R.string.simperium_dialog_button_reset_url, URLEncoder.encode(getEditTextString(mInputEmail), UTF_8));
+
+                            if (isBrowserInstalled()) {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                                clearPassword();
+                            } else {
+                                showDialogErrorBrowser(url);
+                            }
                         } catch (UnsupportedEncodingException e) {
                             throw new RuntimeException("Unable to parse URL", e);
                         }
                     }
                 }
             )
+            .show();
+    }
+
+    private void showDialogErrorBrowser(final String url) {
+        final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+        new AlertDialog.Builder(context)
+            .setTitle(R.string.simperium_dialog_title_error_browser)
+            .setMessage(R.string.simperium_error_browser)
+            .setNeutralButton(R.string.simperium_dialog_button_copy_url,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        copyToClipboard(url);
+                    }
+                }
+            )
+            .setPositiveButton(android.R.string.ok, null)
             .show();
     }
 
