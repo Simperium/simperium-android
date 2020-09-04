@@ -20,4 +20,9 @@ public interface ChannelProvider {
     public int getLogLevel();
 
 
+    public interface HeartbeatListener {
+        public void onBeat();
+    }
+
+    public void addHeartbeatListener(HeartbeatListener listener);
 }
