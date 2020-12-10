@@ -48,7 +48,6 @@ import static org.apache.http.protocol.HTTP.UTF_8;
 
 public class CredentialsActivity extends AppCompatActivity {
     private static final Pattern PATTERN_NEWLINES_RETURNS_TABS = Pattern.compile("[\n\r\t]");
-    private static final Pattern PATTERN_WHITESPACE = Pattern.compile("(\\s)");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
     private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
     private static final String STATE_EMAIL = "STATE_EMAIL";
@@ -384,8 +383,8 @@ public class CredentialsActivity extends AppCompatActivity {
             );
     }
 
-    private boolean isValidPasswordLogin(String password) {
-        return isValidPasswordLength(mIsLogin) && !PATTERN_WHITESPACE.matcher(password).find();
+    private boolean isValidPasswordLogin() {
+        return isValidPasswordLength(mIsLogin);
     }
 
     private void setButtonState() {
