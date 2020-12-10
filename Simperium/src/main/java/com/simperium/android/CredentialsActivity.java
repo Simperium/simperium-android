@@ -369,7 +369,7 @@ public class CredentialsActivity extends AppCompatActivity {
 
     // Password is valid if:
     // - Meets minimum length requirement based on login (PASSWORD_LENGTH_LOGIN) and signup (PASSWORD_LENGTH_MINIMUM)
-    // - Does not have new lines or tabs (PATTERN_NEWLINES_TABS)
+    // - Does not have new lines, returns, or tabs (PATTERN_NEWLINES_RETURNS_TABS)
     // - Does not match email address
     private boolean isValidPassword(String email, String password) {
         return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_RETURNS_TABS.matcher(password).find() && !email.contentEquals(password);
@@ -488,7 +488,7 @@ public class CredentialsActivity extends AppCompatActivity {
         final String email = getEditTextString(mInputEmail);
         final String password = getEditTextString(mInputPassword);
 
-        if (isValidPasswordLogin(password)) {
+        if (isValidPasswordLogin()) {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
