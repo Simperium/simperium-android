@@ -383,6 +383,8 @@ public class CredentialsActivity extends AppCompatActivity {
             );
     }
 
+    // Use old password requirements for login validation:
+    // - Meets minimum length requirement (PASSWORD_LENGTH_LOGIN)
     private boolean isValidPasswordLogin() {
         return isValidPasswordLength(mIsLogin);
     }
