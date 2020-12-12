@@ -26,6 +26,10 @@ public class MockChannelProvider implements ChannelProvider {
         return ChannelProvider.LOG_DISABLED;
     }
 
+    @Override
+    public void addHeartbeatListener(HeartbeatListener listener) {
+    }
+
     public String getLastLog() {
         if (logs.size() > 0) {
             return logs.get(logs.size()-1);
