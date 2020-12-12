@@ -57,8 +57,7 @@ public class ChannelTest extends BaseSimperiumTest {
         mBucketExecutor.clear();
         mBucketExecutor.play();
 
-        mBucket = MockBucket.buildBucket(mBucketExecutor, new Note.Schema(), new ChannelProvider(){
-
+        mBucket = MockBucket.buildBucket(mBucketExecutor, new Note.Schema(), new ChannelProvider() {
             @Override
             public Bucket.Channel buildChannel(Bucket bucket){
                 mChannelSerializer = new MockChannelSerializer();
@@ -76,6 +75,9 @@ public class ChannelTest extends BaseSimperiumTest {
                 return 0;
             }
 
+            @Override
+            public void addHeartbeatListener(HeartbeatListener listener) {
+            }
         });
 
         mBucket.getUser().setStatusChangeListener(new User.StatusChangeListener(){
