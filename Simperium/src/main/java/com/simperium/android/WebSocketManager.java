@@ -66,7 +66,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     private boolean mReconnect = true;
     private HashMap<Channel,Integer> mChannelIndex = new HashMap<Channel,Integer>();
     private HashMap<Integer,Channel> mChannels = new HashMap<Integer,Channel>();
-    private HashSet<HeartbeatListener> mHearbeatListeners = new HashSet<HeartbeatListener>();
+    private HashSet<HeartbeatListener> mHeartbeatListeners = new HashSet<HeartbeatListener>();
 
     public static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
@@ -163,7 +163,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     public void addHeartbeatListener(HeartbeatListener listener) {
-        mHearbeatListeners.add(listener);
+        mHeartbeatListeners.add(listener);
     }
 
     @Override
@@ -415,7 +415,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         String[] parts = message.split(":", 2);
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             mHeartbeatCount = Integer.parseInt(parts[1]);
-            for (HeartbeatListener listener : mHearbeatListeners) {
+            for (HeartbeatListener listener : mHeartbeatListeners) {
                 listener.onBeat();
             }
             return;
