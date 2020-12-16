@@ -77,8 +77,12 @@ public class Simperium implements User.StatusChangeListener {
     public static Simperium getInstance() throws SimperiumNotInitializedException{
     	if(null == simperiumClient)
     		throw new SimperiumNotInitializedException("You must create an instance of Simperium before call this method.");
-    	
+
     	return simperiumClient;
+    }
+
+    public void addHeartbeatListener(ChannelProvider.HeartbeatListener listener) {
+        mChannelProvider.addHeartbeatListener(listener);
     }
 
     private void loadUser(){

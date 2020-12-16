@@ -10,6 +10,7 @@
 package com.simperium.android;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -65,6 +66,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     private boolean mReconnect = true;
     private HashMap<Channel,Integer> mChannelIndex = new HashMap<Channel,Integer>();
     private HashMap<Integer,Channel> mChannels = new HashMap<Integer,Channel>();
+    private HashSet<HeartbeatListener> mHearbeatListeners = new HashSet<HeartbeatListener>();
 
     static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
@@ -158,6 +160,10 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         if (BuildConfig.DEBUG) Log.d(TAG, "Log " + level + " => " + log);
 
         if (send) send(String.format(LOG_FORMAT, COMMAND_LOG, log));
+    }
+
+    public void addHeartbeatListener(HeartbeatListener listener) {
+        mHearbeatListeners.add(listener);
     }
 
     @Override
@@ -409,6 +415,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         String[] parts = message.split(":", 2);
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             mHeartbeatCount = Integer.parseInt(parts[1]);
+            for (HeartbeatListener listener : mHearbeatListeners) {
+                listener.onBeat();
+            }
             return;
         } else if (parts[0].equals(COMMAND_LOG)) {
             mLogLevel = Integer.parseInt(parts[1]);
