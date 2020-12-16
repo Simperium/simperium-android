@@ -68,7 +68,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     private HashMap<Integer,Channel> mChannels = new HashMap<Integer,Channel>();
     private HashSet<HeartbeatListener> mHeartbeatListeners = new HashSet<HeartbeatListener>();
 
-    public static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
+    public static final long HEARTBEAT_INTERVAL = 10000; // 10 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
 
     private Timer mHeartbeatTimer, mReconnectTimer;
