@@ -294,12 +294,12 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         mHeartbeatTimer = new Timer();
         mHeartbeatTimer.schedule(new TimerTask() {
             public void run() {
-                sendHearbeat();
+                sendHeartbeat();
             }
         }, HEARTBEAT_INTERVAL);
     }
 
-    synchronized private void sendHearbeat() {
+    synchronized private void sendHeartbeat() {
         mHeartbeatCount ++;
         String command = String.format(Locale.US, "%s:%d", COMMAND_HEARTBEAT, mHeartbeatCount);
 
