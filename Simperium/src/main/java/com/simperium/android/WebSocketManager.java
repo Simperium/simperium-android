@@ -9,22 +9,6 @@
  */
 package com.simperium.android;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.Executor;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import com.simperium.BuildConfig;
-import com.simperium.client.Bucket;
-import com.simperium.client.Channel;
-import com.simperium.client.ChannelProvider;
-import com.simperium.util.Logger;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -32,6 +16,22 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
+
+import com.simperium.BuildConfig;
+import com.simperium.client.Bucket;
+import com.simperium.client.Channel;
+import com.simperium.client.ChannelProvider;
+import com.simperium.util.Logger;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Executor;
 
 public class WebSocketManager implements ChannelProvider, Channel.OnMessageListener {
 
@@ -66,9 +66,9 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     private boolean mReconnect = true;
     private HashMap<Channel,Integer> mChannelIndex = new HashMap<Channel,Integer>();
     private HashMap<Integer,Channel> mChannels = new HashMap<Integer,Channel>();
-    private HashSet<HeartbeatListener> mHearbeatListeners = new HashSet<HeartbeatListener>();
+    private HashSet<HeartbeatListener> mHeartbeatListeners = new HashSet<HeartbeatListener>();
 
-    static final long HEARTBEAT_INTERVAL = 20000; // 20 seconds
+    public static final long HEARTBEAT_INTERVAL = 10000; // 10 seconds
     static final long DEFAULT_RECONNECT_INTERVAL = 3000; // 3 seconds
 
     private Timer mHeartbeatTimer, mReconnectTimer;
@@ -163,7 +163,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
     }
 
     public void addHeartbeatListener(HeartbeatListener listener) {
-        mHearbeatListeners.add(listener);
+        mHeartbeatListeners.add(listener);
     }
 
     @Override
@@ -294,12 +294,12 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         mHeartbeatTimer = new Timer();
         mHeartbeatTimer.schedule(new TimerTask() {
             public void run() {
-                sendHearbeat();
+                sendHeartbeat();
             }
         }, HEARTBEAT_INTERVAL);
     }
 
-    synchronized private void sendHearbeat() {
+    synchronized private void sendHeartbeat() {
         mHeartbeatCount ++;
         String command = String.format(Locale.US, "%s:%d", COMMAND_HEARTBEAT, mHeartbeatCount);
 
@@ -415,7 +415,7 @@ public class WebSocketManager implements ChannelProvider, Channel.OnMessageListe
         String[] parts = message.split(":", 2);
         if (parts[0].equals(COMMAND_HEARTBEAT)) {
             mHeartbeatCount = Integer.parseInt(parts[1]);
-            for (HeartbeatListener listener : mHearbeatListeners) {
+            for (HeartbeatListener listener : mHeartbeatListeners) {
                 listener.onBeat();
             }
             return;
