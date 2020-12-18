@@ -346,6 +346,14 @@ public class Channel implements Bucket.Channel {
         mChangeProcessor.addChange(change);
     }
 
+    public ChangeProcessor getChangeProcessor() {
+        return mChangeProcessor;
+    }
+
+    public boolean isChangeProcessorIdle() {
+        return mChangeProcessor.isIdle();
+    }
+
     private static final String INDEX_CURRENT_VERSION_KEY = "current";
     private static final String INDEX_VERSIONS_KEY = "index";
     private static final String INDEX_MARK_KEY = "mark";
@@ -1337,6 +1345,10 @@ public class Channel implements Bucket.Channel {
                 }
                 return false;
             }
+        }
+
+        public boolean isIdle() {
+            return mIdle;
         }
 
         public void run() {

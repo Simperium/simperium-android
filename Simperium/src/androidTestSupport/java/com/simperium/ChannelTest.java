@@ -6,6 +6,7 @@ import com.simperium.client.Bucket;
 import com.simperium.client.Change;
 import com.simperium.client.Channel;
 import com.simperium.client.ChannelProvider;
+import com.simperium.client.Ghost;
 import com.simperium.client.RemoteChange;
 import com.simperium.client.User;
 import com.simperium.models.Note;
@@ -19,6 +20,7 @@ import com.simperium.util.RemoteChangesUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -793,6 +795,55 @@ public class ChannelTest extends BaseSimperiumTest {
     }
 
     /**
+     * Crossed-wires test
+     */
+    public void testApplyChangeModifiedByServer() throws Exception {
+        // 1) Channel connects and gets empty index
+        startWithEmptyIndex();
+
+        Map<String,String> index = new HashMap<String,String>(1);
+        index.put("note.4", "{\"data\":{\"tags\":[],\"deleted\":false,\"title\":\"my hovercraft was full of eels\", \"content\":\"AC\"}}");
+        startWithIndex("cv-1", index);
+
+        Channel.MessageEvent entityMessage = waitForMessage();
+        mListener.clearMessages();
+        assertEquals("e:note.4", entityMessage.toString());
+
+        // Send a modification
+        Note note = mBucket.getObject("note");
+        note.setContent("ACD");
+        note.save();
+
+        Channel.MessageEvent changeMessage = waitForMessage();
+        mListener.clearMessages();
+
+        // Strip off the leading c: and parse the JSON
+        JSONObject change = new JSONObject(changeMessage.message.substring(2));
+        // Expecting a diff of content value { "o": "d", "v": "=2\t+D" }
+        assertEquals("=2\t+D", change.getJSONObject("v").getJSONObject("content").getString("v"));
+
+        // Client is now waiting on change `change` but another client has sent a change
+        mChannel.receiveMessage("c:[{\"ccids\":[\"other-ccid\"], \"cv\": \"cv-2\", \"clientid\": \"other-client\", \"sv\": 4, \"ev\": 5, \"id\": \"note\", \"o\": \"M\", v: {\"content\": {\"o\": \"d\", \"v\":\"=1\t+B\t=1\"}}}]");
+        // validate that the ghost gets updated
+        waitFor(300);
+
+        Ghost ghost = mBucket.getGhost(note.getSimperiumKey());
+        assertEquals("ABC", ghost.getDiffableValue().getString("content"));
+
+        String ccid = change.getString("ccid");
+        // Receives message from server that already rebased our change "=2\t+D"
+        mChannel.receiveMessage("c:[{\"ccids\":[\"" + ccid + "\"], \"cv\": \"cv-3\", \"clientid\": \"mock-client\", \"sv\": 5, \"ev\": 6, \"id\": \"note\", \"o\": \"M\", v: {\"content\": {\"o\": \"d\", \"v\":\"=3\t+D\"}}}]");
+
+        waitFor(300);
+        ghost = mBucket.getGhost(note.getSimperiumKey());
+        assertEquals("ABCD", ghost.getDiffableValue().getString("content"));
+        // there should be no more changes
+        assertEquals(0, mChannelSerializer.queue.pending.size());
+        assertTrue(mChannel.isChangeProcessorIdle());
+    }
+
+    /**
+     *
      * Get's the channel into a started state
      */
     protected void start(){
