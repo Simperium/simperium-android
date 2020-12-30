@@ -68,9 +68,18 @@ public class Bucket<T extends Syncable> {
         void onNetworkChange(Bucket<T> bucket, ChangeType type, String key);
     }
 
+    public interface OnSyncObjectListener<T extends Syncable> {
+        void onSyncObject(Bucket<T> bucket, String key);
+    }
+
+    public interface OnLocalQueueChangeListener<T extends Syncable> {
+        void onLocalQueueChange(Bucket<T> bucket, Set<String> queuedObjects);
+    }
+
     public interface Listener<T extends Syncable> extends
         OnSaveObjectListener<T>, OnDeleteObjectListener<T>,
-        OnNetworkChangeListener<T>, OnBeforeUpdateObjectListener<T> {
+        OnNetworkChangeListener<T>, OnBeforeUpdateObjectListener<T>,
+        OnSyncObjectListener<T>, OnLocalQueueChangeListener<T> {
             // implements all listener methods
     }
 
@@ -154,6 +163,10 @@ public class Bucket<T extends Syncable> {
         Collections.synchronizedSet(new HashSet<OnBeforeUpdateObjectListener<T>>());
     private Set<OnNetworkChangeListener<T>> onChangeListeners =
         Collections.synchronizedSet(new HashSet<OnNetworkChangeListener<T>>());
+    private Set<OnSyncObjectListener<T>> onSyncListeners =
+        Collections.synchronizedSet(new HashSet<OnSyncObjectListener<T>>());
+    private Set<OnLocalQueueChangeListener<T>> onLocalQueueChangeListeners =
+        Collections.synchronizedSet(new HashSet<OnLocalQueueChangeListener<T>>());
 
     private BucketStore<T> mStorage;
     private BucketSchema<T> mSchema;
@@ -734,6 +747,8 @@ public class Bucket<T extends Syncable> {
         addOnBeforeUpdateObjectListener(listener);
         addOnDeleteObjectListener(listener);
         addOnNetworkChangeListener(listener);
+        addOnSyncObjectListener(listener);
+        addLocalQueueChangeListener(listener);
     }
 
     public void removeListener(Listener<T> listener) {
@@ -741,6 +756,8 @@ public class Bucket<T extends Syncable> {
         removeOnBeforeUpdateObjectListener(listener);
         removeOnDeleteObjectListener(listener);
         removeOnNetworkChangeListener(listener);
+        removeOnSyncObjectListener(listener);
+        removeLocalQueueChangeListener(listener);
     }
 
     public void addOnSaveObjectListener(OnSaveObjectListener<T> listener) {
@@ -773,6 +790,22 @@ public class Bucket<T extends Syncable> {
 
     public void removeOnBeforeUpdateObjectListener(OnBeforeUpdateObjectListener<T> listener) {
         onBeforeUpdateListeners.remove(listener);
+    }
+
+    public void addOnSyncObjectListener(OnSyncObjectListener<T> listener) {
+        onSyncListeners.add(listener);
+    }
+
+    public void removeOnSyncObjectListener(OnSyncObjectListener<T> listener) {
+        onSyncListeners.remove(listener);
+    }
+
+    public void addLocalQueueChangeListener(OnLocalQueueChangeListener<T> listener) {
+        onLocalQueueChangeListeners.add(listener);
+    }
+
+    public void removeLocalQueueChangeListener(OnLocalQueueChangeListener<T> listener) {
+        onLocalQueueChangeListeners.remove(listener);
     }
 
     public void notifyOnSaveListeners(T object) {
@@ -828,6 +861,29 @@ public class Bucket<T extends Syncable> {
         }
     }
 
+    public void notifyOnSyncObjectListeners(String key) {
+        Set<OnSyncObjectListener<T>> notify = new HashSet<>(onSyncListeners);
+
+        for (OnSyncObjectListener<T> listener : notify) {
+            try {
+                listener.onSyncObject(this, key);
+            } catch (Exception e) {
+                Logger.log(TAG, String.format("Listener failed onSyncObject %s", listener), e);
+            }
+        }
+    }
+
+    public void notifyOnLocalQueueChangeListeners(Set<String> keys) {
+        Set<OnLocalQueueChangeListener<T>> notify = new HashSet<>(onLocalQueueChangeListeners);
+
+        for (OnLocalQueueChangeListener<T> listener : notify) {
+            try {
+                listener.onLocalQueueChange(this, keys);
+            } catch (Exception e) {
+                Logger.log(TAG, String.format("Listener failed onLocalQueueChange %s", listener), e);
+            }
+        }
+    }
 
     public void setChannel(Channel channel) {
         mChannel = channel;
