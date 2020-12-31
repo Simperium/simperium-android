@@ -23,6 +23,8 @@ package com.simperium.client;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 
+import androidx.core.util.Consumer;
+
 import com.simperium.SimperiumException;
 import com.simperium.storage.StorageProvider.BucketStore;
 import com.simperium.util.JSONDiff;
@@ -808,81 +810,76 @@ public class Bucket<T extends Syncable> {
         onLocalQueueChangeListeners.remove(listener);
     }
 
-    public void notifyOnSaveListeners(T object) {
-        Set<OnSaveObjectListener<T>> notify = new HashSet<>(onSaveListeners);
-
-        for (OnSaveObjectListener<T> listener : notify) {
+    private <L> void notifyListeners(Set<L> listeners, Consumer<L> annunciator) {
+        for (L listener : new HashSet<>(listeners)) {
             try {
-                listener.onSaveObject(this, object);
+                annunciator.accept(listener);
             } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onSaveObject %s", listener), e);
+                Logger.log(TAG, String.format(
+                    "Listener failed %s %s",
+                    listener.getClass().getSimpleName(),
+                    listener
+                ), e);
             }
         }
     }
 
-    public void notifyOnDeleteListeners(T object) {
-        Set<OnDeleteObjectListener<T>> notify = new HashSet<>(onDeleteListeners);
-
-        for (OnDeleteObjectListener<T> listener : notify) {
-            try {
-                listener.onDeleteObject(this, object);
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onDeleteObject %s", listener), e);
+    public void notifyOnSaveListeners(final T object) {
+        notifyListeners(onSaveListeners, new Consumer<OnSaveObjectListener<T>>() {
+            @Override
+            public void accept(OnSaveObjectListener<T> listener) {
+                listener.onSaveObject(Bucket.this, object);
             }
-        }
+        });
     }
 
-    public void notifyOnBeforeUpdateObjectListeners(T object) {
-        Set<OnBeforeUpdateObjectListener<T>> notify = new HashSet<>(onBeforeUpdateListeners);
-
-        for (OnBeforeUpdateObjectListener<T> listener : notify) {
-            try {
-                listener.onBeforeUpdateObject(this, object);
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onBeforeUpdateObject %s", listener), e);
+    public void notifyOnDeleteListeners(final T object) {
+        notifyListeners(onDeleteListeners, new Consumer<OnDeleteObjectListener<T>>() {
+            @Override
+            public void accept(OnDeleteObjectListener<T> listener) {
+                listener.onDeleteObject(Bucket.this, object);
             }
-        }
+        });
+    }
+
+    public void notifyOnBeforeUpdateObjectListeners(final T object) {
+        notifyListeners(onBeforeUpdateListeners, new Consumer<OnBeforeUpdateObjectListener<T>>() {
+            @Override
+            public void accept(OnBeforeUpdateObjectListener<T> listener) {
+                listener.onBeforeUpdateObject(Bucket.this, object);
+            }
+        });
     }
 
     public void notifyOnNetworkChangeListeners(ChangeType type) {
         notifyOnNetworkChangeListeners(type, null);
     }
 
-    public void notifyOnNetworkChangeListeners(ChangeType type, String key) {
-        Set<OnNetworkChangeListener<T>> notify =
-            new HashSet<>(onChangeListeners);
-
-        for (OnNetworkChangeListener<T> listener : notify) {
-            try {
-                listener.onNetworkChange(this, type, key);
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onNetworkChange %s", listener), e);
+    public void notifyOnNetworkChangeListeners(final ChangeType type, final String key) {
+        notifyListeners(onChangeListeners, new Consumer<OnNetworkChangeListener<T>>() {
+            @Override
+            public void accept(OnNetworkChangeListener<T> listener) {
+                listener.onNetworkChange(Bucket.this, type, key);
             }
-        }
+        });
     }
 
-    public void notifyOnSyncObjectListeners(String key) {
-        Set<OnSyncObjectListener<T>> notify = new HashSet<>(onSyncListeners);
-
-        for (OnSyncObjectListener<T> listener : notify) {
-            try {
-                listener.onSyncObject(this, key);
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onSyncObject %s", listener), e);
+    public void notifyOnSyncObjectListeners(final String key) {
+        notifyListeners(onSyncListeners, new Consumer<OnSyncObjectListener<T>>() {
+            @Override
+            public void accept(OnSyncObjectListener<T> listener) {
+                listener.onSyncObject(Bucket.this, key);
             }
-        }
+        });
     }
 
-    public void notifyOnLocalQueueChangeListeners(Set<String> keys) {
-        Set<OnLocalQueueChangeListener<T>> notify = new HashSet<>(onLocalQueueChangeListeners);
-
-        for (OnLocalQueueChangeListener<T> listener : notify) {
-            try {
-                listener.onLocalQueueChange(this, keys);
-            } catch (Exception e) {
-                Logger.log(TAG, String.format("Listener failed onLocalQueueChange %s", listener), e);
+    public void notifyOnLocalQueueChangeListeners(final Set<String> keys) {
+        notifyListeners(onLocalQueueChangeListeners, new Consumer<OnLocalQueueChangeListener<T>>() {
+            @Override
+            public void accept(OnLocalQueueChangeListener<T> listener) {
+                listener.onLocalQueueChange(Bucket.this, keys);
             }
-        }
+        });
     }
 
     public void setChannel(Channel channel) {
