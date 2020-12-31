@@ -1467,11 +1467,15 @@ public class Channel implements Bucket.Channel {
                             }
                         }
                     }
-                    if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
+
+                    boolean wasGoodChange = !remoteChange.isError();
+                    boolean entityIsGone = wasGoodChange && remoteChange.isRemoveOperation();
+
+                    if (entityIsGone) {
                         dequeueLocalChangesForKey(remoteChange.getKey());
                     }
 
-                    if (!remoteChange.isError()) {
+                    if (wasGoodChange && !entityIsGone) {
                         mBucket.notifyOnSyncObjectListeners(remoteChange.getKey());
                     }
                 }
