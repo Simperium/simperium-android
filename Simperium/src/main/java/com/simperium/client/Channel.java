@@ -26,10 +26,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EventObject;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TreeMap;
 import java.util.concurrent.Executor;
@@ -1289,6 +1291,7 @@ public class Channel implements Bucket.Channel {
                 }
                 mSerializer.onQueueChange(change);
                 mLocalQueue.add(change);
+                notifyLocalQueueChange();
             }
             start();
         }
@@ -1337,6 +1340,17 @@ public class Channel implements Bucket.Channel {
                 }
                 return false;
             }
+        }
+
+        protected void notifyLocalQueueChange() {
+            // send list of entity ids which still have unconfirmed local changes
+            Set<String> queuedKeys = new HashSet<>();
+            for (Change change : mLocalQueue) {
+                queuedKeys.add(change.getKey());
+            }
+            queuedKeys.addAll(mPendingChanges.keySet());
+
+            mBucket.notifyOnLocalQueueChangeListeners(queuedKeys);
         }
 
         public void run() {
@@ -1402,6 +1416,7 @@ public class Channel implements Bucket.Channel {
                         mSerializer.onAcknowledgeChange(change);
                         // change is no longer pending so remove it
                         mPendingChanges.remove(change.getKey());
+                        notifyLocalQueueChange();
                         if (remoteChange.isError()) {
                             Logger.log(TAG, String.format("Change error response! %d %s", remoteChange.getErrorCode(), remoteChange.getKey()));
                             onError(remoteChange, change);
@@ -1452,8 +1467,16 @@ public class Channel implements Bucket.Channel {
                             }
                         }
                     }
-                    if (!remoteChange.isError() && remoteChange.isRemoveOperation()) {
+
+                    boolean wasGoodChange = !remoteChange.isError();
+                    boolean entityIsGone = wasGoodChange && remoteChange.isRemoveOperation();
+
+                    if (entityIsGone) {
                         dequeueLocalChangesForKey(remoteChange.getKey());
+                    }
+
+                    if (wasGoodChange && !entityIsGone) {
+                        mBucket.notifyOnSyncObjectListeners(remoteChange.getKey());
                     }
                 }
             }
@@ -1505,6 +1528,7 @@ public class Channel implements Bucket.Channel {
                             mRetryTimer.scheduleAtFixedRate(localChange.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
                         } catch (ChangeNotSentException e) {
                             mPendingChanges.remove(localChange.getKey());
+                            notifyLocalQueueChange();
                         }
                     }
                 }
