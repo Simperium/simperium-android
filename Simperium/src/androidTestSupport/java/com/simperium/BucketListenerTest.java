@@ -8,6 +8,8 @@ import com.simperium.util.JSONDiff;
 
 import com.simperium.util.RemoteChangesUtil;
 
+import java.util.Set;
+
 import junit.framework.TestCase;
 
 import org.json.JSONArray;
@@ -91,7 +93,7 @@ public class BucketListenerTest extends TestCase {
             "fake-cv", null, 1, RemoteChange.OPERATION_MODIFY, diff);
 
         mBucket.applyRemoteChange(change);
-        assertTrue(mListener.changed);
+        assertTrue(mListener.changedNetwork);
     }
 
     public void testOnBeforeUpdateListener()
@@ -115,11 +117,12 @@ public class BucketListenerTest extends TestCase {
     }
 
     class BucketListener implements Bucket.Listener<Note> {
-
         public boolean deleted = false;
         public boolean saved = false;
-        public boolean changed = false;
+        public boolean changedNetwork = false;
         public boolean beforeUpdate = false;
+        public boolean synced = false;
+        public boolean changedLocal = false;
 
         @Override
         public void onDeleteObject(Bucket<Note> bucket, Note object){
@@ -133,7 +136,7 @@ public class BucketListenerTest extends TestCase {
 
         @Override
         public void onNetworkChange(Bucket<Note> bucket, Bucket.ChangeType type, String key){
-            changed = true;
+            changedNetwork = true;
         }
 
         @Override
@@ -141,7 +144,14 @@ public class BucketListenerTest extends TestCase {
             beforeUpdate = true;
         }
 
+        @Override
+        public void onSyncObject(Bucket<Note> bucket, String key) {
+            synced = true;
+        }
+
+        @Override
+        public void onLocalQueueChange(Bucket<Note> bucket, Set<String> queuedObjects) {
+            changedLocal = true;
+        }
     }
-
-
 }
