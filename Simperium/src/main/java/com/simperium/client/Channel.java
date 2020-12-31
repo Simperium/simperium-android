@@ -1524,6 +1524,7 @@ public class Channel implements Bucket.Channel {
                             mRetryTimer.scheduleAtFixedRate(localChange.getRetryTimer(), RETRY_DELAY_MS, RETRY_DELAY_MS);
                         } catch (ChangeNotSentException e) {
                             mPendingChanges.remove(localChange.getKey());
+                            notifyLocalQueueChange();
                         }
                     }
                 }
