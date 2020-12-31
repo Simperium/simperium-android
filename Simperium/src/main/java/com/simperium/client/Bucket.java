@@ -750,7 +750,7 @@ public class Bucket<T extends Syncable> {
         addOnDeleteObjectListener(listener);
         addOnNetworkChangeListener(listener);
         addOnSyncObjectListener(listener);
-        addLocalQueueChangeListener(listener);
+        addOnLocalQueueChangeListener(listener);
     }
 
     public void removeListener(Listener<T> listener) {
@@ -759,7 +759,7 @@ public class Bucket<T extends Syncable> {
         removeOnDeleteObjectListener(listener);
         removeOnNetworkChangeListener(listener);
         removeOnSyncObjectListener(listener);
-        removeLocalQueueChangeListener(listener);
+        removeOnLocalQueueChangeListener(listener);
     }
 
     public void addOnSaveObjectListener(OnSaveObjectListener<T> listener) {
