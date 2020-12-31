@@ -802,11 +802,11 @@ public class Bucket<T extends Syncable> {
         onSyncListeners.remove(listener);
     }
 
-    public void addLocalQueueChangeListener(OnLocalQueueChangeListener<T> listener) {
+    public void addOnLocalQueueChangeListener(OnLocalQueueChangeListener<T> listener) {
         onLocalQueueChangeListeners.add(listener);
     }
 
-    public void removeLocalQueueChangeListener(OnLocalQueueChangeListener<T> listener) {
+    public void removeOnLocalQueueChangeListener(OnLocalQueueChangeListener<T> listener) {
         onLocalQueueChangeListeners.remove(listener);
     }
 
