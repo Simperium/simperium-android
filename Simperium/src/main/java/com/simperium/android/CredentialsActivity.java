@@ -47,24 +47,24 @@ import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
 import static org.apache.http.protocol.HTTP.UTF_8;
 
 public class CredentialsActivity extends AppCompatActivity {
-    private static final Pattern PATTERN_NEWLINES_RETURNS_TABS = Pattern.compile("[\n\r\t]");
-    private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
-    private static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
-    private static final String STATE_EMAIL = "STATE_EMAIL";
-    private static final String STATE_PASSWORD = "STATE_PASSWORD";
-    private static final int DELAY_AUTOMATE_LOGIN = 600;
-    private static final int PASSWORD_LENGTH_LOGIN = 4;
-    private static final int PASSWORD_LENGTH_MINIMUM = 8;
+    protected static final Pattern PATTERN_NEWLINES_RETURNS_TABS = Pattern.compile("[\n\r\t]");
+    protected static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
+    protected static final String EXTRA_PASSWORD = "EXTRA_PASSWORD";
+    protected static final String STATE_EMAIL = "STATE_EMAIL";
+    protected static final String STATE_PASSWORD = "STATE_PASSWORD";
+    protected static final int DELAY_AUTOMATE_LOGIN = 600;
+    protected static final int PASSWORD_LENGTH_LOGIN = 4;
+    protected static final int PASSWORD_LENGTH_MINIMUM = 8;
 
     protected ProgressDialogFragment mProgressDialogFragment;
 
-    private AppCompatButton mButton;
-    private Simperium mSimperium;
-    private TextInputLayout mInputEmail;
-    private TextInputLayout mInputPassword;
-    private boolean mIsLogin;
+    protected AppCompatButton mButton;
+    protected Simperium mSimperium;
+    protected TextInputLayout mInputEmail;
+    protected TextInputLayout mInputPassword;
+    protected boolean mIsLogin;
 
-    private AuthResponseListener mAuthListener = new AuthResponseListener() {
+    protected AuthResponseListener mAuthListener = new AuthResponseListener() {
         @Override
         public void onFailure(final User user, final AuthException error) {
             runOnUiThread(
@@ -323,13 +323,13 @@ public class CredentialsActivity extends AppCompatActivity {
         outState.putString(STATE_PASSWORD, getEditTextString(mInputPassword));
     }
 
-    private void clearPassword() {
+    protected void clearPassword() {
         if (mInputPassword.getEditText() != null) {
             mInputPassword.getEditText().getText().clear();
         }
     }
 
-    private void copyToClipboard(String url) {
+    protected void copyToClipboard(String url) {
         Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
 
         try {
@@ -347,23 +347,23 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
-    private String getEditTextString(@NonNull TextInputLayout inputLayout) {
+    protected String getEditTextString(@NonNull TextInputLayout inputLayout) {
         return inputLayout.getEditText() != null ? inputLayout.getEditText().getText().toString() : "";
     }
 
-    private void hideDialogProgress() {
+    protected void hideDialogProgress() {
         if (mProgressDialogFragment != null && !mProgressDialogFragment.isHidden()) {
             mProgressDialogFragment.dismiss();
             mProgressDialogFragment = null;
         }
     }
 
-    private boolean isBrowserInstalled() {
+    protected boolean isBrowserInstalled() {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.simperium_url)));
         return (intent.resolveActivity(getPackageManager()) != null);
     }
 
-    private boolean isValidEmail(String text) {
+    protected boolean isValidEmail(String text) {
         return Patterns.EMAIL_ADDRESS.matcher(text).matches();
     }
 
@@ -371,11 +371,11 @@ public class CredentialsActivity extends AppCompatActivity {
     // - Meets minimum length requirement based on login (PASSWORD_LENGTH_LOGIN) and signup (PASSWORD_LENGTH_MINIMUM)
     // - Does not have new lines, returns, or tabs (PATTERN_NEWLINES_RETURNS_TABS)
     // - Does not match email address
-    private boolean isValidPassword(String email, String password) {
+    protected boolean isValidPassword(String email, String password) {
         return isValidPasswordLength(mIsLogin) && !PATTERN_NEWLINES_RETURNS_TABS.matcher(password).find() && !email.contentEquals(password);
     }
 
-    private boolean isValidPasswordLength(boolean isLogin) {
+    protected boolean isValidPasswordLength(boolean isLogin) {
         return mInputPassword.getEditText() != null &&
             (isLogin ?
                 getEditTextString(mInputPassword).length() >= PASSWORD_LENGTH_LOGIN :
@@ -385,11 +385,11 @@ public class CredentialsActivity extends AppCompatActivity {
 
     // Use old password requirements for login validation:
     // - Meets minimum length requirement (PASSWORD_LENGTH_LOGIN)
-    private boolean isValidPasswordLogin() {
+    protected boolean isValidPasswordLogin() {
         return isValidPasswordLength(mIsLogin);
     }
 
-    private void setButtonState() {
+    protected void setButtonState() {
         mButton.setEnabled(
             mInputEmail.getEditText() != null &&
             mInputPassword.getEditText() != null &&
@@ -398,13 +398,13 @@ public class CredentialsActivity extends AppCompatActivity {
         );
     }
 
-    private void setEditTextString(@NonNull TextInputLayout inputLayout, String text) {
+    protected void setEditTextString(@NonNull TextInputLayout inputLayout, String text) {
         if (inputLayout.getEditText() != null ) {
             inputLayout.getEditText().setText(text);
         }
     }
 
-    private void showDialogError(String message) {
+    protected void showDialogError(String message) {
         hideDialogProgress();
         Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -414,7 +414,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void showDialogErrorExistingAccount() {
+    protected void showDialogErrorExistingAccount() {
         hideDialogProgress();
         Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -438,7 +438,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void showDialogErrorLoginReset() {
+    protected void showDialogErrorLoginReset() {
         hideDialogProgress();
         final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -467,7 +467,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void showDialogErrorBrowser(final String url) {
+    protected void showDialogErrorBrowser(final String url) {
         final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
             .setTitle(R.string.simperium_dialog_title_error_browser)
@@ -484,7 +484,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void startLogin() {
+    protected void startLogin() {
         final String email = getEditTextString(mInputEmail);
         final String password = getEditTextString(mInputPassword);
 
@@ -498,7 +498,7 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
-    private void startSignup() {
+    protected void startSignup() {
         final String email = getEditTextString(mInputEmail);
         final String password = getEditTextString(mInputPassword);
 
