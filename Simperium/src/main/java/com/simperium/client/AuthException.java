@@ -44,9 +44,7 @@ public class AuthException extends SimperiumException {
             case 401:
                 // Code 401 can be obtain because credentials are wrong or the user's password has been compromised
                 // To differentiate both responses, we check the response's body
-                if (cause != null && Objects.equals(cause.getMessage(), INVALID_LOGIN_BODY)) {
-                    return new AuthException(FailureType.INVALID_ACCOUNT, GENERIC_FAILURE_MESSAGE, cause);
-                } else {
+                if (cause != null && !Objects.equals(cause.getMessage(), INVALID_LOGIN_BODY)) {
                     return new AuthException(FailureType.COMPROMISED_PASSWORD, COMPROMISED_PASSWORD_MESSAGE, cause);
                 }
             default:
