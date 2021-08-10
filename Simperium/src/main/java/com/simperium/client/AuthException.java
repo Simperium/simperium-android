@@ -9,8 +9,6 @@ public class AuthException extends SimperiumException {
     static public final String COMPROMISED_PASSWORD_MESSAGE = "Password has been compromised";
 
     static public final int ERROR_STATUS_CODE = -1;
-    static public final int INVALID_ACCOUNT_CODE = 0x0;
-    static public final int EXISTING_ACCOUNT_CODE = 0x1;
 
     public final FailureType failureType;
 
