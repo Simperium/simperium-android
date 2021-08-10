@@ -6,11 +6,9 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.koushikdutta.async.http.AsyncHttpClient;
-import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
 import com.koushikdutta.async.http.AsyncHttpPost;
 import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.koushikdutta.async.http.body.JSONObjectBody;
-import com.koushikdutta.async.parser.JSONObjectParser;
 import com.simperium.BuildConfig;
 import com.simperium.client.AuthException;
 import com.simperium.client.AuthProvider;
@@ -109,14 +107,14 @@ public class AsyncAuthClient implements AuthProvider {
 
     private void sendRequest(String path, JSONObject body, final AuthResponseHandler handler) {
 
-        mClient.execute(buildRequest(path, body), new JSONObjectParser(), new JSONObjectCallback() {
-            @Override
-            public void onCompleted(Exception e, AsyncHttpResponse source, JSONObject result) {
+        mClient.executeString(buildRequest(path, body), new AsyncHttpClient.StringCallback() {
 
+            @Override
+            public void onCompleted(Exception e, AsyncHttpResponse asyncHttpResponse, String s) {
                 int responseCode = AuthException.ERROR_STATUS_CODE;
 
-                if (source != null) {
-                    responseCode = source.code();
+                if (asyncHttpResponse != null) {
+                    responseCode = asyncHttpResponse.code();
                 }
 
                 if (e != null) {
@@ -126,12 +124,16 @@ public class AsyncAuthClient implements AuthProvider {
                 }
 
                 if (responseCode == 200) {
-                    handler.onResponse(result);
-                    return;
+                    try {
+                        JSONObject object = new JSONObject(s);
+                        handler.onResponse(object);
+                        return;
+                    } catch (JSONException jsonException) {
+                        handler.onError(AuthException.defaultException());
+                    }
                 }
 
-                handler.onError(AuthException.exceptionForStatusCode(responseCode));
-
+                handler.onError(AuthException.exceptionForStatusCode(responseCode, new Throwable(s)));
             }
         });
     }
