@@ -34,7 +34,10 @@
     <string name="simperium_hint_email">Email</string>
     <string name="simperium_hint_password">Password</string>
     <string name="simperium_subtitle">App data, everywhere it\'s needed.</string>
+    <string name="simperium_compromised_password">Compromised Password</string>
+    <string name="simperium_compromised_password_message">This password has appeared in a data breach, which puts your account at high risk of compromise. It is recommended that you change your password immediately.</string>
+    <string name="simperium_not_now">Not Now</string>
+    <string name="simperium_change_password">Change Password</string>
     <string name="simperium_title">@string/app_name</string>
     <string name="simperium_url">https://simperium.com/</string>
-
 </resources>

@@ -75,6 +75,9 @@ public class CredentialsActivity extends AppCompatActivity {
                             case EXISTING_ACCOUNT:
                                 showDialogErrorExistingAccount();
                                 break;
+                            case COMPROMISED_PASSWORD:
+                                showCompromisedPasswordDialog();
+                                break;
                             case INVALID_ACCOUNT:
                             default:
                                 showDialogError(getString(
@@ -482,6 +485,35 @@ public class CredentialsActivity extends AppCompatActivity {
             )
             .setPositiveButton(android.R.string.ok, null)
             .show();
+    }
+
+    private void showCompromisedPasswordDialog() {
+        hideDialogProgress();
+        final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.simperium_compromised_password)
+                .setMessage(R.string.simperium_compromised_password_message)
+                .setNegativeButton(R.string.simperium_not_now, null)
+                .setPositiveButton(R.string.simperium_change_password,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                try {
+                                    String url = getString(com.simperium.R.string.simperium_dialog_button_reset_url, URLEncoder.encode(getEditTextString(mInputEmail), UTF_8));
+
+                                    if (isBrowserInstalled()) {
+                                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                                        clearPassword();
+                                    } else {
+                                        showDialogErrorBrowser(url);
+                                    }
+                                } catch (UnsupportedEncodingException e) {
+                                    throw new RuntimeException("Unable to parse URL", e);
+                                }
+                            }
+                        }
+                )
+                .show();
     }
 
     private void startLogin() {
