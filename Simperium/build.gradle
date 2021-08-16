@@ -1,5 +1,7 @@
 plugins {
     id "com.android.library"
+    id "maven-publish"
+    id "com.automattic.android.publish-to-s3"
 }
 
 repositories {
@@ -54,4 +56,22 @@ android {
 tasks.withType(Javadoc) {
     options.addStringOption('Xdoclint:none', '-quiet')
     options.addStringOption('encoding', 'UTF-8')
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.clientRelease
+                groupId "com.automattic"
+                artifactId "simperium"
+                // version is set by 'publish-to-s3' plugin
+            }
+        }
+    }
+}
+
+publishToS3Plugin {
+    mavenPublishGroupId "com.automattic"
+    mavenPublishArtifactId "simperium"
 }
