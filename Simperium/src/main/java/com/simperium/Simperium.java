@@ -38,8 +38,6 @@ public class Simperium implements User.StatusChangeListener {
         void onUserCreated(User user);
     }
 
-    public static final String VERSION = Version.NUMBER;
-    public static final String CLIENT_ID = Version.NAME;
     public static final int SIGNUP_SIGNIN_REQUEST = 1000;  // The request code
 
     private String appId;
@@ -70,7 +68,9 @@ public class Simperium implements User.StatusChangeListener {
 
         mExecutor = factory.buildExecutor();
 
-        Logger.log(String.format("Initializing Simperium %s%s", CLIENT_ID, (BuildConfig.DEBUG ? " DEBUG" : "")));
+        // TODO: Figure out what to do about CLIENT_ID now that version is not available
+        //Logger.log(String.format("Initializing Simperium %s%s", CLIENT_ID, (BuildConfig.DEBUG ? " DEBUG" : "")));
+        Logger.log(String.format("Initializing Simperium %s", (BuildConfig.DEBUG ? " DEBUG" : "")));
         loadUser();
     }
 

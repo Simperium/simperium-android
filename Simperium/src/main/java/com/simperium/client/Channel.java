@@ -14,7 +14,6 @@ package com.simperium.client;
 
 import com.simperium.BuildConfig;
 import com.simperium.SimperiumException;
-import com.simperium.Version;
 import com.simperium.util.Logger;
 
 import org.json.JSONArray;
@@ -540,9 +539,10 @@ public class Channel implements Bucket.Channel {
                 JSONObject extra = new JSONObject();
                 try {
                     extra.put("bucketName", mBucket.getName());
-                    extra.put("build", Version.BUILD);
-                    extra.put("version", Version.NUMBER);
-                    extra.put("client", Version.NAME);
+                    // TODO: Figure out what to do about these extra properties now that version is not available
+//                    extra.put("build", Version.BUILD);
+//                    extra.put("version", Version.NUMBER);
+//                    extra.put("client", Version.NAME);
 
                     index.put("extra", extra);
                 } catch (JSONException e) {

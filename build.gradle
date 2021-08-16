@@ -4,36 +4,3 @@ allprojects {
         options.addStringOption('encoding', 'UTF-8')
     }
 }
-
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-def gitHash() {
-    try {
-        def code = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', '--verify', '--short', 'HEAD'
-            standardOutput = code
-        }
-        return code.toString().trim()
-    }
-    catch (ignored) {
-        return "<unknown>";
-    }
-}
-
-def gitDescribe() {
-    try {
-        def code = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'describe', '--always', '--dirty=-dirty'
-            standardOutput = code
-        }
-        return code.toString().trim()
-    }
-    catch (ignored) {
-        return "<unknown>"
-    }
-}
-
-def static gitVersion() {
-    '0.10.1'
-}
