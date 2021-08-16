@@ -1,3 +1,4 @@
+.DS_Store
 # ignore generated version file for ant
 Version.java
 
