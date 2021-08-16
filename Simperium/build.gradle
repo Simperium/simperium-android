@@ -50,3 +50,8 @@ android {
     useLibrary 'android.test.runner'
     useLibrary 'org.apache.http.legacy'
 }
+
+tasks.withType(Javadoc) {
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.addStringOption('encoding', 'UTF-8')
+}
