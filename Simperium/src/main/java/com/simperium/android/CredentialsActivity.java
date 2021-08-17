@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.text.Editable;
 import android.text.Html;
 import android.text.TextWatcher;
+import android.util.Base64;
 import android.util.Patterns;
 import android.view.ContextThemeWrapper;
 import android.view.MenuItem;
@@ -29,6 +30,10 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.textfield.TextInputLayout;
+import com.koushikdutta.async.http.AsyncHttpClient;
+import com.koushikdutta.async.http.AsyncHttpGet;
+import com.koushikdutta.async.http.AsyncHttpRequest;
+import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
@@ -39,8 +44,11 @@ import com.simperium.client.User;
 import com.simperium.util.Logger;
 import com.simperium.util.NetworkUtil;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
@@ -77,6 +85,9 @@ public class CredentialsActivity extends AppCompatActivity {
                                 break;
                             case COMPROMISED_PASSWORD:
                                 showCompromisedPasswordDialog();
+                                break;
+                            case UNVERIFIED_ACCOUNT:
+                                showUnverifiedAccountDialog();
                                 break;
                             case INVALID_ACCOUNT:
                             default:
@@ -514,6 +525,52 @@ public class CredentialsActivity extends AppCompatActivity {
                         }
                 )
                 .show();
+    }
+
+    private void showUnverifiedAccountDialog() {
+        hideDialogProgress();
+        final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.simperium_account_verification)
+                .setMessage(R.string.simperium_account_verification_message)
+                .setNegativeButton(R.string.simperium_okay, null)
+                .setPositiveButton("Resend Verification Email",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                sendVerificationEmail();
+                            }
+                        }
+                )
+                .show();
+    }
+
+    private void sendVerificationEmail() {
+        AsyncHttpClient httpClient = AsyncHttpClient.getDefaultInstance();
+        byte[] data = getEditTextString(mInputEmail).getBytes(StandardCharsets.UTF_8);
+        String encodedEmail = Base64.encodeToString(data, Base64.NO_WRAP);
+        String url = getString(com.simperium.R.string.simperium_account_verification_url, encodedEmail);;
+
+        httpClient.executeString(buildSendVerificationEmailRequest(url), new AsyncHttpClient.StringCallback() {
+            @Override
+            public void onCompleted(final Exception e, final AsyncHttpResponse asyncHttpResponse, String s) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (asyncHttpResponse != null && asyncHttpResponse.code() == 200) {
+                            //Toast.makeText(CredentialsActivity.this, "Email was sent successfully.", Toast.LENGTH_SHORT).show();
+                        } else {
+                            //Toast.makeText(CredentialsActivity.this, "Error sending email. Please try again. Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private AsyncHttpRequest buildSendVerificationEmailRequest(String url) {
+        Uri uri = Uri.parse(url);
+        return new AsyncHttpGet(uri);
     }
 
     private void startLogin() {
