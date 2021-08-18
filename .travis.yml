@@ -29,3 +29,8 @@ before_script:
   - adb logcat -s TestRunner &
 
 script: ./gradlew connectedCheck
+
+cache:
+  directories:
+  - $HOME/.gradle/caches/
+  - $HOME/.gradle/wrapper/
