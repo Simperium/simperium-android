@@ -42,6 +42,5 @@
     <string name="simperium_url">https://simperium.com/</string>
     <string name="simperium_account_verification">Account Verification Required</string>
     <string name="simperium_account_verification_message">You must verify your email before logging in to your account.</string>
-    <string name="simperium_account_verification_url">https://simperium.com/account/verify-email/%1$s</string>
     <string name="simperium_okay">Okay</string>
 </resources>
