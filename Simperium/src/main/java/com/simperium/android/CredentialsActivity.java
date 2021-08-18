@@ -32,8 +32,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.textfield.TextInputLayout;
-import com.koushikdutta.async.http.AsyncHttpGet;
-import com.koushikdutta.async.http.AsyncHttpRequest;
 import com.simperium.R;
 import com.simperium.Simperium;
 import com.simperium.SimperiumNotInitializedException;
@@ -522,11 +520,6 @@ public class CredentialsActivity extends AppCompatActivity {
                         }
                 )
                 .show();
-    }
-
-    private AsyncHttpRequest buildSendVerificationEmailRequest(String url) {
-        Uri uri = Uri.parse(url);
-        return new AsyncHttpGet(uri);
     }
 
     private void startLogin() {
