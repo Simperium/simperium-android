@@ -10,6 +10,7 @@ import org.thoughtcrime.ssl.pinning.PinningTrustManager;
 import org.thoughtcrime.ssl.pinning.SystemKeyStore;
 
 import com.simperium.BuildConfig;
+import com.simperium.Version;
 import com.simperium.client.ClientFactory;
 import com.simperium.util.Uuid;
 
@@ -70,7 +71,7 @@ public class AndroidClient implements ClientFactory {
             preferences.edit().putString(SESSION_ID_PREFERENCE, sessionToken).commit();
         }
 
-        mSessionId = String.format("%s-%s", "android", sessionToken);
+        mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
 
         TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
         mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
