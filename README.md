@@ -36,15 +36,13 @@ A new version of this library will be automatically published to S3 by CI in the
 * For all commits in `develop` (so PR merges) -> Version: `develop-{sha1}`
 * For all commits for open PRs - you can open a draft PR to get it to publish -> Version: `{prNumber}-{sha1}`
 
+## Usage
 
-Typical Workflow:
+### Adding simperium as dependency
 
-* Open a PR and test the published version (which will be printed out in the Buildkite job and follows the naming pattern above)
-* Use `{prNumber}-{sha1}` in your app as version of the library for testing
-* Merge the PR into `develop`
-* Update your app's PR to use the merge commit which is `develop-{sha1}`
-* Merge the `simplenote-android` PR
-* At the time of release, platform9 creates a new tag for the `simperium-android` and update the version value in `simplenote-android` to the tagged value.
+```groovy
+implementation 'com.automattic:simperium:<version>'
+```
 
 [Android Studio]: http://developer.android.com/sdk/installing/studio.html
 [Gradle]: http://www.gradleware.com
