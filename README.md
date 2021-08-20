@@ -28,6 +28,25 @@ Please provide unit tests for your contributions. Run tests with gradle:
 
 Unit tests use a mock networking and storage stack so that different components can be tested in isolation. The unit tests should not connect to any external services.
 
+## Publish to S3
+
+A new version of this library will be automatically published to S3 by CI in the following scenarios:
+
+**Note**: `sha1` corresponds to the commit hash.
+
+* For all tags -> Version: `{tag-name}`
+* For all commits in `develop` (so PR merges) -> Version: `develop-{sha1}`
+* For all commits for open PRs - you can open a draft PR to get it to publish -> Version: `{prNumber}-{sha1}`
+
+
+Typical Workflow:
+
+* Open a PR and test the published version (which will be printed out in the Buildkite job and follows the naming pattern above)
+* Use `{prNumber}-{sha1}` in `simplenote` as version of the library for testing
+* Merge the PR into `develop`
+* Update `simplenote-android` PR to use the merge commit which is `develop-{sha1}`
+* Merge the `simplenote-android` PR
+* At the time of release, platform9 creates a new tag for the `simperium-android` and update the version value in `simplenote-android` to the tagged value.
 
 [Android Studio]: http://developer.android.com/sdk/installing/studio.html
 [Gradle]: http://www.gradleware.com
