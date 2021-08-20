@@ -6,8 +6,6 @@ Trying to make using [Simperium][Simperium.com] in your Android app dead simple.
 
 Simperium for Android is configured as an [Android Library Project][].
 
-TODO: brief code example/tutorial :)
-
 ## Contributing
 
 To get started first clone the project:
@@ -42,9 +40,9 @@ A new version of this library will be automatically published to S3 by CI in the
 Typical Workflow:
 
 * Open a PR and test the published version (which will be printed out in the Buildkite job and follows the naming pattern above)
-* Use `{prNumber}-{sha1}` in `simplenote` as version of the library for testing
+* Use `{prNumber}-{sha1}` in your app as version of the library for testing
 * Merge the PR into `develop`
-* Update `simplenote-android` PR to use the merge commit which is `develop-{sha1}`
+* Update your app's PR to use the merge commit which is `develop-{sha1}`
 * Merge the `simplenote-android` PR
 * At the time of release, platform9 creates a new tag for the `simperium-android` and update the version value in `simplenote-android` to the tagged value.
 
