@@ -6,8 +6,6 @@ Trying to make using [Simperium][Simperium.com] in your Android app dead simple.
 
 Simperium for Android is configured as an [Android Library Project][].
 
-TODO: brief code example/tutorial :)
-
 ## Contributing
 
 To get started first clone the project:
@@ -28,6 +26,23 @@ Please provide unit tests for your contributions. Run tests with gradle:
 
 Unit tests use a mock networking and storage stack so that different components can be tested in isolation. The unit tests should not connect to any external services.
 
+## Publish to S3
+
+A new version of this library will be automatically published to S3 by CI in the following scenarios:
+
+**Note**: `sha1` corresponds to the commit hash.
+
+* For all tags -> Version: `{tag-name}`
+* For all commits in `develop` (so PR merges) -> Version: `develop-{sha1}`
+* For all commits for open PRs - you can open a draft PR to get it to publish -> Version: `{prNumber}-{sha1}`
+
+## Usage
+
+### Adding simperium as dependency
+
+```groovy
+implementation 'com.automattic:simperium:<version>'
+```
 
 [Android Studio]: http://developer.android.com/sdk/installing/studio.html
 [Gradle]: http://www.gradleware.com

@@ -8,6 +8,7 @@ public class AuthException extends SimperiumException {
 
     static public final String GENERIC_FAILURE_MESSAGE = "Invalid username or password";
     static public final String EXISTING_USER_FAILURE_MESSAGE = "Account already exists";
+    static public final String UNVERIFIED_ACCOUNT_MESSAGE = "Account verification required";
     static public final String COMPROMISED_PASSWORD_MESSAGE = "Password has been compromised";
     static public final String COMPROMISED_PASSWORD_BODY = "compromised password";
 
@@ -16,7 +17,7 @@ public class AuthException extends SimperiumException {
     public final FailureType failureType;
 
     public enum FailureType {
-        INVALID_ACCOUNT, EXISTING_ACCOUNT, COMPROMISED_PASSWORD
+        INVALID_ACCOUNT, EXISTING_ACCOUNT, COMPROMISED_PASSWORD, UNVERIFIED_ACCOUNT
     }
 
     public AuthException(FailureType code, String message){
@@ -41,6 +42,8 @@ public class AuthException extends SimperiumException {
         switch (statusCode) {
             case 409:
                 return new AuthException(FailureType.EXISTING_ACCOUNT, EXISTING_USER_FAILURE_MESSAGE, cause);
+            case 403:
+                return new AuthException(FailureType.UNVERIFIED_ACCOUNT, UNVERIFIED_ACCOUNT_MESSAGE, cause);
             case 401:
                 // Code 401 can be obtain because credentials are wrong or the user's password has been compromised
                 // To differentiate both responses, we check the response's body

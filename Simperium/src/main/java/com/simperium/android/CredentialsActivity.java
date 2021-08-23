@@ -1,5 +1,8 @@
 package com.simperium.android;
 
+import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
+import static org.apache.http.protocol.HTTP.UTF_8;
+
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -43,9 +46,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.regex.Pattern;
 
-import static com.simperium.android.AuthenticationActivity.EXTRA_IS_LOGIN;
-import static org.apache.http.protocol.HTTP.UTF_8;
-
 public class CredentialsActivity extends AppCompatActivity {
     private static final Pattern PATTERN_NEWLINES_RETURNS_TABS = Pattern.compile("[\n\r\t]");
     private static final String EXTRA_AUTOMATE_LOGIN = "EXTRA_AUTOMATE_LOGIN";
@@ -62,9 +62,9 @@ public class CredentialsActivity extends AppCompatActivity {
     private Simperium mSimperium;
     private TextInputLayout mInputEmail;
     private TextInputLayout mInputPassword;
-    private boolean mIsLogin;
+    protected boolean mIsLogin;
 
-    private AuthResponseListener mAuthListener = new AuthResponseListener() {
+    protected AuthResponseListener mAuthListener = new AuthResponseListener() {
         @Override
         public void onFailure(final User user, final AuthException error) {
             runOnUiThread(
@@ -95,37 +95,10 @@ public class CredentialsActivity extends AppCompatActivity {
 
         @Override
         public void onSuccess(final User user, final String userId, final String token, final AuthProvider provider) {
-            runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        hideDialogProgress();
-                        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-
-                        if (inputMethodManager != null) {
-                            inputMethodManager.hideSoftInputFromWindow(mButton.getWindowToken(), 0);
-                        }
-
-                        // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
-                        if (isValidPassword(user.getEmail(), user.getPassword()) && isValidPasswordLength(false)) {
-                            user.setStatus(User.Status.AUTHORIZED);
-                            user.setAccessToken(token);
-                            user.setUserId(userId);
-                            provider.saveUser(user);
-                            setResult(RESULT_OK);
-                            finish();
-                        } else {
-                            user.setStatus(User.Status.NOT_AUTHORIZED);
-                            user.setAccessToken("");
-                            user.setUserId("");
-                            provider.saveUser(user);
-                            showDialogErrorLoginReset();
-                        }
-                    }
-                }
-            );
+            handleResponseSuccess(user, userId, token, provider);
         }
     };
+
 
     @Override
     public void onBackPressed() {
@@ -309,6 +282,39 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
+    protected void handleResponseSuccess(final User user, final String userId, final String token, final AuthProvider provider) {
+        runOnUiThread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        hideDialogProgress();
+                        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+
+                        if (inputMethodManager != null) {
+                            inputMethodManager.hideSoftInputFromWindow(mButton.getWindowToken(), 0);
+                        }
+
+                        // Use isValidPasswordLength(false) to check if password meets PASSWORD_LENGTH_MINIMUM.
+                        if (isValidPassword(user.getEmail(), user.getPassword()) && isValidPasswordLength(false)) {
+                            user.setStatus(User.Status.AUTHORIZED);
+                            user.setAccessToken(token);
+                            user.setUserId(userId);
+                            provider.saveUser(user);
+                            setResult(RESULT_OK);
+                            finish();
+                        } else {
+                            user.setStatus(User.Status.NOT_AUTHORIZED);
+                            user.setAccessToken("");
+                            user.setUserId("");
+                            provider.saveUser(user);
+                            showDialogErrorLoginReset();
+                        }
+                    }
+                }
+        );
+    }
+
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() ==  android.R.id.home) {
@@ -354,7 +360,7 @@ public class CredentialsActivity extends AppCompatActivity {
         return inputLayout.getEditText() != null ? inputLayout.getEditText().getText().toString() : "";
     }
 
-    private void hideDialogProgress() {
+    protected void hideDialogProgress() {
         if (mProgressDialogFragment != null && !mProgressDialogFragment.isHidden()) {
             mProgressDialogFragment.dismiss();
             mProgressDialogFragment = null;
@@ -407,7 +413,7 @@ public class CredentialsActivity extends AppCompatActivity {
         }
     }
 
-    private void showDialogError(String message) {
+    protected void showDialogError(String message) {
         hideDialogProgress();
         Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -417,7 +423,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void showDialogErrorExistingAccount() {
+    protected void showDialogErrorExistingAccount() {
         hideDialogProgress();
         Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -441,7 +447,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void showDialogErrorLoginReset() {
+    void showDialogErrorLoginReset() {
         hideDialogProgress();
         final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -487,7 +493,7 @@ public class CredentialsActivity extends AppCompatActivity {
             .show();
     }
 
-    private void showCompromisedPasswordDialog() {
+    protected void showCompromisedPasswordDialog() {
         hideDialogProgress();
         final Context context = new ContextThemeWrapper(CredentialsActivity.this, getTheme());
         new AlertDialog.Builder(context)
@@ -524,10 +530,14 @@ public class CredentialsActivity extends AppCompatActivity {
             mProgressDialogFragment = ProgressDialogFragment.newInstance(getString(R.string.simperium_dialog_progress_logging_in));
             mProgressDialogFragment.setStyle(DialogFragment.STYLE_NO_TITLE, R.style.Simperium);
             mProgressDialogFragment.show(getSupportFragmentManager(), ProgressDialogFragment.TAG);
-            mSimperium.authorizeUser(email, password, mAuthListener);
+            mSimperium.authorizeUser(email, password, getAuthListener());
         } else {
             showDialogError(getString(R.string.simperium_dialog_message_password_login, PASSWORD_LENGTH_LOGIN));
         }
+    }
+
+    protected AuthResponseListener getAuthListener() {
+        return mAuthListener;
     }
 
     private void startSignup() {
@@ -542,5 +552,9 @@ public class CredentialsActivity extends AppCompatActivity {
         } else {
             showDialogError(getString(R.string.simperium_dialog_message_password, PASSWORD_LENGTH_MINIMUM));
         }
+    }
+
+    protected String getEmail() {
+        return getEditTextString(mInputEmail);
     }
 }
