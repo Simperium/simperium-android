@@ -11,6 +11,7 @@ public class AuthException extends SimperiumException {
     static public final String UNVERIFIED_ACCOUNT_MESSAGE = "Account verification required";
     static public final String COMPROMISED_PASSWORD_MESSAGE = "Password has been compromised";
     static public final String COMPROMISED_PASSWORD_BODY = "compromised password";
+    static public final String VERIFICATION_REQUIRED_BODY = "verification required";
 
     static public final int ERROR_STATUS_CODE = -1;
 
@@ -39,20 +40,15 @@ public class AuthException extends SimperiumException {
     }
 
     public static AuthException exceptionForStatusCode(int statusCode, Throwable cause){
-        switch (statusCode) {
-            case 409:
-                return new AuthException(FailureType.EXISTING_ACCOUNT, EXISTING_USER_FAILURE_MESSAGE, cause);
-            case 403:
-                return new AuthException(FailureType.UNVERIFIED_ACCOUNT, UNVERIFIED_ACCOUNT_MESSAGE, cause);
-            case 401:
-                // Code 401 can be obtain because credentials are wrong or the user's password has been compromised
-                // To differentiate both responses, we check the response's body
-                String message = cause != null && cause.getMessage() != null ? cause.getMessage().toLowerCase() : "";
-                if (Objects.equals(message, COMPROMISED_PASSWORD_BODY)) {
-                    return new AuthException(FailureType.COMPROMISED_PASSWORD, COMPROMISED_PASSWORD_MESSAGE, cause);
-                }
-            default:
-                return new AuthException(FailureType.INVALID_ACCOUNT, GENERIC_FAILURE_MESSAGE, cause);
+        String message = cause != null && cause.getMessage() != null ? cause.getMessage().toLowerCase() : "";
+        if (statusCode == 409) {
+            return new AuthException(FailureType.EXISTING_ACCOUNT, EXISTING_USER_FAILURE_MESSAGE, cause);
+        } else if (statusCode == 403 && Objects.equals(message, VERIFICATION_REQUIRED_BODY)) {
+            return new AuthException(FailureType.UNVERIFIED_ACCOUNT, UNVERIFIED_ACCOUNT_MESSAGE, cause);
+        } else if (statusCode == 401 && Objects.equals(message, COMPROMISED_PASSWORD_BODY)) {
+            return new AuthException(FailureType.COMPROMISED_PASSWORD, COMPROMISED_PASSWORD_MESSAGE, cause);
+        } else {
+            return new AuthException(FailureType.INVALID_ACCOUNT, GENERIC_FAILURE_MESSAGE, cause);
         }
     }
 }
