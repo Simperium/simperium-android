@@ -41,6 +41,7 @@ public class AuthException extends SimperiumException {
 
     public static AuthException exceptionForStatusCode(int statusCode, Throwable cause){
         String message = cause != null && cause.getMessage() != null ? cause.getMessage().toLowerCase() : "";
+
         if (statusCode == 409) {
             return new AuthException(FailureType.EXISTING_ACCOUNT, EXISTING_USER_FAILURE_MESSAGE, cause);
         } else if (statusCode == 403 && Objects.equals(message, VERIFICATION_REQUIRED_BODY)) {
