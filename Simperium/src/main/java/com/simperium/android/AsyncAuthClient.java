@@ -24,7 +24,7 @@ public class AsyncAuthClient implements AuthProvider {
 
     private static final String AUTH_URL = "https://auth.simperium.com/1";
     private static final String CREATE_PATH = "create/";
-    private static final String AUTHORIZE_PATH = "authorize?auth_verify=true";
+    private static final String AUTHORIZE_PATH = "authorize/?auth_verify=true";
     private static final String API_KEY_HEADER_NAME = "X-Simperium-API-Key";
     public static final String USER_ACCESS_TOKEN_PREFERENCE = "user-access-token";
     public static final String USER_EMAIL_PREFERENCE = "user-email";
