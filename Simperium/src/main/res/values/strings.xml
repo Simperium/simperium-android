@@ -43,4 +43,5 @@
     <string name="simperium_account_verification">Account Verification Required</string>
     <string name="simperium_account_verification_message">You must verify your email before logging in to your account.</string>
     <string name="simperium_okay">Okay</string>
+    <string name="simperium_too_many_attempts">Too many log in attempts. Try again later.</string>
 </resources>
