@@ -33,7 +33,7 @@ A new version of this library will be automatically published to S3 by CI in the
 **Note**: `sha1` corresponds to the commit hash.
 
 * For all tags -> Version: `{tag-name}`
-* For all commits in `develop` (so PR merges) -> Version: `develop-{sha1}`
+* For all commits in `trunk` (so PR merges) -> Version: `trunk-{sha1}`
 * For all commits for open PRs - you can open a draft PR to get it to publish -> Version: `{prNumber}-{sha1}`
 
 ## Usage
