@@ -34,8 +34,8 @@ class AsyncWebSocketProvider implements WebSocketManager.ConnectionProvider {
         AsyncHttpRequest request = new AsyncHttpGet(uri);
         request.setHeader(AndroidClient.USER_AGENT_HEADER, mSessionId);
 
-        // Protocol is null
-        mAsyncClient.websocket(request, null, new WebSocketConnectCallback() {
+        // Protocol is null. To avoid ambiguous call, we pass (String) null.
+        mAsyncClient.websocket(request, (String) null, new WebSocketConnectCallback() {
             @Override
             public void onCompleted(Exception ex, final WebSocket webSocket) {
                 if (ex != null) {
