@@ -22,6 +22,7 @@ package com.simperium.client;
 
 import android.database.Cursor;
 import android.database.CursorWrapper;
+import android.database.SQLException;
 
 import androidx.core.util.Consumer;
 
@@ -513,7 +514,15 @@ public class Bucket<T extends Syncable> {
         } catch (GhostMissingException e) {
             throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
         }
-        T object = mStorage.get(key);
+
+        // Check if there isn't an SQLException (e.g. SQLiteBlobTooBigException) to avoid propageting an unchecked
+        // exception.
+        T object;
+        try {
+            object = mStorage.get(key);
+        } catch (SQLException e) {
+            throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key), e));
+        }
         if (object == null) {
             throw(new BucketObjectMissingException(String.format("Storage provider for bucket:%s did not have object %s", getName(), key)));
         }
