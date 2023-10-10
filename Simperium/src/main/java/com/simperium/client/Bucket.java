@@ -515,8 +515,11 @@ public class Bucket<T extends Syncable> {
             throw(new BucketObjectMissingException(String.format("Bucket %s does not have object %s", getName(), key)));
         }
 
-        // Check if there isn't an SQLException (e.g. SQLiteBlobTooBigException) to avoid propageting an unchecked
+        // Check if there isn't an SQLException (e.g. SQLiteBlobTooBigException) to avoid propagating an unchecked
         // exception.
+        // Note: this check should be at the storage level since at the Bucket level we don't know that we are dealing
+        // with a SQLite storage. However, at this point we have more information about what is happening, thus, it can
+        // be better reported.
         T object;
         try {
             object = mStorage.get(key);
