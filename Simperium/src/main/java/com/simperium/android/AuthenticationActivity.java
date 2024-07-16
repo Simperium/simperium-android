@@ -17,8 +17,8 @@ public class AuthenticationActivity extends AppCompatActivity implements LoginSh
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        super.onCreate(savedInstanceState);
         this.setTheme(R.style.Simperium);
         setContentView(R.layout.activity_authentication);
 
