@@ -31,6 +31,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
+import android.os.Build;
 import android.util.Log;
 
 /**
@@ -85,18 +86,23 @@ public class AndroidClient implements ClientFactory {
 
         mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
 
-        try {
-            final SSLContext sslContext = SSLContext.getInstance("TLS");
-            final TrustManager[] customTrustManagers = new TrustManager[]{
-                    loadCertificate(context, R.raw.isrgrootx1),
-                    loadCertificate(context, R.raw.isrgrootx2)
-            };
-            sslContext.init(null, customTrustManagers, null);
-            mHttpClient.getSSLSocketMiddleware().setSSLContext(sslContext);
-        } catch (NoSuchAlgorithmException e) {
-            Log.e(TAG, "Problem getting instance of SSLContext");
-        } catch (KeyManagementException e) {
-            Log.e(TAG, "Problem trying to init SSLContext");
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
+            // This code manually adds two trusted certificates for SSL.
+            // See this for more info: https://letsencrypt.org/2023/07/10/cross-sign-expiration.
+            // I got the certificates directly from letsencrypt here: https://letsencrypt.org/certificates/.
+            try {
+                final SSLContext sslContext = SSLContext.getInstance("TLS");
+                final TrustManager[] customTrustManagers = new TrustManager[]{
+                        loadCertificate(context, R.raw.isrgrootx1),
+                        loadCertificate(context, R.raw.isrgrootx2)
+                };
+                sslContext.init(null, customTrustManagers, null);
+                mHttpClient.getSSLSocketMiddleware().setSSLContext(sslContext);
+            } catch (NoSuchAlgorithmException e) {
+                Log.e(TAG, "Problem getting instance of SSLContext");
+            } catch (KeyManagementException e) {
+                Log.e(TAG, "Problem trying to init SSLContext");
+            }
         }
 
         TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
