@@ -10,15 +10,28 @@ import org.thoughtcrime.ssl.pinning.PinningTrustManager;
 import org.thoughtcrime.ssl.pinning.SystemKeyStore;
 
 import com.simperium.BuildConfig;
+import com.simperium.R;
 import com.simperium.Version;
 import com.simperium.client.ClientFactory;
 import com.simperium.util.Uuid;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import javax.net.ssl.TrustManager;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+
+import android.os.Build;
 import android.util.Log;
 
 /**
@@ -73,6 +86,25 @@ public class AndroidClient implements ClientFactory {
 
         mSessionId = String.format("%s-%s", Version.LIBRARY_NAME, sessionToken);
 
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
+            // This code manually adds two trusted certificates for SSL.
+            // See this for more info: https://letsencrypt.org/2023/07/10/cross-sign-expiration.
+            // I got the certificates directly from letsencrypt here: https://letsencrypt.org/certificates/.
+            try {
+                final SSLContext sslContext = SSLContext.getInstance("TLS");
+                final TrustManager[] customTrustManagers = new TrustManager[]{
+                        loadCertificate(context, R.raw.isrgrootx1),
+                        loadCertificate(context, R.raw.isrgrootx2)
+                };
+                sslContext.init(null, customTrustManagers, null);
+                mHttpClient.getSSLSocketMiddleware().setSSLContext(sslContext);
+            } catch (NoSuchAlgorithmException e) {
+                Log.e(TAG, "Problem getting instance of SSLContext");
+            } catch (KeyManagementException e) {
+                Log.e(TAG, "Problem trying to init SSLContext");
+            }
+        }
+
         TrustManager[] trustManagers = new TrustManager[] { buildPinnedTrustManager(context) };
         mHttpClient.getSSLSocketMiddleware().setTrustManagers(trustManagers);
 
@@ -82,6 +114,42 @@ public class AndroidClient implements ClientFactory {
         // Pin SSL to Simperium.com SPKI
         return new PinningTrustManager(SystemKeyStore.getInstance(context),
                                        new String[] { BuildConfig.SIMPERIUM_COM_SPKI }, 0);
+    }
+
+    private static TrustManager loadCertificate(Context context, final int resource) {
+        try {
+            // Load PEM file
+            InputStream inputStream = context.getResources().openRawResource(resource);
+            // Create CertificateFactory Instance
+            CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+
+            // Generate the keystore instance.
+            KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keyStore.load(null, null);
+
+            // Iterate over the certificates in the pem file and add them to the keystore
+            while (inputStream.available() > 0) {
+                java.security.cert.Certificate cert = certificateFactory.generateCertificate(inputStream);
+                String alias = cert.toString();
+                keyStore.setCertificateEntry(alias, cert);
+            }
+
+            // Create a TrustedManagerFactory instance
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init(keyStore);
+
+            TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+            return trustManagers[0];
+        } catch (IOException e) {
+            Log.e(TAG, "Problem opening pem cert file", e);
+        } catch (CertificateException e) {
+            Log.e(TAG, "Problem getting instance of CertificateFactory", e);
+        } catch (KeyStoreException e) {
+            Log.e(TAG, "Problem getting a keystore instance", e);
+        } catch (NoSuchAlgorithmException e) {
+            Log.e(TAG, "Problem loading the keystore", e);
+        }
+        return null;
     }
 
     public static SharedPreferences sharedPreferences(Context context){
