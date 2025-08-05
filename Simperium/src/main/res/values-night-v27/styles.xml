@@ -5,14 +5,14 @@
     <style name="BottomSheetDialogTheme" parent="BaseBottomSheetDialog">
         <item name="android:navigationBarColor">@color/background_primary</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 
     <style name="Simperium" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:navigationBarColor">@color/background_primary</item>
         <item name="android:statusBarColor">@color/background_primary</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="colorAccent">@color/background_button_primary</item>
         <item name="colorPrimary">@color/background_button_primary</item>
         <item name="colorPrimaryDark">@color/background_button_primary</item>
