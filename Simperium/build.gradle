@@ -6,11 +6,11 @@ plugins {
 
 repositories {
     google()
-    jcenter()
+    mavenCentral()
 }
 
 android {
-    namespace 'com.simperium'
+    namespace = 'com.simperium'
     compileSdkVersion 36
 
     defaultConfig {
@@ -22,7 +22,9 @@ android {
         buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
     }
 
-    defaultPublishConfig 'clientRelease'
+    buildFeatures {
+        buildConfig = true
+    }
 
     dependencies {
         androidTestImplementation 'androidx.test:core:1.7.0'
@@ -59,7 +61,7 @@ tasks.withType(Javadoc) {
     options.addStringOption('encoding', 'UTF-8')
 }
 
-afterEvaluate {
+project.afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
@@ -72,9 +74,12 @@ afterEvaluate {
     }
 }
 
-publishToS3Plugin {
-    mavenPublishGroupId "com.automattic"
-    mavenPublishArtifactId "simperium"
+android {
+    publishing {
+        singleVariant("clientRelease") {
+            withSourcesJar()
+        }
+    }
 }
 
 task versionConfig(group: "build", description: "Generate version class") {
