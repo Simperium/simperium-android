@@ -37,20 +37,6 @@ android {
         implementation 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
     }
 
-    flavorDimensions "main"
-
-    productFlavors {
-        // client is the main production build
-        client {
-            dimension "main"
-        }
-
-        // support build is for running tests and includes mock code
-        support {
-            dimension "main"
-        }
-    }
-
     useLibrary 'android.test.base'
     useLibrary 'android.test.runner'
     useLibrary 'org.apache.http.legacy'
@@ -65,19 +51,11 @@ project.afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-                from components.clientRelease
+                from components.release
                 groupId "com.automattic"
                 artifactId "simperium"
                 // version is set by 'publish-to-s3' plugin
             }
-        }
-    }
-}
-
-android {
-    publishing {
-        singleVariant("clientRelease") {
-            withSourcesJar()
         }
     }
 }
