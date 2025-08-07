@@ -7,6 +7,7 @@
     <color name="background_button_disabled">@color/gray_40</color>
     <color name="background_button_primary">@color/primary</color>
     <color name="background_button_secondary">@color/gray_40</color>
+    <color name="icon_toolbar">@android:color/white</color>
     <color name="primary">@color/gray_b</color>
     <color name="primary_dark">@color/gray_b</color>
     <color name="text_button_disabled">@color/gray_40</color>
@@ -17,6 +18,7 @@
     <color name="text_footer">@color/gray_b</color>
     <color name="text_subtitle">@color/gray_b</color>
     <color name="text_title">@android:color/white</color>
+    <color name="text_toolbar">@android:color/white</color>
     <color name="icon_toolbar">@android:color/white</color>
     <color name="text_toolbar">@android:color/white</color>
 
