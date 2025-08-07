@@ -18,7 +18,4 @@
     <color name="text_subtitle">@color/gray_b</color>
     <color name="text_title">@android:color/white</color>
 
-    <!-- Background colors for dark mode -->
-    <color name="background_secondary">@color/gray_3</color>
-
 </resources>
