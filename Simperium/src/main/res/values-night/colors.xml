@@ -2,7 +2,8 @@
 
 <resources>
 
-    <!-- APPLICATION - Dark Mode Colors -->
+    <!-- APPLICATION -->
+    <color name="background">@color/gray_1</color>
     <color name="background_button_disabled">@color/gray_40</color>
     <color name="background_button_primary">@color/primary</color>
     <color name="background_button_secondary">@color/gray_40</color>
@@ -18,7 +19,6 @@
     <color name="text_title">@android:color/white</color>
 
     <!-- Background colors for dark mode -->
-    <color name="background_primary">@color/gray_1</color>
     <color name="background_secondary">@color/gray_3</color>
 
 </resources>

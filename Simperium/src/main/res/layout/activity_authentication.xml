@@ -4,7 +4,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_authentication_root"
-    android:background="@color/background_primary"
+    android:background="@color/background"
     android:clipToPadding="false"
     android:layout_gravity="center_horizontal"
     android:layout_height="match_parent"

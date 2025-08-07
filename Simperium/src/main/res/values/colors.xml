@@ -3,6 +3,7 @@
 <resources>
 
     <!-- APPLICATION -->
+    <color name="background">@android:color/white</color>
     <color name="background_button_disabled">@color/gray_b</color>
     <color name="background_button_primary">@color/primary</color>
     <color name="background_button_secondary">@color/gray_3</color>
@@ -18,7 +19,6 @@
     <color name="text_title">@color/gray_1</color>
 
     <!-- Background colors for light mode -->
-    <color name="background_primary">@android:color/white</color>
     <color name="background_secondary">@color/gray_b</color>
 
     <!-- STANDARD -->
