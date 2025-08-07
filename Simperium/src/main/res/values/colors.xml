@@ -17,6 +17,8 @@
     <color name="text_footer">@color/gray_40</color>
     <color name="text_subtitle">@color/gray_1</color>
     <color name="text_title">@color/gray_1</color>
+    <color name="icon_toolbar">@color/gray_1</color>
+    <color name="text_toolbar">@color/gray_1</color>
 
     <!-- STANDARD -->
     <color name="gray_1">#111111</color>

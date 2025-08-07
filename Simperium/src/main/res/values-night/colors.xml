@@ -17,5 +17,7 @@
     <color name="text_footer">@color/gray_b</color>
     <color name="text_subtitle">@color/gray_b</color>
     <color name="text_title">@android:color/white</color>
+    <color name="icon_toolbar">@android:color/white</color>
+    <color name="text_toolbar">@android:color/white</color>
 
 </resources>
