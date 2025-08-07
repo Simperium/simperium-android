@@ -2,16 +2,6 @@
 
 <resources>
 
-    <style name="BaseBottomSheetDialog" parent="Theme.MaterialComponents.DayNight.BottomSheetDialog">
-        <item name="android:colorBackground">@color/background</item>
-        <item name="android:windowIsFloating">false</item>
-        <item name="bottomSheetStyle">@style/Widget.Design.BottomSheet.Modal</item>
-    </style>
-
-    <style name="BottomSheetDialogTheme" parent="BaseBottomSheetDialog">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-    </style>
-
     <style name="Simperium" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:windowLightStatusBar">false</item>
