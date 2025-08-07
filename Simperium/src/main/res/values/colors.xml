@@ -3,6 +3,7 @@
 <resources>
 
     <!-- APPLICATION -->
+    <color name="background">@android:color/white</color>
     <color name="background_button_disabled">@color/gray_b</color>
     <color name="background_button_primary">@color/primary</color>
     <color name="background_button_secondary">@color/gray_3</color>
@@ -16,6 +17,9 @@
     <color name="text_footer">@color/gray_40</color>
     <color name="text_subtitle">@color/gray_1</color>
     <color name="text_title">@color/gray_1</color>
+
+    <color name="icon_toolbar">@color/gray_1</color>
+    <color name="text_toolbar">@color/gray_1</color>
 
     <!-- STANDARD -->
     <color name="gray_1">#111111</color>

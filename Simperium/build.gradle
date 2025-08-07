@@ -6,46 +6,35 @@ plugins {
 
 repositories {
     google()
-    jcenter()
+    mavenCentral()
 }
 
 android {
-    compileSdkVersion 30
+    namespace = 'com.simperium'
+    compileSdkVersion 36
 
     defaultConfig {
         minSdkVersion 23
-        targetSdkVersion 30
+        targetSdkVersion 35
 
         // Calculating PIN for certificate: OU=Domain Control Validated, CN=*.simperium.com
         // Pin Value: e25695097d04927c9d90206333a687a7b1f99708
         buildConfigField 'String', 'SIMPERIUM_COM_SPKI', '"e25695097d04927c9d90206333a687a7b1f99708"'
     }
 
-    defaultPublishConfig 'clientRelease'
+    buildFeatures {
+        buildConfig = true
+    }
 
     dependencies {
-        androidTestImplementation 'androidx.test:core:1.2.0'
-        androidTestImplementation 'androidx.test:runner:1.2.0'
+        androidTestImplementation 'androidx.test:core:1.7.0'
+        androidTestImplementation 'androidx.test:runner:1.7.0'
 
-        implementation 'androidx.appcompat:appcompat:1.0.2'
-        implementation 'com.google.android.material:material:1.1.0-alpha07'
+        implementation 'androidx.appcompat:appcompat:1.7.1'
+        implementation 'com.google.android.material:material:1.12.0'
         implementation 'com.google.code.gson:gson:2.8.5'
         implementation 'com.koushikdutta.async:androidasync:3.1.0'
         implementation 'org.thoughtcrime.ssl.pinning:AndroidPinning:1.0.0'
-    }
-
-    flavorDimensions "main"
-
-    productFlavors {
-        // client is the main production build
-        client {
-            dimension "main"
-        }
-
-        // support build is for running tests and includes mock code
-        support {
-            dimension "main"
-        }
     }
 
     useLibrary 'android.test.base'
@@ -58,22 +47,17 @@ tasks.withType(Javadoc) {
     options.addStringOption('encoding', 'UTF-8')
 }
 
-afterEvaluate {
+project.afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-                from components.clientRelease
+                from components.release
                 groupId "com.automattic"
                 artifactId "simperium"
                 // version is set by 'publish-to-s3' plugin
             }
         }
     }
-}
-
-publishToS3Plugin {
-    mavenPublishGroupId "com.automattic"
-    mavenPublishArtifactId "simperium"
 }
 
 task versionConfig(group: "build", description: "Generate version class") {
