@@ -15,8 +15,19 @@
     <color name="text_button_tertiary">@color/primary_dark</color>
     <color name="text_link">@color/primary</color>
     <color name="text_footer">@color/gray_40</color>
+    <color name="icon_toolbar">@color/gray_1</color>
+    <color name="primary">@color/gray_40</color>
+    <color name="primary_dark">@color/gray_3</color>
+    <color name="text_button_disabled">@color/gray_b</color>
+    <color name="text_button_primary">@android:color/white</color>
+    <color name="text_button_secondary">@android:color/white</color>
+    <color name="text_button_tertiary">@color/primary_dark</color>
+    <color name="text_link">@color/primary</color>
+    <color name="text_footer">@color/gray_40</color>
     <color name="text_subtitle">@color/gray_1</color>
     <color name="text_title">@color/gray_1</color>
+    <color name="text_toolbar">@color/gray_1</color>
+
     <color name="icon_toolbar">@color/gray_1</color>
     <color name="text_toolbar">@color/gray_1</color>
 
