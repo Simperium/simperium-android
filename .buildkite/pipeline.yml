@@ -18,3 +18,4 @@ steps:
         :Simperium:prepareToPublishToS3 $(prepare_to_publish_to_s3_params) \
         :Simperium:publish
     plugins: *common_plugins
+
