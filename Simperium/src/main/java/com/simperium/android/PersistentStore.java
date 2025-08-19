@@ -81,7 +81,7 @@ public class PersistentStore implements StorageProvider {
          * Add/Update the given object
          */
         @Override
-        public void save(T object, String simperiumKey, String json, List<Index> indexes) {
+        public synchronized void save(T object, String simperiumKey, String json, List<Index> indexes) {
             mReindexer.skip(simperiumKey);
             ContentValues values = new ContentValues();
             values.put("bucket", mBucketName);
