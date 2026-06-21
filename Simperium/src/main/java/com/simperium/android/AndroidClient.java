@@ -6,6 +6,8 @@ import android.database.sqlite.SQLiteDatabase;
 
 import com.koushikdutta.async.http.AsyncHttpClient;
 
+import okhttp3.OkHttpClient;
+
 import org.thoughtcrime.ssl.pinning.PinningTrustManager;
 import org.thoughtcrime.ssl.pinning.SystemKeyStore;
 
@@ -54,6 +56,9 @@ public class AndroidClient implements ClientFactory {
 
     protected ExecutorService mExecutor;
     protected AsyncHttpClient mHttpClient = AsyncHttpClient.getDefaultInstance();
+    // Realtime WebSocket transport. TODO before merge: replicate the cert pinning that
+    // configureSSL() applies to mHttpClient (sslSocketFactory + X509TrustManager / CertificatePinner).
+    protected OkHttpClient mOkHttpClient = new OkHttpClient();
 
     public AndroidClient(Context context){
         int threads = Runtime.getRuntime().availableProcessors();
@@ -164,7 +169,7 @@ public class AndroidClient implements ClientFactory {
     @Override
     public WebSocketManager buildChannelProvider(String appId){
         // Simperium Bucket API
-        WebSocketManager.ConnectionProvider provider = new AsyncWebSocketProvider(appId, mSessionId, mHttpClient);
+        WebSocketManager.ConnectionProvider provider = new OkHttpWebSocketProvider(appId, mSessionId, mOkHttpClient);
         return new WebSocketManager(mExecutor, appId, mSessionId, new QueueSerializer(mDatabase), provider, mContext);
     }
 
